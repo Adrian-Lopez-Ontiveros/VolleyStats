@@ -91,40 +91,74 @@ export function StandingsTable({ rows }: { rows: StandingRow[] }) {
   );
 }
 
+const MOBILE_STATS: {
+  key: keyof Pick<
+    StandingRow,
+    | "played"
+    | "won"
+    | "lost"
+    | "setsFor"
+    | "setsAgainst"
+    | "setDiff"
+    | "pointsFor"
+    | "pointsAgainst"
+    | "pointDiff"
+  >;
+  label: string;
+  signed?: boolean;
+}[] = [
+  { key: "played", label: "PJ" },
+  { key: "won", label: "G" },
+  { key: "lost", label: "P" },
+  { key: "setsFor", label: "SF" },
+  { key: "setsAgainst", label: "SC" },
+  { key: "setDiff", label: "DS", signed: true },
+  { key: "pointsFor", label: "PF" },
+  { key: "pointsAgainst", label: "PC" },
+  { key: "pointDiff", label: "DP", signed: true },
+];
+
 function StandingsCard({ row }: { row: StandingRow }) {
   return (
     <Link
       href={`/equipos/${row.team.id}`}
-      className="flex items-center gap-3 rounded-2xl border bg-card px-3 py-3 shadow-card active:scale-[0.99]"
+      className="block rounded-2xl border bg-card px-3 py-3 shadow-card active:scale-[0.99]"
     >
-      <PositionBadge position={row.position} />
-      <div className="w-12 shrink-0 text-center">
-        <p className="text-2xl font-black leading-none tabular-nums text-primary">
-          {row.leaguePoints}
-        </p>
-        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          pts
-        </p>
+      <div className="flex items-center gap-3">
+        <PositionBadge position={row.position} />
+        <div className="w-12 shrink-0 text-center">
+          <p className="text-2xl font-black leading-none tabular-nums text-primary">
+            {row.leaguePoints}
+          </p>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            pts
+          </p>
+        </div>
+        <TeamLogo
+          name={row.team.name}
+          shortName={row.team.short_name}
+          logoUrl={row.team.logo_url}
+          size="sm"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-snug">{row.team.name}</p>
+          {row.team.short_name ? (
+            <p className="text-[11px] text-muted-foreground">{row.team.short_name}</p>
+          ) : null}
+        </div>
       </div>
-      <TeamLogo
-        name={row.team.name}
-        shortName={row.team.short_name}
-        logoUrl={row.team.logo_url}
-        size="sm"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold leading-snug">{row.team.name}</p>
-        {row.team.short_name ? (
-          <p className="text-[11px] text-muted-foreground">{row.team.short_name}</p>
-        ) : null}
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          <span className="font-medium text-foreground">PJ {row.played}</span>
-          <span className="mx-1.5">·</span>
-          G {row.won}
-          <span className="mx-1.5">·</span>
-          P {row.lost}
-        </p>
-      </div>
+      <dl className="mt-3 grid grid-cols-3 gap-1.5">
+        {MOBILE_STATS.map((stat) => (
+          <div key={stat.key} className="rounded-xl bg-secondary/70 px-1.5 py-1.5 text-center">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {stat.label}
+            </dt>
+            <dd className="text-sm font-semibold tabular-nums">
+              {stat.signed ? formatSigned(row[stat.key]) : row[stat.key]}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </Link>
   );
 }
