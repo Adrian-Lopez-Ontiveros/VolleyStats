@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TeamLogo } from "@/components/teams/team-logo";
+import { cn } from "@/lib/utils";
 import { formatSigned } from "@/lib/stats";
 import type { StandingRow } from "@/lib/stats";
 
@@ -31,141 +32,80 @@ const DETAIL_COLUMNS: {
   { key: "pointDiff", label: "DP", title: "Diferencia de puntos", signed: true },
 ];
 
+function rowTone(index: number) {
+  return index % 2 === 1 ? "bg-secondary" : "bg-card";
+}
+
 export function StandingsTable({ rows }: { rows: StandingRow[] }) {
   return (
-    <>
-      <div className="space-y-2 md:hidden">
-        {rows.map((row) => (
-          <StandingsCard key={row.team.id} row={row} />
-        ))}
-      </div>
-
-      <div className="hidden overflow-hidden rounded-2xl border bg-card shadow-card md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b bg-secondary/70 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <th className="w-12 px-3 py-3 text-center">#</th>
-                <th className="px-3 py-3 text-left">Equipo</th>
-                <th title="Puntos de clasificación" className="px-3 py-3 text-center">
-                  Pts
+    <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
+      <div className="overflow-x-auto overscroll-x-contain">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b bg-secondary text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="sticky left-0 z-20 w-10 bg-secondary px-1.5 py-3 text-center md:w-12 md:px-3">
+                #
+              </th>
+              <th
+                title="Puntos de clasificación"
+                className="sticky left-10 z-20 w-12 bg-secondary px-1.5 py-3 text-center md:left-12 md:w-14 md:px-3"
+              >
+                Pts
+              </th>
+              <th className="sticky left-[5.5rem] z-20 min-w-[148px] bg-secondary px-2 py-3 text-left md:left-[6.5rem] md:min-w-[220px] md:px-3">
+                Equipo
+              </th>
+              {DETAIL_COLUMNS.map((column) => (
+                <th key={column.key} title={column.title} className="px-2 py-3 text-center">
+                  {column.label}
                 </th>
-                {DETAIL_COLUMNS.map((column) => (
-                  <th key={column.key} title={column.title} className="px-2 py-3 text-center">
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr
-                  key={row.team.id}
-                  className={`border-b last:border-0 ${index % 2 === 1 ? "bg-secondary/30" : "bg-card"}`}
-                >
-                  <td className="px-3 py-3 text-center">
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => {
+              const tone = rowTone(index);
+              return (
+                <tr key={row.team.id} className={cn("border-b last:border-0", tone)}>
+                  <td className={cn("sticky left-0 z-10 w-10 px-1.5 py-2.5 text-center md:w-12 md:px-3", tone)}>
                     <PositionBadge position={row.position} />
                   </td>
-                  <td className="px-3 py-3">
-                    <TeamName row={row} />
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className="text-lg font-black tabular-nums text-primary">
+                  <td
+                    className={cn(
+                      "sticky left-10 z-10 w-12 px-1.5 py-2.5 text-center md:left-12 md:w-14 md:px-3",
+                      tone
+                    )}
+                  >
+                    <span className="text-base font-black tabular-nums text-primary md:text-lg">
                       {row.leaguePoints}
                     </span>
                   </td>
+                  <td
+                    className={cn(
+                      "sticky left-[5.5rem] z-10 min-w-[148px] px-2 py-2.5 md:left-[6.5rem] md:min-w-[220px] md:px-3",
+                      tone
+                    )}
+                  >
+                    <TeamName row={row} />
+                  </td>
                   {DETAIL_COLUMNS.map((column) => (
-                    <td key={column.key} className="px-2 py-3 text-center tabular-nums">
-                      {column.signed
-                        ? formatSigned(row[column.key])
-                        : row[column.key]}
+                    <td key={column.key} className="px-2 py-2.5 text-center tabular-nums">
+                      {column.signed ? formatSigned(row[column.key]) : row[column.key]}
                     </td>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-    </>
-  );
-}
-
-const MOBILE_STATS: {
-  key: keyof Pick<
-    StandingRow,
-    | "played"
-    | "won"
-    | "lost"
-    | "setsFor"
-    | "setsAgainst"
-    | "setDiff"
-    | "pointsFor"
-    | "pointsAgainst"
-    | "pointDiff"
-  >;
-  label: string;
-  signed?: boolean;
-}[] = [
-  { key: "played", label: "PJ" },
-  { key: "won", label: "G" },
-  { key: "lost", label: "P" },
-  { key: "setsFor", label: "SF" },
-  { key: "setsAgainst", label: "SC" },
-  { key: "setDiff", label: "DS", signed: true },
-  { key: "pointsFor", label: "PF" },
-  { key: "pointsAgainst", label: "PC" },
-  { key: "pointDiff", label: "DP", signed: true },
-];
-
-function StandingsCard({ row }: { row: StandingRow }) {
-  return (
-    <Link
-      href={`/equipos/${row.team.id}`}
-      className="block rounded-2xl border bg-card px-3 py-3 shadow-card active:scale-[0.99]"
-    >
-      <div className="flex items-center gap-3">
-        <PositionBadge position={row.position} />
-        <div className="w-12 shrink-0 text-center">
-          <p className="text-2xl font-black leading-none tabular-nums text-primary">
-            {row.leaguePoints}
-          </p>
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            pts
-          </p>
-        </div>
-        <TeamLogo
-          name={row.team.name}
-          shortName={row.team.short_name}
-          logoUrl={row.team.logo_url}
-          size="sm"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-snug">{row.team.name}</p>
-          {row.team.short_name ? (
-            <p className="text-[11px] text-muted-foreground">{row.team.short_name}</p>
-          ) : null}
-        </div>
-      </div>
-      <dl className="mt-3 grid grid-cols-3 gap-1.5">
-        {MOBILE_STATS.map((stat) => (
-          <div key={stat.key} className="rounded-xl bg-secondary/70 px-1.5 py-1.5 text-center">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {stat.label}
-            </dt>
-            <dd className="text-sm font-semibold tabular-nums">
-              {stat.signed ? formatSigned(row[stat.key]) : row[stat.key]}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </Link>
+    </div>
   );
 }
 
 function TeamName({ row }: { row: StandingRow }) {
   return (
-    <Link href={`/equipos/${row.team.id}`} className="flex min-w-[220px] items-center gap-2.5 hover:underline">
+    <Link href={`/equipos/${row.team.id}`} className="flex items-center gap-2 hover:underline">
       <TeamLogo
         name={row.team.name}
         shortName={row.team.short_name}
