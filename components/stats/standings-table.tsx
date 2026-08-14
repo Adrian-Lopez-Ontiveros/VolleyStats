@@ -36,27 +36,37 @@ function rowTone(index: number) {
   return index % 2 === 1 ? "bg-secondary" : "bg-card";
 }
 
+const stickyEdge =
+  "shadow-[6px_0_8px_-6px_rgba(15,23,42,0.18)]";
+
 export function StandingsTable({ rows }: { rows: StandingRow[] }) {
   return (
     <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
-      <div className="overflow-x-auto overscroll-x-contain">
-        <table className="w-full min-w-[760px] border-collapse text-sm">
+      <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+        <table className="w-max min-w-full border-collapse text-sm">
           <thead>
             <tr className="border-b bg-secondary text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="sticky left-0 z-20 w-10 bg-secondary px-1.5 py-3 text-center md:w-12 md:px-3">
                 #
               </th>
+              <th className="sticky left-10 z-20 w-36 bg-secondary px-2 py-3 text-left md:left-12 md:w-60 md:px-3">
+                Equipo
+              </th>
               <th
                 title="Puntos de clasificación"
-                className="sticky left-10 z-20 w-12 bg-secondary px-1.5 py-3 text-center md:left-12 md:w-14 md:px-3"
+                className={cn(
+                  "sticky left-[11.5rem] z-20 w-12 bg-secondary px-1.5 py-3 text-center md:left-[18rem] md:w-14 md:px-3",
+                  stickyEdge
+                )}
               >
                 Pts
               </th>
-              <th className="sticky left-[5.5rem] z-20 min-w-[148px] bg-secondary px-2 py-3 text-left md:left-[6.5rem] md:min-w-[220px] md:px-3">
-                Equipo
-              </th>
               {DETAIL_COLUMNS.map((column) => (
-                <th key={column.key} title={column.title} className="px-2 py-3 text-center">
+                <th
+                  key={column.key}
+                  title={column.title}
+                  className="whitespace-nowrap px-2.5 py-3 text-center"
+                >
                   {column.label}
                 </th>
               ))}
@@ -72,7 +82,16 @@ export function StandingsTable({ rows }: { rows: StandingRow[] }) {
                   </td>
                   <td
                     className={cn(
-                      "sticky left-10 z-10 w-12 px-1.5 py-2.5 text-center md:left-12 md:w-14 md:px-3",
+                      "sticky left-10 z-10 w-36 px-2 py-2.5 md:left-12 md:w-60 md:px-3",
+                      tone
+                    )}
+                  >
+                    <TeamName row={row} />
+                  </td>
+                  <td
+                    className={cn(
+                      "sticky left-[11.5rem] z-10 w-12 px-1.5 py-2.5 text-center md:left-[18rem] md:w-14 md:px-3",
+                      stickyEdge,
                       tone
                     )}
                   >
@@ -80,16 +99,11 @@ export function StandingsTable({ rows }: { rows: StandingRow[] }) {
                       {row.leaguePoints}
                     </span>
                   </td>
-                  <td
-                    className={cn(
-                      "sticky left-[5.5rem] z-10 min-w-[148px] px-2 py-2.5 md:left-[6.5rem] md:min-w-[220px] md:px-3",
-                      tone
-                    )}
-                  >
-                    <TeamName row={row} />
-                  </td>
                   {DETAIL_COLUMNS.map((column) => (
-                    <td key={column.key} className="px-2 py-2.5 text-center tabular-nums">
+                    <td
+                      key={column.key}
+                      className="whitespace-nowrap px-2.5 py-2.5 text-center tabular-nums"
+                    >
                       {column.signed ? formatSigned(row[column.key]) : row[column.key]}
                     </td>
                   ))}
