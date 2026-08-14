@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 215 50% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 50% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 50% 12%;
+    --primary: 214 68% 16%;
+    --primary-foreground: 36 100% 97%;
+    --secondary: 210 30% 94%;
+    --secondary-foreground: 214 68% 16%;
+    --muted: 210 25% 94%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 24% 88%;
+    --input: 214 24% 88%;
+    --ring: 24 95% 53%;
+    --court: 214 68% 16%;
+    --court-foreground: 36 100% 97%;
+    --radius: 0.9rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-height: 100%;
+  }
+
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -10%, hsl(24 95% 53% / 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, hsl(214 68% 30% / 0.08), transparent);
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .pt-safe {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
