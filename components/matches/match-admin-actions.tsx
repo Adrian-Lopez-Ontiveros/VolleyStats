@@ -11,9 +11,11 @@ import type { MatchStatus } from "@/lib/types";
 export function MatchAdminActions({
   matchId,
   status,
+  canTrackLive = true,
 }: {
   matchId: string;
   status: MatchStatus;
+  canTrackLive?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -36,12 +38,12 @@ export function MatchAdminActions({
 
   return (
     <div className="grid gap-2">
-      {status !== "finished" && status !== "cancelled" ? (
+      {canTrackLive && status !== "finished" && status !== "cancelled" ? (
         <Button asChild variant="accent" className="w-full">
           <Link href={`/partidos/${matchId}/seguimiento`}>Seguimiento en vivo</Link>
         </Button>
       ) : null}
-      {status === "scheduled" ? (
+      {canTrackLive && status === "scheduled" ? (
         <Button
           variant="secondary"
           disabled={pending}

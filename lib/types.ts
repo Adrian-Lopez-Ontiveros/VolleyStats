@@ -35,6 +35,7 @@ export type Team = {
   city: string | null;
   category: TeamCategory | null;
   is_club_team: boolean;
+  federation_team_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -101,6 +102,9 @@ export type Match = {
   set_scores: SetScore[];
   notes: string | null;
   created_by: string | null;
+  is_federation?: boolean;
+  federation_match_id?: string | null;
+  federation_round?: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -58,6 +58,7 @@ create table if not exists public.teams (
   city text,
   category text,
   is_club_team boolean not null default false,
+  federation_team_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -107,6 +108,9 @@ create table if not exists public.matches (
   set_scores jsonb not null default '[]'::jsonb,
   notes text,
   created_by uuid references public.profiles (id) on delete set null,
+  is_federation boolean not null default false,
+  federation_match_id text,
+  federation_round text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint matches_different_teams check (home_team_id <> away_team_id)

@@ -19,6 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { getMatchActivity } from "@/lib/actions/activity";
 import { requireViewer } from "@/lib/auth";
+import { canTrackLiveMatch } from "@/lib/federation/leagues";
 import { buildBoxScore } from "@/lib/box-score";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
@@ -148,6 +149,13 @@ export default async function MatchDetailPage({
       />
       <div className="space-y-4">
         <Scoreboard match={typedMatch} />
+        <p className="text-center text-xs text-muted-foreground">
+          {typedMatch.is_federation
+            ? typedMatch.federation_round
+              ? `Partido oficial FMV · ${typedMatch.federation_round}`
+              : "Partido oficial de la Federación de Madrid"
+            : "Partido de seguimiento propio"}
+        </p>
 
         {typedMatch.location ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -173,14 +181,18 @@ export default async function MatchDetailPage({
         ) : null}
 
         {isAdmin ? (
-          <MatchAdminActions matchId={typedMatch.id} status={typedMatch.status} />
+          <MatchAdminActions
+            matchId={typedMatch.id}
+            status={typedMatch.status}
+            canTrackLive={canTrackLiveMatch(typedMatch)}
+          />
         ) : null}
 
-        {clubTeamId ? (
+        {canTrackLiveMatch(typedMatch) && clubTeamId ? (
           <MatchLineup teamName={clubTeamName} entries={typedLineup} />
         ) : null}
 
-        {clubTeamId ? (
+        {canTrackLiveMatch(typedMatch) && clubTeamId ? (
           <SubstitutionPanel
             matchId={typedMatch.id}
             players={roster}

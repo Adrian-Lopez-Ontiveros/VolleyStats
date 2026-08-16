@@ -24,9 +24,16 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
                 locale: es,
               })}
             </p>
-            <Badge className={status.className} variant="secondary">
-              {status.label}
-            </Badge>
+            <div className="flex flex-wrap justify-end gap-1">
+              {match.is_federation ? (
+                <Badge variant="outline">Oficial FMV</Badge>
+              ) : (
+                <Badge variant="outline">Propio</Badge>
+              )}
+              <Badge className={status.className} variant="secondary">
+                {status.label}
+              </Badge>
+            </div>
           </div>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <div className="flex items-center justify-end gap-2 text-right">

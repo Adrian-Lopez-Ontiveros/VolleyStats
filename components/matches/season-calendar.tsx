@@ -86,8 +86,15 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
         <span className="text-xs font-medium tabular-nums text-muted-foreground">
           {format(parseISO(match.scheduled_at), "HH:mm")}
         </span>
-        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
-          {status.label}
+        <span className="flex flex-wrap justify-end gap-1">
+          {match.is_federation ? (
+            <span className="rounded-full border px-2 py-0.5 text-[10px] font-semibold">
+              Oficial
+            </span>
+          ) : null}
+          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
+            {status.label}
+          </span>
         </span>
       </div>
       <div className="flex items-center justify-between gap-2 text-sm">

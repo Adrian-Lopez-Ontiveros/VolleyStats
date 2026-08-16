@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { LiveTracker } from "@/components/matches/live-tracker";
 import { PageHeader } from "@/components/page-header";
 import { requireAdmin } from "@/lib/auth";
+import { canTrackLiveMatch } from "@/lib/federation/leagues";
 import {
   MATCH_EVENT_SELECT,
   MATCH_LINEUP_SELECT,
@@ -49,6 +50,9 @@ export default async function LiveMatchPage({
   if (!match) notFound();
 
   const typedMatch = match as MatchWithTeams;
+  if (!canTrackLiveMatch(typedMatch)) {
+    redirect(`/partidos/${id}`);
+  }
 
   const { data: rosterRows } = await supabase
     .from("players")

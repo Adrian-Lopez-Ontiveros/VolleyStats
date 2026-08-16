@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { FederationSync } from "@/components/admin/federation-sync";
 import { RoleToggle } from "@/components/admin/role-toggle";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,10 @@ export default async function AdminPage() {
             Jugador
           </Link>
         </Button>
+      </div>
+
+      <div className="mb-6">
+        <FederationSync />
       </div>
 
       <h2 className="mb-3 text-lg font-semibold">Usuarios y roles</h2>
