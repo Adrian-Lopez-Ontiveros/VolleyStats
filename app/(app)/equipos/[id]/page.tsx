@@ -167,14 +167,19 @@ export default async function TeamDetailPage({
           />
         }
         action={
-          isAdmin ? (
+          <div className="flex gap-2">
             <Button asChild size="sm" variant="outline">
-              <Link href={`/equipos/${id}/editar`}>
-                <Pencil className="h-4 w-4" />
-                Editar
-              </Link>
+              <Link href="/comparar">Comparar</Link>
             </Button>
-          ) : null
+            {isAdmin ? (
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/equipos/${id}/editar`}>
+                  <Pencil className="h-4 w-4" />
+                  Editar
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         }
       />
 

@@ -31,6 +31,20 @@ export type PlayerMatchSample = {
   opponentErrors: number;
   other: number;
   efficiency: number;
+  attackKills: number;
+  attackErrors: number;
+  attackContinuations: number;
+  attackAttempts: number;
+  attackEffPct: number | null;
+  serveErrors: number;
+  serveIn: number;
+  serveAttempts: number;
+  servePct: number | null;
+  receptionGood: number;
+  receptionMedium: number;
+  receptionBad: number;
+  receptionTotal: number;
+  receptionPct: number | null;
 };
 
 export type MatchStandingInput = Pick<
@@ -184,6 +198,20 @@ export function emptyPlayerSample(matchId: string, date: string): PlayerMatchSam
     opponentErrors: 0,
     other: 0,
     efficiency: 0,
+    attackKills: 0,
+    attackErrors: 0,
+    attackContinuations: 0,
+    attackAttempts: 0,
+    attackEffPct: null,
+    serveErrors: 0,
+    serveIn: 0,
+    serveAttempts: 0,
+    servePct: null,
+    receptionGood: 0,
+    receptionMedium: 0,
+    receptionBad: 0,
+    receptionTotal: 0,
+    receptionPct: null,
   };
 }
 
@@ -191,7 +219,11 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
   switch (pointType) {
     case "attack":
       sample.attacks += 1;
+      sample.attackKills += 1;
       sample.points += 1;
+      break;
+    case "attack_continuation":
+      sample.attackContinuations += 1;
       break;
     case "block":
       sample.blocks += 1;
@@ -201,19 +233,50 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
       sample.aces += 1;
       sample.points += 1;
       break;
+    case "serve_in":
+      sample.serveIn += 1;
+      break;
     case "other":
       sample.other += 1;
       sample.points += 1;
       break;
     case "error":
+      sample.errors += 1;
+      break;
     case "attack_error":
+      sample.errors += 1;
+      sample.attackErrors += 1;
+      break;
     case "serve_error":
       sample.errors += 1;
+      sample.serveErrors += 1;
       break;
     case "opponent_error":
       sample.opponentErrors += 1;
       break;
+    case "reception_good":
+      sample.receptionGood += 1;
+      break;
+    case "reception_medium":
+      sample.receptionMedium += 1;
+      break;
+    case "reception_bad":
+      sample.receptionBad += 1;
+      break;
   }
+  sample.attackAttempts = sample.attackKills + sample.attackErrors + sample.attackContinuations;
+  sample.attackEffPct =
+    sample.attackAttempts === 0
+      ? null
+      : ((sample.attackKills - sample.attackErrors) / sample.attackAttempts) * 100;
+  sample.serveAttempts = sample.aces + sample.serveErrors + sample.serveIn;
+  sample.servePct =
+    sample.serveAttempts === 0
+      ? null
+      : ((sample.aces + sample.serveIn) / sample.serveAttempts) * 100;
+  sample.receptionTotal = sample.receptionGood + sample.receptionMedium + sample.receptionBad;
+  sample.receptionPct =
+    sample.receptionTotal === 0 ? null : (sample.receptionGood / sample.receptionTotal) * 100;
   sample.efficiency = playerEfficiencyPercent(sample.points, sample.errors);
 }
 

@@ -1,10 +1,15 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { PhaseFilterBar } from "@/components/stats/phase-filter";
 import { RotationTable } from "@/components/stats/rotation-table";
 import { AttackServeCards, PossessionCards } from "@/components/stats/skill-stats";
 import { formatJersey } from "@/lib/utils";
 import { countChartPointTypes, topMatchScorers } from "@/lib/stats";
+import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/lib/stat-filters";
 import {
   attackStatsFromEvents,
   filterTeamEvents,
@@ -28,11 +33,26 @@ export function MatchStatsPanel({
   match: MatchWithTeams;
   events: MatchEventWithPlayer[];
 }) {
-  const homeEvents = filterTeamEvents(events, match.home_team_id);
-  const awayEvents = filterTeamEvents(events, match.away_team_id);
+  const [filter, setFilter] = useState<PhaseFilter>(DEFAULT_PHASE_FILTER);
+  const bySet = useMemo(
+    () => filterEventsByPhase(events, { sets: filter.sets, possession: "all" }),
+    [events, filter.sets]
+  );
+  const homeView = useMemo(
+    () =>
+      filterEventsByPhase(bySet, { sets: "all", possession: filter.possession }, match.home_team_id),
+    [bySet, filter.possession, match.home_team_id]
+  );
+  const awayView = useMemo(
+    () =>
+      filterEventsByPhase(bySet, { sets: "all", possession: filter.possession }, match.away_team_id),
+    [bySet, filter.possession, match.away_team_id]
+  );
+  const homeEvents = filterTeamEvents(homeView, match.home_team_id);
+  const awayEvents = filterTeamEvents(awayView, match.away_team_id);
   const homeCounts = countChartPointTypes(homeEvents);
   const awayCounts = countChartPointTypes(awayEvents);
-  const scorers = topMatchScorers(events);
+  const scorers = topMatchScorers(bySet);
   const homeLabel = match.home_team.short_name || match.home_team.name;
   const awayLabel = match.away_team.short_name || match.away_team.name;
   const homeAttack = attackStatsFromEvents(homeEvents);
@@ -41,7 +61,17 @@ export function MatchStatsPanel({
   const awayServe = serveStatsFromEvents(awayEvents);
   const homeReception = receptionStatsFromEvents(homeEvents);
   const awayReception = receptionStatsFromEvents(awayEvents);
-  const possession = possessionStatsFromEvents(events, match.home_team_id, match.away_team_id);
+  const homePossession = possessionStatsFromEvents(
+    homeView,
+    match.home_team_id,
+    match.away_team_id
+  ).home;
+  const awayPossession = possessionStatsFromEvents(
+    awayView,
+    match.home_team_id,
+    match.away_team_id
+  ).away;
+  const possession = possessionStatsFromEvents(bySet, match.home_team_id, match.away_team_id);
 
   if (events.length === 0) {
     return (
@@ -53,6 +83,8 @@ export function MatchStatsPanel({
 
   return (
     <div className="space-y-4">
+      <PhaseFilterBar value={filter} onChange={setFilter} />
+
       <Card>
         <CardContent className="p-4">
           <h3 className="mb-3 text-sm font-semibold">Acciones por tipo</h3>
@@ -69,8 +101,8 @@ export function MatchStatsPanel({
         <h3 className="text-sm font-semibold">{homeLabel}</h3>
         <AttackServeCards attack={homeAttack} serve={homeServe} reception={homeReception} />
         <PossessionCards
-          sideOut={possession.home.sideOut}
-          breakPoint={possession.home.breakPoint}
+          sideOut={homePossession.sideOut}
+          breakPoint={homePossession.breakPoint}
         />
       </section>
 
@@ -78,8 +110,8 @@ export function MatchStatsPanel({
         <h3 className="text-sm font-semibold">{awayLabel}</h3>
         <AttackServeCards attack={awayAttack} serve={awayServe} reception={awayReception} />
         <PossessionCards
-          sideOut={possession.away.sideOut}
-          breakPoint={possession.away.breakPoint}
+          sideOut={awayPossession.sideOut}
+          breakPoint={awayPossession.breakPoint}
         />
       </section>
 
@@ -87,7 +119,7 @@ export function MatchStatsPanel({
         <h3 className="text-sm font-semibold">Rotaciones · {homeLabel}</h3>
         <RotationTable
           rows={rotationStatsForTeam(
-            events,
+            homeView,
             match.home_team_id,
             match.home_team_id,
             match.away_team_id
@@ -99,7 +131,7 @@ export function MatchStatsPanel({
         <h3 className="text-sm font-semibold">Rotaciones · {awayLabel}</h3>
         <RotationTable
           rows={rotationStatsForTeam(
-            events,
+            awayView,
             match.away_team_id,
             match.home_team_id,
             match.away_team_id

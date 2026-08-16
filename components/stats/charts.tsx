@@ -34,7 +34,30 @@ const tooltipStyle = {
   fontSize: 12,
 };
 
-export function PlayerEvolutionChart({ data }: { data: PlayerMatchSample[] }) {
+export type EvolutionMetric = {
+  key: keyof PlayerMatchSample;
+  label: string;
+  color: string;
+  axis: "count" | "pct";
+};
+
+export const EVOLUTION_METRICS: EvolutionMetric[] = [
+  { key: "points", label: "Puntos", color: COLORS.points, axis: "count" },
+  { key: "attackEffPct", label: "Eff. ataque", color: COLORS.efficiency, axis: "pct" },
+  { key: "aces", label: "Aces", color: "#059669", axis: "count" },
+  { key: "errors", label: "Errores", color: COLORS.errors, axis: "count" },
+  { key: "receptionPct", label: "Recepción", color: COLORS.away, axis: "pct" },
+];
+
+export function PlayerEvolutionChart({
+  data,
+  metrics = EVOLUTION_METRICS.filter((item) =>
+    ["points", "attackEffPct", "errors"].includes(item.key)
+  ),
+}: {
+  data: PlayerMatchSample[];
+  metrics?: EvolutionMetric[];
+}) {
   if (data.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
@@ -42,6 +65,9 @@ export function PlayerEvolutionChart({ data }: { data: PlayerMatchSample[] }) {
       </p>
     );
   }
+
+  const showPct = metrics.some((item) => item.axis === "pct");
+  const showCount = metrics.some((item) => item.axis === "count");
 
   return (
     <div className="h-64 w-full">
@@ -54,63 +80,107 @@ export function PlayerEvolutionChart({ data }: { data: PlayerMatchSample[] }) {
             axisLine={false}
             tickLine={false}
           />
+          {showCount ? (
+            <YAxis
+              yAxisId="count"
+              allowDecimals={false}
+              tick={{ fill: COLORS.axis, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+            />
+          ) : null}
+          {showPct ? (
+            <YAxis
+              yAxisId="pct"
+              orientation="right"
+              domain={[-100, 100]}
+              tick={{ fill: COLORS.axis, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={36}
+              tickFormatter={(value) => `${value}%`}
+            />
+          ) : null}
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(value, name) => {
+              if (value === null || value === undefined || Number.isNaN(Number(value))) {
+                return ["—", name];
+              }
+              const numeric = typeof value === "number" ? value : Number(value);
+              const metric = metrics.find((item) => item.label === name);
+              if (metric?.axis === "pct") return [`${Math.round(numeric)}%`, name];
+              return [numeric, name];
+            }}
+          />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          {metrics.map((metric) => (
+            <Line
+              key={metric.key}
+              yAxisId={metric.axis === "pct" ? "pct" : "count"}
+              type="monotone"
+              dataKey={metric.key}
+              name={metric.label}
+              stroke={metric.color}
+              strokeWidth={2.4}
+              connectNulls
+              dot={{ r: 3, fill: metric.color }}
+              activeDot={{ r: 5 }}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export function PlayerCompareChart({
+  rows,
+}: {
+  rows: { metric: string; [player: string]: string | number }[];
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Elige jugadores para comparar.
+      </p>
+    );
+  }
+
+  const keys = Object.keys(rows[0] ?? {}).filter((key) => key !== "metric");
+  const palette = [COLORS.for, COLORS.away, "#7C3AED"];
+
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={rows} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+          <CartesianGrid stroke={COLORS.grid} strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="metric"
+            tick={{ fill: COLORS.axis, fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            interval={0}
+          />
           <YAxis
-            yAxisId="count"
             allowDecimals={false}
             tick={{ fill: COLORS.axis, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             width={32}
           />
-          <YAxis
-            yAxisId="eff"
-            orientation="right"
-            domain={[-100, 100]}
-            tick={{ fill: COLORS.axis, fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-            width={36}
-            tickFormatter={(value) => `${value}%`}
-          />
-          <Tooltip
-            contentStyle={tooltipStyle}
-            formatter={(value, name) => {
-              const numeric = typeof value === "number" ? value : Number(value);
-              if (name === "Eficiencia") return [`${Math.round(numeric)}%`, name];
-              return [numeric, name];
-            }}
-          />
+          <Tooltip contentStyle={tooltipStyle} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Line
-            yAxisId="count"
-            type="monotone"
-            dataKey="points"
-            name="Puntos"
-            stroke={COLORS.points}
-            strokeWidth={2.4}
-            dot={{ r: 3, fill: COLORS.points }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            yAxisId="count"
-            type="monotone"
-            dataKey="errors"
-            name="Errores"
-            stroke={COLORS.errors}
-            strokeWidth={2.4}
-            dot={{ r: 3, fill: COLORS.errors }}
-          />
-          <Line
-            yAxisId="eff"
-            type="monotone"
-            dataKey="efficiency"
-            name="Eficiencia"
-            stroke={COLORS.efficiency}
-            strokeWidth={2}
-            strokeDasharray="5 4"
-            dot={{ r: 3, fill: COLORS.efficiency }}
-          />
-        </LineChart>
+          {keys.map((key, index) => (
+            <Bar
+              key={key}
+              dataKey={key}
+              fill={palette[index % palette.length]}
+              radius={[6, 6, 0, 0]}
+            />
+          ))}
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { AvatarUpload } from "@/components/profile/avatar-upload";
-import dynamic from "next/dynamic";
-import { AttendanceCard, StatSummary } from "@/components/stats/stat-summary";
+import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
+import { AttendanceCard } from "@/components/stats/stat-summary";
 import { StatGrid } from "@/components/stats/stat-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,23 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { POSITION_LABELS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
-import {
-  buildPlayerMatchSeries,
-  formatEfficiency,
-  summarizePlayerSeries,
-} from "@/lib/stats";
-import { AttackServeCards } from "@/components/stats/skill-stats";
-import {
-  attackStatsFromEvents,
-  receptionStatsFromEvents,
-  serveStatsFromEvents,
-} from "@/lib/volleyball-stats";
 import type { PointType } from "@/lib/types";
-
-const PlayerEvolutionChart = dynamic(
-  () => import("@/components/stats/charts").then((mod) => mod.PlayerEvolutionChart),
-  { loading: () => <div className="h-64 w-full" /> }
-);
 
 export const metadata: Metadata = { title: "Mi perfil" };
 
@@ -35,15 +19,23 @@ export default async function ProfilePage() {
   const user = await requireUser();
   const supabase = await createClient();
   const player = user.profile.player;
-  let series: ReturnType<typeof buildPlayerMatchSeries> = [];
   let teamMatches = 0;
-  let skillEvents: { point_type: PointType }[] = [];
+  let skillEvents: {
+    match_id: string;
+    point_type: PointType;
+    created_at: string;
+    set_number?: number | null;
+    serving_team_id?: string | null;
+    match?: { scheduled_at?: string | null; status?: string | null } | null;
+  }[] = [];
 
   if (player?.id) {
     const [{ data: events }, teamResult] = await Promise.all([
       supabase
         .from("match_events")
-        .select("match_id, point_type, created_at, match:matches(scheduled_at, status)")
+        .select(
+          "match_id, point_type, created_at, set_number, serving_team_id, match:matches(scheduled_at, status)"
+        )
         .eq("player_id", player.id)
         .order("created_at", { ascending: true }),
       player.team_id
@@ -55,19 +47,9 @@ export default async function ProfilePage() {
         : Promise.resolve({ count: 0 }),
     ]);
 
-    skillEvents = (events ?? []) as { point_type: PointType }[];
-    series = buildPlayerMatchSeries(
-      ((events ?? []) as {
-        match_id: string;
-        point_type: PointType;
-        created_at: string;
-        match?: { scheduled_at?: string | null; status?: string | null } | null;
-      }[])
-    );
+    skillEvents = (events ?? []) as typeof skillEvents;
     teamMatches = teamResult.count ?? 0;
   }
-
-  const totals = summarizePlayerSeries(series);
 
   return (
     <div className="space-y-6">
@@ -111,66 +93,23 @@ export default async function ProfilePage() {
       {player ? (
         <>
           <div>
-            <h2 className="mb-3 text-lg font-semibold">Evolución de rendimiento</h2>
-            <Card>
-              <CardContent className="p-4">
-                <PlayerEvolutionChart data={series} />
-              </CardContent>
-            </Card>
-            <div className="mt-3">
-              <StatSummary
-                items={[
-                  { label: "Puntos", value: totals.points, accent: true },
-                  { label: "Errores", value: totals.errors },
-                  {
-                    label: "Eficiencia",
-                    value: formatEfficiency(totals.efficiency),
-                    hint: "(pts − err) / (pts + err)",
-                  },
-                ]}
-              />
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Evolución de rendimiento</h2>
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/comparar?ids=${player.id}`}>Comparar</Link>
+              </Button>
             </div>
+            <PlayerEvolutionPanel events={skillEvents} teamId={player.team_id} />
           </div>
 
-          <AttendanceCard played={series.length} teamMatches={teamMatches} />
+          <AttendanceCard
+            played={new Set(skillEvents.map((event) => event.match_id)).size}
+            teamMatches={teamMatches}
+          />
 
           <div>
             <h2 className="mb-3 text-lg font-semibold">Mis estadísticas</h2>
             <StatGrid stats={player} />
-          </div>
-
-          <div>
-            <h2 className="mb-3 text-lg font-semibold">Ataque, saque y recepción</h2>
-            <AttackServeCards
-              attack={attackStatsFromEvents(skillEvents)}
-              serve={serveStatsFromEvents(skillEvents)}
-              reception={receptionStatsFromEvents(skillEvents)}
-            />
-          </div>
-
-          <div>
-            <h2 className="mb-3 text-lg font-semibold">Actividad reciente</h2>
-            {series.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Todavía no tienes puntos registrados.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {[...series].reverse().slice(0, 6).map((item) => (
-                  <li key={item.matchId}>
-                    <Link
-                      href={`/partidos/${item.matchId}`}
-                      className="flex items-center justify-between rounded-xl border bg-card px-3 py-2 text-sm"
-                    >
-                      <span>{item.label}</span>
-                      <span className="tabular-nums text-muted-foreground">
-                        {item.points} pts · {item.errors} err · {formatEfficiency(item.efficiency)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </>
       ) : (

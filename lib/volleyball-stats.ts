@@ -48,7 +48,7 @@ type SkillEvent = {
   serving_team_id?: string | null;
   home_rotation?: number | null;
   away_rotation?: number | null;
-  set_number?: number;
+  set_number?: number | null;
   created_at?: string;
   match_id?: string;
 };
