@@ -440,6 +440,7 @@ export async function recordPoint(input: {
   servingTeamId?: string | null;
   homeRotation?: number | null;
   awayRotation?: number | null;
+  setNumber?: number | null;
 }) {
   const session = await requireAdmin();
   const supabase = await createClient();
@@ -496,18 +497,29 @@ export async function recordPoint(input: {
     await supabase.from("matches").update({ status: "live" }).eq("id", match.id);
   }
 
-  const { error: insertError } = await supabase.from("match_events").insert({
-    match_id: match.id,
-    set_number: match.current_set,
-    player_id: input.playerId || null,
-    acting_team_id: input.actingTeamId,
-    scoring_team_id: scoringTeamId,
-    serving_team_id: servingTeamId,
-    home_rotation: parseRotation(input.homeRotation),
-    away_rotation: parseRotation(input.awayRotation),
-    point_type: input.pointType,
-    created_by: session.id,
-  });
+  const setNumber =
+    typeof input.setNumber === "number" && input.setNumber >= 1 && input.setNumber <= 5
+      ? input.setNumber
+      : match.current_set;
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("match_events")
+    .insert({
+      match_id: match.id,
+      set_number: setNumber,
+      player_id: input.playerId || null,
+      acting_team_id: input.actingTeamId,
+      scoring_team_id: scoringTeamId,
+      serving_team_id: servingTeamId,
+      home_rotation: parseRotation(input.homeRotation),
+      away_rotation: parseRotation(input.awayRotation),
+      point_type: input.pointType,
+      created_by: session.id,
+    })
+    .select(
+      "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, created_by, created_at"
+    )
+    .single();
 
   if (insertError) return { error: insertError.message };
 
@@ -532,7 +544,7 @@ export async function recordPoint(input: {
     };
   }
 
-  return { success: true };
+  return { success: true, event: inserted };
 }
 
 export async function undoLastPoint(matchId: string) {
@@ -583,7 +595,7 @@ export async function undoLastPoint(matchId: string) {
     };
   }
 
-  return { success: true };
+  return { success: true, deletedId: lastEvent.id };
 }
 
 const substitutionSchema = z.object({
