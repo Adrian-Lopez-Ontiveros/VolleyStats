@@ -1,9 +1,10 @@
+import { memo } from "react";
 import { MATCH_STATUS_META } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { TeamLogo } from "@/components/teams/team-logo";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
-export function Scoreboard({ match }: { match: MatchWithTeams }) {
+export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWithTeams }) {
   return (
     <section className="overflow-hidden rounded-3xl bg-primary text-primary-foreground shadow-card">
       <div className="flex items-center justify-between px-4 pt-4">
@@ -42,7 +43,7 @@ export function Scoreboard({ match }: { match: MatchWithTeams }) {
       ) : null}
     </section>
   );
-}
+});
 
 function TeamBlock({
   team,

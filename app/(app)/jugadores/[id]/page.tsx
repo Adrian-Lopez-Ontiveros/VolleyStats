@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { DeletePlayerButton } from "@/components/players/delete-player-button";
 import { PageHeader } from "@/components/page-header";
-import { PlayerEvolutionChart } from "@/components/stats/charts";
+import dynamic from "next/dynamic";
 import { StatSummary } from "@/components/stats/stat-summary";
 import { StatGrid } from "@/components/stats/stat-grid";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireViewer } from "@/lib/auth";
-import { POINT_TYPE_META, POSITION_LABELS } from "@/lib/constants";
+import { PLAYER_ROSTER_SELECT, POINT_TYPE_META, POSITION_LABELS, TEAM_SUMMARY_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildPlayerMatchSeries,
@@ -21,6 +21,11 @@ import {
 } from "@/lib/stats";
 import { formatJersey, initials } from "@/lib/utils";
 import type { MatchEvent, PlayerWithTeam, PointType } from "@/lib/types";
+
+const PlayerEvolutionChart = dynamic(
+  () => import("@/components/stats/charts").then((mod) => mod.PlayerEvolutionChart),
+  { loading: () => <div className="h-64 w-full" /> }
+);
 
 export const metadata: Metadata = { title: "Jugador" };
 
@@ -33,20 +38,21 @@ export default async function PlayerDetailPage({
   const { isAdmin } = await requireViewer();
   const supabase = await createClient();
 
-  const { data: player } = await supabase
-    .from("players")
-    .select("*, team:teams(*)")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data: player }, { data: events }] = await Promise.all([
+    supabase
+      .from("players")
+      .select(`${PLAYER_ROSTER_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})` as "*")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("match_events")
+      .select("id, match_id, point_type, created_at, match:matches(id, scheduled_at)" as "*")
+      .eq("player_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!player) notFound();
   const typed = player as PlayerWithTeam;
-
-  const { data: events } = await supabase
-    .from("match_events")
-    .select("*, match:matches(id, scheduled_at, home_team_id, away_team_id, status)")
-    .eq("player_id", id)
-    .order("created_at", { ascending: false });
 
   const typedEvents = (events ?? []) as (MatchEvent & {
     match: { id: string; scheduled_at: string } | null;

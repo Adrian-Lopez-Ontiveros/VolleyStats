@@ -2,8 +2,6 @@ import { AppHeader } from "@/components/layout/app-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { requireViewer } from "@/lib/auth";
 
-export const dynamic = "force-dynamic";
-
 export default async function AppLayout({
   children,
 }: {

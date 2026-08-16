@@ -17,11 +17,12 @@ export default async function EditPlayerPage({
   await requireAdmin();
   const supabase = await createClient();
   const [{ data: player }, { data: teams }] = await Promise.all([
-    supabase.from("players").select("*").eq("id", id).maybeSingle(),
     supabase
-      .from("teams")
-      .select("*")
-      .order("name"),
+      .from("players")
+      .select("id, user_id, team_id, full_name, jersey_number, position")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase.from("teams").select("id, name, short_name, category, is_club_team").order("name"),
   ]);
   if (!player) notFound();
 

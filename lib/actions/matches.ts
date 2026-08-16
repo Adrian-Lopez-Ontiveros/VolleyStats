@@ -8,7 +8,7 @@ import { currentOnCourtIds } from "@/lib/lineup";
 import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
 import { createClient } from "@/lib/supabase/server";
 import { computeMatchState, resolveScoringTeam, statFromPointType } from "@/lib/volleyball";
-import type { MatchEvent, MatchLineupEntry, MatchStatus, MatchSubstitution, PointType } from "@/lib/types";
+import type { MatchLineupEntry, MatchStatus, MatchSubstitution, PointType } from "@/lib/types";
 
 async function loadCourtState(matchId: string, teamId: string) {
   const supabase = await createClient();
@@ -41,18 +41,21 @@ function revalidateMatchStats(input: {
   playerId?: string | null;
   homeTeamId?: string | null;
   awayTeamId?: string | null;
+  finished?: boolean;
 }) {
   revalidatePath("/partidos");
-  revalidatePath("/liga");
-  revalidatePath("/jugadores");
-  revalidatePath("/perfil");
   if (input.matchId) {
     revalidatePath(`/partidos/${input.matchId}`);
     revalidatePath(`/partidos/${input.matchId}/seguimiento`);
   }
-  if (input.playerId) revalidatePath(`/jugadores/${input.playerId}`);
-  if (input.homeTeamId) revalidatePath(`/equipos/${input.homeTeamId}`);
-  if (input.awayTeamId) revalidatePath(`/equipos/${input.awayTeamId}`);
+  if (input.finished) {
+    revalidatePath("/liga");
+    revalidatePath("/jugadores");
+    revalidatePath("/perfil");
+    if (input.playerId) revalidatePath(`/jugadores/${input.playerId}`);
+    if (input.homeTeamId) revalidatePath(`/equipos/${input.homeTeamId}`);
+    if (input.awayTeamId) revalidatePath(`/equipos/${input.awayTeamId}`);
+  }
 }
 
 async function persistComputedMatch(
@@ -63,14 +66,14 @@ async function persistComputedMatch(
   const supabase = await createClient();
   const { data: events, error } = await supabase
     .from("match_events")
-    .select("*")
+    .select("scoring_team_id, created_at")
     .eq("match_id", matchId)
     .order("created_at", { ascending: true });
 
   if (error) throw new Error(error.message);
 
   const computed = computeMatchState(
-    (events ?? []) as MatchEvent[],
+    events ?? [],
     homeTeamId,
     status === "cancelled" ? "cancelled" : status === "finished" ? "live" : status
   );
@@ -98,6 +101,7 @@ async function persistComputedMatch(
     .eq("id", matchId);
 
   if (updateError) throw new Error(updateError.message);
+  return nextStatus;
 }
 
 async function saveClubLineup(
@@ -410,7 +414,7 @@ export async function recordPoint(input: {
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("*")
+    .select("id, status, home_team_id, away_team_id, current_set")
     .eq("id", input.matchId)
     .single();
 
@@ -467,20 +471,23 @@ export async function recordPoint(input: {
   if (insertError) return { error: insertError.message };
 
   try {
-    await persistComputedMatch(match.id, match.home_team_id, "live");
-    await refreshPlayerStats(input.playerId ?? null);
+    const [nextStatus] = await Promise.all([
+      persistComputedMatch(match.id, match.home_team_id, "live"),
+      refreshPlayerStats(input.playerId ?? null),
+    ]);
+    revalidateMatchStats({
+      matchId: match.id,
+      playerId: input.playerId,
+      homeTeamId: match.home_team_id,
+      awayTeamId: match.away_team_id,
+      finished: nextStatus === "finished",
+    });
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "No se pudo actualizar el marcador",
     };
   }
 
-  revalidateMatchStats({
-    matchId: match.id,
-    playerId: input.playerId,
-    homeTeamId: match.home_team_id,
-    awayTeamId: match.away_team_id,
-  });
   return { success: true };
 }
 
@@ -490,7 +497,7 @@ export async function undoLastPoint(matchId: string) {
 
   const { data: lastEvent, error } = await supabase
     .from("match_events")
-    .select("*")
+    .select("id, player_id")
     .eq("match_id", matchId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -515,20 +522,23 @@ export async function undoLastPoint(matchId: string) {
   if (deleteError) return { error: deleteError.message };
 
   try {
-    await persistComputedMatch(matchId, match.home_team_id, "live");
-    await refreshPlayerStats(lastEvent.player_id);
+    const [nextStatus] = await Promise.all([
+      persistComputedMatch(matchId, match.home_team_id, "live"),
+      refreshPlayerStats(lastEvent.player_id),
+    ]);
+    revalidateMatchStats({
+      matchId,
+      playerId: lastEvent.player_id,
+      homeTeamId: match.home_team_id,
+      awayTeamId: match.away_team_id,
+      finished: nextStatus === "finished",
+    });
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "No se pudo actualizar el marcador",
     };
   }
 
-  revalidateMatchStats({
-    matchId,
-    playerId: lastEvent.player_id,
-    homeTeamId: match.home_team_id,
-    awayTeamId: match.away_team_id,
-  });
   return { success: true };
 }
 

@@ -73,21 +73,6 @@ export function annotateEventScores<
   return annotated;
 }
 
-export function groupEventsBySet<T extends { set_number: number }>(
-  events: T[]
-): { setNumber: number; events: T[] }[] {
-  const groups = new Map<number, T[]>();
-  for (const event of events) {
-    const list = groups.get(event.set_number);
-    if (list) list.push(event);
-    else groups.set(event.set_number, [event]);
-  }
-
-  return [...groups.entries()]
-    .sort((a, b) => b[0] - a[0])
-    .map(([setNumber, setEvents]) => ({ setNumber, events: setEvents }));
-}
-
 export function computeMatchState(
   events: Pick<MatchEvent, "scoring_team_id" | "created_at">[],
   homeTeamId: string,

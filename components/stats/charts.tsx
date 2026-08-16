@@ -206,25 +206,4 @@ export function PointTypeBarChart({
   );
 }
 
-export function PlayerSparkline({ data }: { data: PlayerMatchSample[] }) {
-  if (data.length < 2) {
-    return <span className="text-[11px] text-muted-foreground">—</span>;
-  }
 
-  return (
-    <div className="h-8 w-20">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-          <Line
-            type="monotone"
-            dataKey="points"
-            stroke={COLORS.points}
-            strokeWidth={1.8}
-            dot={false}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}

@@ -40,10 +40,3 @@ export function playersOnBench(roster: Player[], onCourtIds: Set<string> | null)
   if (!onCourtIds) return [];
   return roster.filter((player) => !onCourtIds.has(player.id));
 }
-
-export function teamHasLineup(
-  lineup: Pick<MatchLineupEntry, "team_id">[],
-  teamId: string
-) {
-  return lineup.some((entry) => entry.team_id === teamId);
-}

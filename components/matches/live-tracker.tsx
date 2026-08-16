@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Undo2 } from "lucide-react";
@@ -52,20 +52,40 @@ export function LiveTracker({
   const [playerOutId, setPlayerOutId] = useState("");
   const [playerInId, setPlayerInId] = useState("");
   const finished = match.status === "finished";
-  const homeOnCourtIds = currentOnCourtIds(lineup, substitutions, match.home_team_id);
-  const awayOnCourtIds = currentOnCourtIds(lineup, substitutions, match.away_team_id);
-  const homeOnCourt = homeOnCourtIds
-    ? playersOnCourt(homePlayers, homeOnCourtIds)
-    : match.home_team.is_club_team
-      ? []
-      : homePlayers;
-  const awayOnCourt = awayOnCourtIds
-    ? playersOnCourt(awayPlayers, awayOnCourtIds)
-    : match.away_team.is_club_team
-      ? []
-      : awayPlayers;
-  const homeBench = playersOnBench(homePlayers, homeOnCourtIds);
-  const awayBench = playersOnBench(awayPlayers, awayOnCourtIds);
+  const homeOnCourtIds = useMemo(
+    () => currentOnCourtIds(lineup, substitutions, match.home_team_id),
+    [lineup, substitutions, match.home_team_id]
+  );
+  const awayOnCourtIds = useMemo(
+    () => currentOnCourtIds(lineup, substitutions, match.away_team_id),
+    [lineup, substitutions, match.away_team_id]
+  );
+  const homeOnCourt = useMemo(
+    () =>
+      homeOnCourtIds
+        ? playersOnCourt(homePlayers, homeOnCourtIds)
+        : match.home_team.is_club_team
+          ? []
+          : homePlayers,
+    [homeOnCourtIds, homePlayers, match.home_team.is_club_team]
+  );
+  const awayOnCourt = useMemo(
+    () =>
+      awayOnCourtIds
+        ? playersOnCourt(awayPlayers, awayOnCourtIds)
+        : match.away_team.is_club_team
+          ? []
+          : awayPlayers,
+    [awayOnCourtIds, awayPlayers, match.away_team.is_club_team]
+  );
+  const homeBench = useMemo(
+    () => playersOnBench(homePlayers, homeOnCourtIds),
+    [homePlayers, homeOnCourtIds]
+  );
+  const awayBench = useMemo(
+    () => playersOnBench(awayPlayers, awayOnCourtIds),
+    [awayPlayers, awayOnCourtIds]
+  );
 
   useEffect(() => {
     const supabase = createClient();

@@ -84,14 +84,41 @@ export const MATCH_STATUS_META: Record<
   },
 };
 
+export const TEAM_SELECT =
+  "id, name, short_name, logo_url, city, category, is_club_team, created_at, updated_at" as const;
+
+export const TEAM_SUMMARY_SELECT =
+  "id, name, short_name, logo_url, city, category, is_club_team" as const;
+
+export const MATCH_LIST_SELECT =
+  `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
+
 export const MATCH_WITH_TEAMS_SELECT =
-  "id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, created_at, home_team:teams!matches_home_team_id_fkey(id, name, short_name, logo_url, city, category, is_club_team), away_team:teams!matches_away_team_id_fkey(id, name, short_name, logo_url, city, category, is_club_team)" as const;
+  `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, created_at, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
+
+export const MATCH_STANDING_SELECT =
+  "home_team_id, away_team_id, status, home_sets, away_sets, set_scores" as const;
+
+export const MATCH_TEAM_SERIES_SELECT =
+  `id, home_team_id, away_team_id, scheduled_at, status, home_sets, away_sets, set_scores, home_team:teams!matches_home_team_id_fkey(name, short_name), away_team:teams!matches_away_team_id_fkey(name, short_name)` as const;
 
 export const MATCH_EVENT_SELECT =
-  "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, point_type, created_by, created_at, player:players(id, full_name, jersey_number)" as const;
+  "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, point_type, created_at, player:players(id, full_name, jersey_number)" as const;
+
+export const MATCH_LINEUP_SELECT =
+  "id, match_id, team_id, player_id, is_starter, is_libero, created_at" as const;
+
+export const MATCH_SUB_SELECT =
+  "id, match_id, team_id, player_out_id, player_in_id, set_number, occurred_at, created_at" as const;
 
 export const PLAYER_ROSTER_SELECT =
-  "id, user_id, team_id, full_name, jersey_number, position, avatar_url, attack_points, block_points, aces, errors, opponent_errors, other_points, matches_played, created_at, updated_at" as const;
+  "id, user_id, team_id, full_name, jersey_number, position, avatar_url, attack_points, block_points, aces, errors, opponent_errors, other_points, matches_played" as const;
+
+export const PLAYER_LINEUP_SELECT =
+  "id, team_id, full_name, jersey_number, position, avatar_url" as const;
+
+export const PROFILE_SESSION_SELECT =
+  "id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(id, name, short_name, logo_url, city, category, is_club_team)" as const;
 
 export const SETS_TO_WIN = 3;
 export const REGULAR_SET_POINTS = 25;

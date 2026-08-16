@@ -1,9 +1,14 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { PointTypeBarChart } from "@/components/stats/charts";
 import { formatJersey } from "@/lib/utils";
 import { countPointTypes, topMatchScorers } from "@/lib/stats";
 import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
+
+const PointTypeBarChart = dynamic(
+  () => import("@/components/stats/charts").then((mod) => mod.PointTypeBarChart),
+  { loading: () => <div className="h-64 w-full" /> }
+);
 
 export function MatchStatsPanel({
   match,

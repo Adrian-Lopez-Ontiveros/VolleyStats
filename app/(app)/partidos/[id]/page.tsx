@@ -16,8 +16,10 @@ import { requireViewer } from "@/lib/auth";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
   MATCH_EVENT_SELECT,
+  MATCH_LINEUP_SELECT,
+  MATCH_SUB_SELECT,
   MATCH_WITH_TEAMS_SELECT,
-  PLAYER_ROSTER_SELECT,
+  PLAYER_LINEUP_SELECT,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -39,11 +41,25 @@ export default async function MatchDetailPage({
   const { isAdmin } = await requireViewer();
   const supabase = await createClient();
 
-  const { data: match, error: matchError } = await supabase
-    .from("matches")
-    .select(MATCH_WITH_TEAMS_SELECT as "*")
-    .eq("id", id)
-    .maybeSingle();
+  const [
+    { data: match, error: matchError },
+    { data: events },
+    { data: lineupRows },
+    { data: subRows },
+  ] = await Promise.all([
+    supabase.from("matches").select(MATCH_WITH_TEAMS_SELECT as "*").eq("id", id).maybeSingle(),
+    supabase
+      .from("match_events")
+      .select(MATCH_EVENT_SELECT as "*")
+      .eq("match_id", id)
+      .order("created_at", { ascending: false }),
+    supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", id),
+    supabase
+      .from("match_substitutions")
+      .select(MATCH_SUB_SELECT as "*")
+      .eq("match_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
 
   if (matchError) {
     return <QueryError message={`No se pudo cargar el partido: ${matchError.message}`} />;
@@ -57,27 +73,13 @@ export default async function MatchDetailPage({
       ? typedMatch.away_team_id
       : null;
 
-  const [{ data: events }, { data: lineupRows }, { data: subRows }, { data: clubPlayers }] =
-    await Promise.all([
-      supabase
-        .from("match_events")
-        .select(MATCH_EVENT_SELECT as "*")
-        .eq("match_id", id)
-        .order("created_at", { ascending: false }),
-      supabase.from("match_lineups").select("*").eq("match_id", id),
-      supabase
-        .from("match_substitutions")
-        .select("*")
-        .eq("match_id", id)
-        .order("created_at", { ascending: true }),
-      clubTeamId
-        ? supabase
-            .from("players")
-            .select(PLAYER_ROSTER_SELECT as "*")
-            .eq("team_id", clubTeamId)
-            .order("jersey_number", { ascending: true, nullsFirst: false })
-        : Promise.resolve({ data: [] as Player[] }),
-    ]);
+  const { data: clubPlayers } = clubTeamId
+    ? await supabase
+        .from("players")
+        .select(PLAYER_LINEUP_SELECT as "*")
+        .eq("team_id", clubTeamId)
+        .order("jersey_number", { ascending: true, nullsFirst: false })
+    : { data: [] as Player[] };
 
   const typedEvents = (events ?? []) as MatchEventWithPlayer[];
   const playersById = new Map(((clubPlayers ?? []) as Player[]).map((player) => [player.id, player]));
@@ -97,6 +99,8 @@ export default async function MatchDetailPage({
     : typedMatch.away_team.is_club_team
       ? typedMatch.away_team.name
       : "CV Fuenlabrada";
+  const roster = (clubPlayers ?? []) as Player[];
+  const onCourtIds = clubTeamId ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId) : null;
 
   return (
     <>
@@ -133,15 +137,9 @@ export default async function MatchDetailPage({
         {clubTeamId ? (
           <SubstitutionPanel
             matchId={typedMatch.id}
-            players={(clubPlayers ?? []) as Player[]}
-            onCourtPlayers={playersOnCourt(
-              (clubPlayers ?? []) as Player[],
-              currentOnCourtIds(typedLineup, typedSubs, clubTeamId)
-            )}
-            benchPlayers={playersOnBench(
-              (clubPlayers ?? []) as Player[],
-              currentOnCourtIds(typedLineup, typedSubs, clubTeamId)
-            )}
+            players={roster}
+            onCourtPlayers={playersOnCourt(roster, onCourtIds)}
+            benchPlayers={playersOnBench(roster, onCourtIds)}
             substitutions={typedSubs}
             canEdit={isAdmin && typedMatch.status !== "cancelled"}
           />

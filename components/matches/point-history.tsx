@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { formatJersey } from "@/lib/utils";
@@ -27,7 +28,7 @@ function playerName(
   return `${player.full_name}${player.jersey_number != null ? ` ${formatJersey(player.jersey_number)}` : ""}`;
 }
 
-export function PointHistory({
+export const PointHistory = memo(function PointHistory({
   events,
   substitutions = [],
   homeTeamId,
@@ -146,4 +147,4 @@ export function PointHistory({
       ))}
     </div>
   );
-}
+});

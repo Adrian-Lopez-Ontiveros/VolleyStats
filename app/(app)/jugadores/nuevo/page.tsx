@@ -17,7 +17,7 @@ export default async function NewPlayerPage({
   const supabase = await createClient();
   const { data } = await supabase
     .from("teams")
-    .select("*")
+    .select("id, name, short_name, category, is_club_team")
     .order("name");
 
   return (

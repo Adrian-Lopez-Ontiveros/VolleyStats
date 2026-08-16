@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { AvatarUpload } from "@/components/profile/avatar-upload";
-import { PlayerEvolutionChart } from "@/components/stats/charts";
+import dynamic from "next/dynamic";
 import { AttendanceCard, StatSummary } from "@/components/stats/stat-summary";
 import { StatGrid } from "@/components/stats/stat-grid";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,11 @@ import {
 } from "@/lib/stats";
 import type { PointType } from "@/lib/types";
 
+const PlayerEvolutionChart = dynamic(
+  () => import("@/components/stats/charts").then((mod) => mod.PlayerEvolutionChart),
+  { loading: () => <div className="h-64 w-full" /> }
+);
+
 export const metadata: Metadata = { title: "Mi perfil" };
 
 export default async function ProfilePage() {
@@ -31,7 +36,7 @@ export default async function ProfilePage() {
     const [{ data: events }, teamResult] = await Promise.all([
       supabase
         .from("match_events")
-        .select("match_id, point_type, created_at, match:matches(id, scheduled_at, status)")
+        .select("match_id, point_type, created_at, match:matches(scheduled_at, status)")
         .eq("player_id", player.id)
         .order("created_at", { ascending: true }),
       player.team_id

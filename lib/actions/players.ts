@@ -15,7 +15,6 @@ const playerSchema = z.object({
   position: z
     .enum(["opuesto", "central", "receptor", "colocador", "libero", "universal", ""])
     .optional(),
-  userId: z.string().uuid().optional().or(z.literal("")),
 });
 
 export async function createPlayer(formData: FormData) {
@@ -25,7 +24,6 @@ export async function createPlayer(formData: FormData) {
     teamId: formData.get("teamId") ?? "",
     jerseyNumber: formData.get("jerseyNumber") ?? "",
     position: formData.get("position") ?? "",
-    userId: formData.get("userId") ?? "",
   });
 
   if (!parsed.success) {
@@ -53,19 +51,11 @@ export async function createPlayer(formData: FormData) {
       team_id: parsed.data.teamId || null,
       jersey_number: jersey,
       position: (parsed.data.position || null) as PlayerPosition | null,
-      user_id: parsed.data.userId || null,
     })
     .select("id")
     .single();
 
   if (error) return { error: error.message };
-
-  if (parsed.data.teamId && parsed.data.userId) {
-    await supabase
-      .from("profiles")
-      .update({ team_id: parsed.data.teamId })
-      .eq("id", parsed.data.userId);
-  }
 
   revalidatePath("/jugadores");
   revalidatePath("/equipos");
@@ -80,7 +70,6 @@ export async function updatePlayer(playerId: string, formData: FormData) {
     teamId: formData.get("teamId") ?? "",
     jerseyNumber: formData.get("jerseyNumber") ?? "",
     position: formData.get("position") ?? "",
-    userId: formData.get("userId") ?? "",
   });
 
   if (!parsed.success) {

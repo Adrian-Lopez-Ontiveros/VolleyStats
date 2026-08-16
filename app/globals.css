@@ -23,8 +23,6 @@
     --border: 214 24% 88%;
     --input: 214 24% 88%;
     --ring: 24 95% 53%;
-    --court: 214 68% 16%;
-    --court-foreground: 36 100% 97%;
     --radius: 0.9rem;
   }
 
@@ -52,10 +50,5 @@
 
   .pt-safe {
     padding-top: max(0.5rem, env(safe-area-inset-top));
-  }
-
-  .tap-target {
-    min-height: 44px;
-    min-width: 44px;
   }
 }

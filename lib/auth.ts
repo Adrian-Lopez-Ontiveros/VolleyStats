@@ -1,10 +1,9 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SPECTATOR_COOKIE } from "@/lib/constants";
+import { SPECTATOR_COOKIE, PLAYER_ROSTER_SELECT, PROFILE_SESSION_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { Player, ProfileWithRelations, SessionUser } from "@/lib/types";
-import { personNamesMatch } from "@/lib/utils";
 
 export type Viewer = {
   user: SessionUser | null;
@@ -25,41 +24,6 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   }
 });
 
-async function resolveLinkedPlayer(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  profile: { full_name: string; team_id: string | null }
-): Promise<Player | null> {
-  const { data: byUser } = await supabase
-    .from("players")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (byUser) return byUser as Player;
-
-  await supabase.rpc("link_profile_to_matching_player");
-
-  const { data: afterLink } = await supabase
-    .from("players")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (afterLink) return afterLink as Player;
-
-  const { data: candidates } = await supabase.from("players").select("*");
-
-  const matches = ((candidates ?? []) as Player[]).filter((player) =>
-    personNamesMatch(player.full_name, profile.full_name)
-  );
-  const sameTeam = profile.team_id
-    ? matches.filter((player) => player.team_id === profile.team_id)
-    : matches;
-
-  return sameTeam[0] ?? matches[0] ?? null;
-}
-
 async function loadSessionUser(): Promise<SessionUser | null> {
   const supabase = await createClient();
   const {
@@ -68,25 +32,48 @@ async function loadSessionUser(): Promise<SessionUser | null> {
 
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*, team:teams(*)")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, { data: player }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(PROFILE_SESSION_SELECT as "*")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("players")
+      .select(PLAYER_ROSTER_SELECT as "*")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (!profile) return null;
-
-  const player = await resolveLinkedPlayer(supabase, user.id, {
-    full_name: profile.full_name,
-    team_id: profile.team_id,
-  });
 
   return {
     id: user.id,
     email: user.email ?? profile.email,
     profile: {
       ...(profile as ProfileWithRelations),
-      player,
+      player: (player as Player | null) ?? null,
+    },
+  };
+}
+
+async function tryLinkPlayer(session: SessionUser): Promise<SessionUser> {
+  const supabase = await createClient();
+  await supabase.rpc("link_profile_to_matching_player");
+
+  const { data: player } = await supabase
+    .from("players")
+    .select(PLAYER_ROSTER_SELECT as "*")
+    .eq("user_id", session.id)
+    .maybeSingle();
+
+  if (!player) return session;
+
+  return {
+    ...session,
+    profile: {
+      ...session.profile,
+      player: player as Player,
     },
   };
 }
@@ -94,7 +81,8 @@ async function loadSessionUser(): Promise<SessionUser | null> {
 export async function requireUser() {
   const session = await getSessionUser();
   if (!session) redirect("/login");
-  return session;
+  if (session.profile.player) return session;
+  return tryLinkPlayer(session);
 }
 
 export async function requireViewer(): Promise<Viewer> {

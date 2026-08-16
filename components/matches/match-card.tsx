@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/team-logo";
 import type { MatchWithTeams } from "@/lib/types";
 
-export function MatchCard({ match }: { match: MatchWithTeams }) {
+export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTeams }) {
   const status = MATCH_STATUS_META[match.status];
   const homeName = match.home_team.short_name || match.home_team.name;
   const awayName = match.away_team.short_name || match.away_team.name;
@@ -73,4 +74,4 @@ export function MatchCard({ match }: { match: MatchWithTeams }) {
       </Card>
     </Link>
   );
-}
+});

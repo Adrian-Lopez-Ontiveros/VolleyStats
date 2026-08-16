@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { DeleteTeamButton } from "@/components/teams/delete-team-button";
+import dynamic from "next/dynamic";
 import { TeamLogo } from "@/components/teams/team-logo";
-import { TeamPointsBarChart } from "@/components/stats/charts";
 import { PlayerRankingTable } from "@/components/stats/player-ranking-table";
 import { StatSummary, WinRateCard } from "@/components/stats/stat-summary";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
 import { getCategoryMeta } from "@/lib/categories";
-import { MATCH_WITH_TEAMS_SELECT, POSITION_LABELS } from "@/lib/constants";
+import { MATCH_TEAM_SERIES_SELECT, PLAYER_ROSTER_SELECT, POSITION_LABELS, TEAM_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildPlayerMatchSeries,
@@ -27,6 +27,11 @@ import { formatJersey, initials } from "@/lib/utils";
 import { totalPlayerPoints } from "@/lib/volleyball";
 import type { MatchWithTeams, Player, PointType, Team } from "@/lib/types";
 
+const TeamPointsBarChart = dynamic(
+  () => import("@/components/stats/charts").then((mod) => mod.TeamPointsBarChart),
+  { loading: () => <div className="h-64 w-full" /> }
+);
+
 export const metadata: Metadata = { title: "Equipo" };
 
 export default async function TeamDetailPage({
@@ -37,30 +42,28 @@ export default async function TeamDetailPage({
   const { id } = await params;
   const { isAdmin } = await requireViewer();
   const supabase = await createClient();
-  const { data: team, error: teamError } = await supabase
-    .from("teams")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+
+  const [{ data: team, error: teamError }, { data: players, error: playersError }, { data: matches }] =
+    await Promise.all([
+      supabase.from("teams").select(TEAM_SELECT as "*").eq("id", id).maybeSingle(),
+      supabase
+        .from("players")
+        .select(PLAYER_ROSTER_SELECT as "*")
+        .eq("team_id", id)
+        .order("jersey_number", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("matches")
+        .select(MATCH_TEAM_SERIES_SELECT as "*")
+        .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
+        .eq("status", "finished")
+        .order("scheduled_at", { ascending: true }),
+    ]);
+
   if (teamError) {
     return <QueryError message={`No se pudo cargar el equipo: ${teamError.message}`} />;
   }
   if (!team) notFound();
   const typedTeam = team as Team;
-
-  const [{ data: players, error: playersError }, { data: matches }] = await Promise.all([
-    supabase
-      .from("players")
-      .select("*")
-      .eq("team_id", id)
-      .order("jersey_number", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("matches")
-      .select(MATCH_WITH_TEAMS_SELECT as "*")
-      .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
-      .eq("status", "finished")
-      .order("scheduled_at", { ascending: true }),
-  ]);
 
   const typedPlayers = (players ?? []) as Player[];
   const typedMatches = (matches ?? []) as MatchWithTeams[];

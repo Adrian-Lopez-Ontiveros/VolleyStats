@@ -170,10 +170,6 @@ export function formatEfficiency(value: number) {
   return `${rounded > 0 ? "+" : ""}${rounded}%`;
 }
 
-export function formatPercent(value: number) {
-  return `${Math.round(value)}%`;
-}
-
 export function emptyPlayerSample(matchId: string, date: string): PlayerMatchSample {
   return {
     matchId,

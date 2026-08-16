@@ -16,7 +16,11 @@ export default async function EditTeamPage({
   const { id } = await params;
   await requireAdmin();
   const supabase = await createClient();
-  const { data: team } = await supabase.from("teams").select("*").eq("id", id).maybeSingle();
+  const { data: team } = await supabase
+    .from("teams")
+    .select("id, name, short_name, logo_url, city, category, is_club_team")
+    .eq("id", id)
+    .maybeSingle();
   if (!team) notFound();
 
   return (

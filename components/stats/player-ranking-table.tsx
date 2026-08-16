@@ -1,9 +1,39 @@
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PlayerSparkline } from "@/components/stats/charts";
 import { formatEfficiency } from "@/lib/stats";
-import type { RankedPlayer } from "@/lib/stats";
+import type { PlayerMatchSample, RankedPlayer } from "@/lib/stats";
 import { formatJersey, initials } from "@/lib/utils";
+
+function PlayerSparkline({ data }: { data: PlayerMatchSample[] }) {
+  if (data.length < 2) {
+    return <span className="text-[11px] text-muted-foreground">—</span>;
+  }
+
+  const values = data.map((item) => item.points);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = Math.max(max - min, 1);
+  const points = values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * 80;
+      const y = 28 - ((value - min) / span) * 24;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <svg viewBox="0 0 80 32" className="h-8 w-20" aria-hidden>
+      <polyline
+        fill="none"
+        stroke="#C4B5FD"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        points={points}
+      />
+    </svg>
+  );
+}
 
 export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
   return (

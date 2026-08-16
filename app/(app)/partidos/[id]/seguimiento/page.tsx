@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/page-header";
 import { requireAdmin } from "@/lib/auth";
 import {
   MATCH_EVENT_SELECT,
+  MATCH_LINEUP_SELECT,
+  MATCH_SUB_SELECT,
   MATCH_WITH_TEAMS_SELECT,
-  PLAYER_ROSTER_SELECT,
+  PLAYER_LINEUP_SELECT,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -28,42 +30,35 @@ export default async function LiveMatchPage({
   await requireAdmin();
   const supabase = await createClient();
 
-  const { data: match } = await supabase
-    .from("matches")
-    .select(MATCH_WITH_TEAMS_SELECT as "*")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (!match) notFound();
-
-  const typedMatch = match as MatchWithTeams;
-
-  const [{ data: homePlayers }, { data: awayPlayers }, { data: events }, { data: lineup }, { data: subRows }] =
+  const [{ data: match }, { data: events }, { data: lineup }, { data: subRows }] =
     await Promise.all([
-      supabase
-        .from("players")
-        .select(PLAYER_ROSTER_SELECT as "*")
-        .eq("team_id", typedMatch.home_team_id)
-        .order("jersey_number", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("players")
-        .select(PLAYER_ROSTER_SELECT as "*")
-        .eq("team_id", typedMatch.away_team_id)
-        .order("jersey_number", { ascending: true, nullsFirst: false }),
+      supabase.from("matches").select(MATCH_WITH_TEAMS_SELECT as "*").eq("id", id).maybeSingle(),
       supabase
         .from("match_events")
         .select(MATCH_EVENT_SELECT as "*")
         .eq("match_id", id)
         .order("created_at", { ascending: false }),
-      supabase.from("match_lineups").select("*").eq("match_id", id),
+      supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", id),
       supabase
         .from("match_substitutions")
-        .select("*")
+        .select(MATCH_SUB_SELECT as "*")
         .eq("match_id", id)
         .order("created_at", { ascending: true }),
     ]);
 
-  const roster = [...((homePlayers ?? []) as Player[]), ...((awayPlayers ?? []) as Player[])];
+  if (!match) notFound();
+
+  const typedMatch = match as MatchWithTeams;
+
+  const { data: rosterRows } = await supabase
+    .from("players")
+    .select(PLAYER_LINEUP_SELECT as "*")
+    .in("team_id", [typedMatch.home_team_id, typedMatch.away_team_id])
+    .order("jersey_number", { ascending: true, nullsFirst: false });
+
+  const roster = (rosterRows ?? []) as Player[];
+  const homePlayers = roster.filter((player) => player.team_id === typedMatch.home_team_id);
+  const awayPlayers = roster.filter((player) => player.team_id === typedMatch.away_team_id);
   const playersById = new Map(roster.map((player) => [player.id, player]));
   const typedSubs = ((subRows ?? []) as MatchSubstitution[]).map((item) => ({
     ...item,
@@ -79,8 +74,8 @@ export default async function LiveMatchPage({
       />
       <LiveTracker
         match={typedMatch}
-        homePlayers={(homePlayers ?? []) as Player[]}
-        awayPlayers={(awayPlayers ?? []) as Player[]}
+        homePlayers={homePlayers}
+        awayPlayers={awayPlayers}
         events={(events ?? []) as MatchEventWithPlayer[]}
         lineup={(lineup ?? []) as MatchLineupEntry[]}
         substitutions={typedSubs}
