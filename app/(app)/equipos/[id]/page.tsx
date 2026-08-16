@@ -23,6 +23,14 @@ import {
   rankPlayers,
   summarizeTeamSeries,
 } from "@/lib/stats";
+import { AttackServeCards, PossessionCards } from "@/components/stats/skill-stats";
+import {
+  attackStatsFromEvents,
+  filterTeamEvents,
+  possessionStatsForTeam,
+  receptionStatsFromEvents,
+  serveStatsFromEvents,
+} from "@/lib/volleyball-stats";
 import { formatJersey, initials } from "@/lib/utils";
 import { totalPlayerPoints } from "@/lib/volleyball";
 import type { MatchWithTeams, Player, PointType, Team } from "@/lib/types";
@@ -69,13 +77,21 @@ export default async function TeamDetailPage({
   const typedMatches = (matches ?? []) as MatchWithTeams[];
   const playerIds = typedPlayers.map((player) => player.id);
 
-  const { data: events } =
+  const matchIds = typedMatches.map((item) => item.id);
+  const [{ data: events }, { data: teamMatchEvents }] = await Promise.all([
     playerIds.length > 0
-      ? await supabase
+      ? supabase
           .from("match_events")
           .select("player_id, match_id, point_type, created_at, match:matches(scheduled_at, status)")
           .in("player_id", playerIds)
-      : { data: [] };
+      : Promise.resolve({ data: [] }),
+    matchIds.length > 0
+      ? supabase
+          .from("match_events")
+          .select("match_id, point_type, acting_team_id, scoring_team_id, serving_team_id, set_number, created_at")
+          .in("match_id", matchIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const seriesByPlayer = new Map<string, ReturnType<typeof buildPlayerMatchSeries>>();
   const eventsByPlayer = new Map<
@@ -105,9 +121,23 @@ export default async function TeamDetailPage({
     seriesByPlayer.set(player.id, buildPlayerMatchSeries(eventsByPlayer.get(player.id) ?? []));
   }
 
-  const ranked = rankPlayers(typedPlayers, seriesByPlayer);
+  const ranked = rankPlayers(typedPlayers, seriesByPlayer, eventsByPlayer);
   const teamSeries = buildTeamMatchSeries(id, typedMatches);
   const teamTotals = summarizeTeamSeries(teamSeries);
+  const typedTeamEvents = (teamMatchEvents ?? []) as {
+    match_id: string;
+    point_type: PointType;
+    acting_team_id?: string | null;
+    scoring_team_id?: string | null;
+    serving_team_id?: string | null;
+    set_number?: number;
+    created_at?: string;
+  }[];
+  const teamActingEvents = filterTeamEvents(typedTeamEvents, id);
+  const teamAttack = attackStatsFromEvents(teamActingEvents);
+  const teamServe = serveStatsFromEvents(teamActingEvents);
+  const teamReception = receptionStatsFromEvents(teamActingEvents);
+  const teamPossession = possessionStatsForTeam(typedMatches, typedTeamEvents, id);
 
   return (
     <>
@@ -162,6 +192,15 @@ export default async function TeamDetailPage({
             { label: "Dif. puntos", value: formatSigned(teamTotals.pointDiff) },
           ]}
         />
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Métricas de juego</h2>
+          <AttackServeCards attack={teamAttack} serve={teamServe} reception={teamReception} />
+          <PossessionCards
+            sideOut={teamPossession.sideOut}
+            breakPoint={teamPossession.breakPoint}
+          />
+        </section>
 
         <section>
           <h2 className="mb-3 text-lg font-semibold">Puntos a favor vs en contra</h2>

@@ -196,7 +196,7 @@ async function refreshPlayerStats(playerId: string | null) {
 
     for (const event of events ?? []) {
       const key = statFromPointType(event.point_type as PointType);
-      stats[key] += 1;
+      if (key) stats[key] += 1;
       stats.matches_played.add(event.match_id as string);
     }
 
@@ -408,6 +408,7 @@ export async function recordPoint(input: {
   playerId?: string | null;
   actingTeamId: string;
   pointType: PointType;
+  servingTeamId?: string | null;
 }) {
   const session = await requireAdmin();
   const supabase = await createClient();
@@ -443,7 +444,7 @@ export async function recordPoint(input: {
 
     const onCourt = await loadCourtState(input.matchId, input.actingTeamId);
     if (onCourt && !onCourt.has(input.playerId)) {
-      return { error: "Ese jugador no está en pista. Haz el cambio antes de asignarle un punto." };
+      return { error: "Ese jugador no está en pista. Haz el cambio antes de registrarle la acción." };
     }
   }
 
@@ -453,6 +454,12 @@ export async function recordPoint(input: {
     match.away_team_id,
     input.pointType
   );
+
+  const servingTeamId =
+    input.servingTeamId &&
+    (input.servingTeamId === match.home_team_id || input.servingTeamId === match.away_team_id)
+      ? input.servingTeamId
+      : null;
 
   if (match.status === "scheduled") {
     await supabase.from("matches").update({ status: "live" }).eq("id", match.id);
@@ -464,6 +471,7 @@ export async function recordPoint(input: {
     player_id: input.playerId || null,
     acting_team_id: input.actingTeamId,
     scoring_team_id: scoringTeamId,
+    serving_team_id: servingTeamId,
     point_type: input.pointType,
     created_by: session.id,
   });

@@ -51,6 +51,55 @@ export const POINT_TYPE_META: Record<
     buttonClassName:
       "border-slate-400 bg-slate-200 text-slate-950 hover:bg-slate-300",
   },
+  attack_error: {
+    label: "Error de ataque",
+    short: "EAT",
+    className: "bg-rose-100 text-rose-950",
+    buttonClassName:
+      "border-rose-400 bg-rose-100 text-rose-950 hover:bg-rose-200",
+  },
+  attack_continuation: {
+    label: "Ataque continuado",
+    short: "CNT",
+    className: "bg-orange-50 text-orange-900",
+    buttonClassName:
+      "border-orange-200 bg-orange-50 text-orange-900 hover:bg-orange-100",
+  },
+  serve_error: {
+    label: "Error de saque",
+    short: "ESA",
+    className: "bg-rose-100 text-rose-950",
+    buttonClassName:
+      "border-rose-400 bg-rose-100 text-rose-950 hover:bg-rose-200",
+  },
+  serve_in: {
+    label: "Saque dentro",
+    short: "SDD",
+    className: "bg-emerald-50 text-emerald-900",
+    buttonClassName:
+      "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+  },
+  reception_good: {
+    label: "Recepción buena",
+    short: "RB",
+    className: "bg-emerald-100 text-emerald-950",
+    buttonClassName:
+      "border-emerald-400 bg-emerald-100 text-emerald-950 hover:bg-emerald-200",
+  },
+  reception_medium: {
+    label: "Recepción media",
+    short: "RM",
+    className: "bg-amber-100 text-amber-950",
+    buttonClassName:
+      "border-amber-400 bg-amber-100 text-amber-950 hover:bg-amber-200",
+  },
+  reception_bad: {
+    label: "Recepción mala",
+    short: "RX",
+    className: "bg-rose-50 text-rose-900",
+    buttonClassName:
+      "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100",
+  },
 };
 
 export const POSITION_LABELS: Record<PlayerPosition, string> = {
@@ -103,7 +152,7 @@ export const MATCH_TEAM_SERIES_SELECT =
   `id, home_team_id, away_team_id, scheduled_at, status, home_sets, away_sets, set_scores, home_team:teams!matches_home_team_id_fkey(name, short_name), away_team:teams!matches_away_team_id_fkey(name, short_name)` as const;
 
 export const MATCH_EVENT_SELECT =
-  "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, point_type, created_at, player:players(id, full_name, jersey_number)" as const;
+  "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, point_type, created_at, player:players(id, full_name, jersey_number)" as const;
 
 export const MATCH_LINEUP_SELECT =
   "id, match_id, team_id, player_id, is_starter, is_libero, created_at" as const;

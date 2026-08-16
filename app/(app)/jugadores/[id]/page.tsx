@@ -19,6 +19,12 @@ import {
   formatEfficiency,
   summarizePlayerSeries,
 } from "@/lib/stats";
+import { AttackServeCards } from "@/components/stats/skill-stats";
+import {
+  attackStatsFromEvents,
+  receptionStatsFromEvents,
+  serveStatsFromEvents,
+} from "@/lib/volleyball-stats";
 import { formatJersey, initials } from "@/lib/utils";
 import type { MatchEvent, PlayerWithTeam, PointType } from "@/lib/types";
 
@@ -61,6 +67,9 @@ export default async function PlayerDetailPage({
 
   const series = buildPlayerMatchSeries(typedEvents);
   const totals = summarizePlayerSeries(series);
+  const attack = attackStatsFromEvents(typedEvents);
+  const serve = serveStatsFromEvents(typedEvents);
+  const reception = receptionStatsFromEvents(typedEvents);
 
   const byMatch = new Map<
     string,
@@ -136,6 +145,9 @@ export default async function PlayerDetailPage({
 
       <h2 className="mb-3 text-lg font-semibold">Estadísticas totales</h2>
       <StatGrid stats={typed} />
+
+      <h2 className="mb-3 mt-8 text-lg font-semibold">Ataque, saque y recepción</h2>
+      <AttackServeCards attack={attack} serve={serve} reception={reception} />
 
       <h2 className="mb-3 mt-8 text-lg font-semibold">Por partido</h2>
       {byMatch.size === 0 ? (

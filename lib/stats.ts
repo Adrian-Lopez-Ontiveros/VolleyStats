@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { totalPlayerPoints } from "@/lib/volleyball";
+import { isOwnErrorType, isScoringAction, scoresForActingTeam, totalPlayerPoints } from "@/lib/volleyball";
+import { attackStatsFromEvents } from "@/lib/volleyball-stats";
 import type { Match, Player, PlayerStats, PointType, SetScore, Team } from "@/lib/types";
 
 export type StandingRow = {
@@ -205,6 +206,8 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
       sample.points += 1;
       break;
     case "error":
+    case "attack_error":
+    case "serve_error":
       sample.errors += 1;
       break;
     case "opponent_error":
@@ -272,18 +275,21 @@ export function summarizePlayerSeries(series: PlayerMatchSample[]) {
 export type RankedPlayer = Player & {
   points: number;
   efficiency: number;
+  attackEfficiency: number | null;
   series: PlayerMatchSample[];
 };
 
 export function rankPlayers(
   players: Player[],
-  seriesByPlayer: Map<string, PlayerMatchSample[]>
+  seriesByPlayer: Map<string, PlayerMatchSample[]>,
+  eventsByPlayer?: Map<string, { point_type: PointType }[]>
 ): RankedPlayer[] {
   return [...players]
     .map((player) => ({
       ...player,
       points: scoringPoints(player),
       efficiency: playerEfficiencyFromStats(player),
+      attackEfficiency: attackStatsFromEvents(eventsByPlayer?.get(player.id) ?? []).efficiency,
       series: seriesByPlayer.get(player.id) ?? [],
     }))
     .sort((a, b) => {
@@ -365,6 +371,13 @@ export function emptyPointTypeCounts(): PointTypeCounts {
     error: 0,
     opponent_error: 0,
     other: 0,
+    attack_error: 0,
+    attack_continuation: 0,
+    serve_error: 0,
+    serve_in: 0,
+    reception_good: 0,
+    reception_medium: 0,
+    reception_bad: 0,
   };
 }
 
@@ -374,6 +387,27 @@ export function countPointTypes(
   const counts = emptyPointTypeCounts();
   for (const event of events) {
     counts[event.point_type] += 1;
+  }
+  return counts;
+}
+
+export function countChartPointTypes(
+  events: { point_type: PointType }[]
+): PointTypeCounts {
+  const counts = emptyPointTypeCounts();
+  for (const event of events) {
+    if (event.point_type === "attack_error" || event.point_type === "serve_error") {
+      counts.error += 1;
+    } else if (
+      event.point_type === "attack" ||
+      event.point_type === "block" ||
+      event.point_type === "ace" ||
+      event.point_type === "error" ||
+      event.point_type === "opponent_error" ||
+      event.point_type === "other"
+    ) {
+      counts[event.point_type] += 1;
+    }
   }
   return counts;
 }
@@ -409,8 +443,10 @@ export function topMatchScorers(
       };
       byPlayer.set(event.player_id, row);
     }
-    if (event.point_type === "error") row.errors += 1;
-    else if (event.point_type !== "opponent_error") row.points += 1;
+    if (isOwnErrorType(event.point_type)) row.errors += 1;
+    else if (isScoringAction(event.point_type) && scoresForActingTeam(event.point_type)) {
+      row.points += 1;
+    }
   }
 
   return [...byPlayer.values()]

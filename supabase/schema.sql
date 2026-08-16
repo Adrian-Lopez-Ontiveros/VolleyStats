@@ -17,7 +17,21 @@ exception when duplicate_object then null;
 end $$;
 
 do $$ begin
-  create type public.point_type as enum ('attack', 'block', 'ace', 'error', 'opponent_error', 'other');
+  create type public.point_type as enum (
+    'attack',
+    'block',
+    'ace',
+    'error',
+    'opponent_error',
+    'other',
+    'attack_error',
+    'attack_continuation',
+    'serve_error',
+    'serve_in',
+    'reception_good',
+    'reception_medium',
+    'reception_bad'
+  );
 exception when duplicate_object then null;
 end $$;
 
@@ -104,7 +118,8 @@ create table if not exists public.match_events (
   set_number int not null,
   player_id uuid references public.players (id) on delete set null,
   acting_team_id uuid not null references public.teams (id) on delete restrict,
-  scoring_team_id uuid not null references public.teams (id) on delete restrict,
+  scoring_team_id uuid references public.teams (id) on delete restrict,
+  serving_team_id uuid references public.teams (id) on delete restrict,
   point_type public.point_type not null,
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now()
@@ -147,6 +162,7 @@ create index if not exists idx_matches_status on public.matches (status);
 create index if not exists idx_matches_date on public.matches (scheduled_at desc);
 create index if not exists idx_match_events_match on public.match_events (match_id, created_at);
 create index if not exists idx_match_events_player on public.match_events (player_id);
+create index if not exists idx_match_events_serving on public.match_events (match_id, serving_team_id);
 create index if not exists idx_match_lineups_match on public.match_lineups (match_id);
 create unique index if not exists idx_match_lineups_one_libero
   on public.match_lineups (match_id, team_id)
@@ -422,7 +438,9 @@ begin
       count(*) filter (where e.point_type = 'attack') as attack_points,
       count(*) filter (where e.point_type = 'block') as block_points,
       count(*) filter (where e.point_type = 'ace') as aces,
-      count(*) filter (where e.point_type = 'error') as errors,
+      count(*) filter (
+        where e.point_type in ('error', 'attack_error', 'serve_error')
+      ) as errors,
       count(*) filter (where e.point_type = 'opponent_error') as opponent_errors,
       count(*) filter (where e.point_type = 'other') as other_points,
       count(distinct e.match_id) as matches_played

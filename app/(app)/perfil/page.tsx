@@ -16,6 +16,12 @@ import {
   formatEfficiency,
   summarizePlayerSeries,
 } from "@/lib/stats";
+import { AttackServeCards } from "@/components/stats/skill-stats";
+import {
+  attackStatsFromEvents,
+  receptionStatsFromEvents,
+  serveStatsFromEvents,
+} from "@/lib/volleyball-stats";
 import type { PointType } from "@/lib/types";
 
 const PlayerEvolutionChart = dynamic(
@@ -31,6 +37,7 @@ export default async function ProfilePage() {
   const player = user.profile.player;
   let series: ReturnType<typeof buildPlayerMatchSeries> = [];
   let teamMatches = 0;
+  let skillEvents: { point_type: PointType }[] = [];
 
   if (player?.id) {
     const [{ data: events }, teamResult] = await Promise.all([
@@ -48,6 +55,7 @@ export default async function ProfilePage() {
         : Promise.resolve({ count: 0 }),
     ]);
 
+    skillEvents = (events ?? []) as { point_type: PointType }[];
     series = buildPlayerMatchSeries(
       ((events ?? []) as {
         match_id: string;
@@ -129,6 +137,15 @@ export default async function ProfilePage() {
           <div>
             <h2 className="mb-3 text-lg font-semibold">Mis estadísticas</h2>
             <StatGrid stats={player} />
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-lg font-semibold">Ataque, saque y recepción</h2>
+            <AttackServeCards
+              attack={attackStatsFromEvents(skillEvents)}
+              serve={serveStatsFromEvents(skillEvents)}
+              reception={receptionStatsFromEvents(skillEvents)}
+            />
           </div>
 
           <div>

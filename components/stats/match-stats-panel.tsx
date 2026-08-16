@@ -1,8 +1,17 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { AttackServeCards, PossessionCards } from "@/components/stats/skill-stats";
 import { formatJersey } from "@/lib/utils";
-import { countPointTypes, topMatchScorers } from "@/lib/stats";
+import { countChartPointTypes, topMatchScorers } from "@/lib/stats";
+import {
+  attackStatsFromEvents,
+  filterTeamEvents,
+  formatSkillRate,
+  possessionStatsFromEvents,
+  receptionStatsFromEvents,
+  serveStatsFromEvents,
+} from "@/lib/volleyball-stats";
 import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
 
 const PointTypeBarChart = dynamic(
@@ -17,13 +26,20 @@ export function MatchStatsPanel({
   match: MatchWithTeams;
   events: MatchEventWithPlayer[];
 }) {
-  const homeEvents = events.filter((event) => event.acting_team_id === match.home_team_id);
-  const awayEvents = events.filter((event) => event.acting_team_id === match.away_team_id);
-  const homeCounts = countPointTypes(homeEvents);
-  const awayCounts = countPointTypes(awayEvents);
+  const homeEvents = filterTeamEvents(events, match.home_team_id);
+  const awayEvents = filterTeamEvents(events, match.away_team_id);
+  const homeCounts = countChartPointTypes(homeEvents);
+  const awayCounts = countChartPointTypes(awayEvents);
   const scorers = topMatchScorers(events);
   const homeLabel = match.home_team.short_name || match.home_team.name;
   const awayLabel = match.away_team.short_name || match.away_team.name;
+  const homeAttack = attackStatsFromEvents(homeEvents);
+  const awayAttack = attackStatsFromEvents(awayEvents);
+  const homeServe = serveStatsFromEvents(homeEvents);
+  const awayServe = serveStatsFromEvents(awayEvents);
+  const homeReception = receptionStatsFromEvents(homeEvents);
+  const awayReception = receptionStatsFromEvents(awayEvents);
+  const possession = possessionStatsFromEvents(events, match.home_team_id, match.away_team_id);
 
   if (events.length === 0) {
     return (
@@ -47,19 +63,65 @@ export function MatchStatsPanel({
         </CardContent>
       </Card>
 
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold">{homeLabel}</h3>
+        <AttackServeCards attack={homeAttack} serve={homeServe} reception={homeReception} />
+        <PossessionCards
+          sideOut={possession.home.sideOut}
+          breakPoint={possession.home.breakPoint}
+        />
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold">{awayLabel}</h3>
+        <AttackServeCards attack={awayAttack} serve={awayServe} reception={awayReception} />
+        <PossessionCards
+          sideOut={possession.away.sideOut}
+          breakPoint={possession.away.breakPoint}
+        />
+      </section>
+
+      {possession.bySet.length > 0 ? (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <h3 className="text-sm font-semibold">Side-out y break-point por set</h3>
+            <ul className="space-y-2 text-sm">
+              {possession.bySet.map((row) => (
+                <li
+                  key={row.setNumber}
+                  className="rounded-xl border bg-background px-3 py-2"
+                >
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Set {row.setNumber}
+                  </p>
+                  <p className="tabular-nums">
+                    {homeLabel}: SO {formatSkillRate(row.home.sideOut.rate)} · BP{" "}
+                    {formatSkillRate(row.home.breakPoint.rate)}
+                  </p>
+                  <p className="tabular-nums">
+                    {awayLabel}: SO {formatSkillRate(row.away.sideOut.rate)} · BP{" "}
+                    {formatSkillRate(row.away.breakPoint.rate)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-3">
         <TeamMiniStats
           label={homeLabel}
-          attacks={homeCounts.attack}
+          attacks={homeAttack.kills}
           blocks={homeCounts.block}
-          aces={homeCounts.ace}
+          aces={homeServe.aces}
           errors={homeCounts.error}
         />
         <TeamMiniStats
           label={awayLabel}
-          attacks={awayCounts.attack}
+          attacks={awayAttack.kills}
           blocks={awayCounts.block}
-          aces={awayCounts.ace}
+          aces={awayServe.aces}
           errors={awayCounts.error}
         />
       </div>
@@ -105,7 +167,7 @@ function TeamMiniStats({
     <Card>
       <CardContent className="space-y-1 p-4 text-sm">
         <p className="font-semibold">{label}</p>
-        <p className="text-muted-foreground">Ataques {attacks}</p>
+        <p className="text-muted-foreground">Kills {attacks}</p>
         <p className="text-muted-foreground">Bloqueos {blocks}</p>
         <p className="text-muted-foreground">Aces {aces}</p>
         <p className="text-muted-foreground">Errores {errors}</p>

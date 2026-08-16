@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { addSubstitution, recordPoint, undoLastPoint } from "@/lib/actions/matches";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
+import { inferNextServer } from "@/lib/volleyball-stats";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,31 @@ type PendingTarget = {
   player?: Player;
 };
 
+type ActionGroup = "punto" | "ataque" | "saque" | "recepcion";
+
+const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = [
+  {
+    id: "punto",
+    label: "Punto",
+    types: ["attack", "block", "ace", "error", "opponent_error", "other"],
+  },
+  {
+    id: "ataque",
+    label: "Ataque",
+    types: ["attack", "attack_error", "attack_continuation"],
+  },
+  {
+    id: "saque",
+    label: "Saque",
+    types: ["ace", "serve_in", "serve_error"],
+  },
+  {
+    id: "recepcion",
+    label: "Recepción",
+    types: ["reception_good", "reception_medium", "reception_bad"],
+  },
+];
+
 export function LiveTracker({
   match,
   homePlayers,
@@ -51,7 +77,18 @@ export function LiveTracker({
   const [swapTeamId, setSwapTeamId] = useState<string | null>(null);
   const [playerOutId, setPlayerOutId] = useState("");
   const [playerInId, setPlayerInId] = useState("");
+  const [actionGroup, setActionGroup] = useState<ActionGroup>("punto");
+  const [servingOverride, setServingOverride] = useState<string | null>(null);
   const finished = match.status === "finished";
+  const inferredServer = useMemo(
+    () => inferNextServer(events, match.home_team_id, match.away_team_id, match.current_set),
+    [events, match.home_team_id, match.away_team_id, match.current_set]
+  );
+  const servingTeamId = servingOverride ?? inferredServer;
+
+  useEffect(() => {
+    setServingOverride(null);
+  }, [events.length, match.current_set, match.home_points, match.away_points]);
   const homeOnCourtIds = useMemo(
     () => currentOnCourtIds(lineup, substitutions, match.home_team_id),
     [lineup, substitutions, match.home_team_id]
@@ -123,6 +160,7 @@ export function LiveTracker({
   const openTeam = useCallback(
     (teamId: string, teamName: string, player?: Player) => {
       if (finished) return;
+      setActionGroup("punto");
       setTarget({ teamId, teamName, player });
     },
     [finished]
@@ -136,6 +174,7 @@ export function LiveTracker({
         actingTeamId: target.teamId,
         playerId: target.player?.id ?? null,
         pointType,
+        servingTeamId,
       });
       if (result.error) {
         toast.error(result.error);
@@ -180,6 +219,38 @@ export function LiveTracker({
   return (
     <div className="space-y-4">
       <Scoreboard match={match} />
+
+      {!finished ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl border bg-card px-3 py-2">
+          <span className="text-xs font-medium text-muted-foreground">Saca</span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setServingOverride(match.home_team_id)}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold",
+              servingTeamId === match.home_team_id
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {match.home_team.short_name || "Local"}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setServingOverride(match.away_team_id)}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold",
+              servingTeamId === match.away_team_id
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {match.away_team.short_name || "Visitante"}
+          </button>
+        </div>
+      ) : null}
 
       {finished ? (
         <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-800">
@@ -245,7 +316,7 @@ export function LiveTracker({
         onClick={onUndo}
       >
         <Undo2 className="h-4 w-4" />
-        Deshacer último punto
+        Deshacer última acción
       </Button>
 
       <section className="space-y-3">
@@ -324,11 +395,29 @@ export function LiveTracker({
                 : `Punto de ${target?.teamName ?? ""}`}
             </SheetTitle>
             <SheetDescription>
-              Elige el tipo de acción. Un error propio suma el punto al rival.
+              Un error de ataque o saque suma el punto al rival. Continuación, saque
+              dentro y recepción no cambian el marcador.
             </SheetDescription>
           </SheetHeader>
+          <div className="grid grid-cols-4 gap-1 rounded-xl bg-secondary p-1">
+            {ACTION_GROUPS.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => setActionGroup(group.id)}
+                className={cn(
+                  "rounded-lg px-1 py-1.5 text-[11px] font-semibold",
+                  actionGroup === group.id
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground"
+                )}
+              >
+                {group.label}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            {(Object.keys(POINT_TYPE_META) as PointType[]).map((type) => {
+            {(ACTION_GROUPS.find((group) => group.id === actionGroup)?.types ?? []).map((type) => {
               const meta = POINT_TYPE_META[type];
               return (
                 <button
@@ -337,7 +426,7 @@ export function LiveTracker({
                   disabled={pending}
                   onClick={() => submitPoint(type)}
                   className={cn(
-                    "flex h-16 items-center justify-center rounded-2xl border-2 px-3 text-base font-bold shadow-sm transition-colors disabled:opacity-50",
+                    "flex h-16 items-center justify-center rounded-2xl border-2 px-3 text-center text-sm font-bold shadow-sm transition-colors disabled:opacity-50",
                     meta.buttonClassName
                   )}
                 >

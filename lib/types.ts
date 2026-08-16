@@ -10,7 +10,14 @@ export type PointType =
   | "ace"
   | "error"
   | "opponent_error"
-  | "other";
+  | "other"
+  | "attack_error"
+  | "attack_continuation"
+  | "serve_error"
+  | "serve_in"
+  | "reception_good"
+  | "reception_medium"
+  | "reception_bad";
 
 export type PlayerPosition =
   | "opuesto"
@@ -134,7 +141,8 @@ export type MatchEvent = {
   set_number: number;
   player_id: string | null;
   acting_team_id: string;
-  scoring_team_id: string;
+  scoring_team_id: string | null;
+  serving_team_id: string | null;
   point_type: PointType;
   created_by: string | null;
   created_at: string;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatEfficiency } from "@/lib/stats";
 import type { PlayerMatchSample, RankedPlayer } from "@/lib/stats";
+import { formatAttackEfficiency } from "@/lib/volleyball-stats";
 import { formatJersey, initials } from "@/lib/utils";
 
 function PlayerSparkline({ data }: { data: PlayerMatchSample[] }) {
@@ -39,7 +40,7 @@ export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
   return (
     <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] border-collapse text-sm">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
             <tr className="border-b bg-secondary/70 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-3 text-left">#</th>
@@ -50,6 +51,7 @@ export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
               <th className="px-2 py-3 text-center">ACE</th>
               <th className="px-2 py-3 text-center">ERR</th>
               <th className="px-2 py-3 text-center">Eff</th>
+              <th className="px-2 py-3 text-center">ATK%</th>
               <th className="px-2 py-3 text-center">PJ</th>
               <th className="px-3 py-3 text-right">Evolución</th>
             </tr>
@@ -76,6 +78,9 @@ export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
                 <td className="px-2 py-2.5 text-center tabular-nums">{player.errors}</td>
                 <td className="px-2 py-2.5 text-center font-semibold tabular-nums">
                   {formatEfficiency(player.efficiency)}
+                </td>
+                <td className="px-2 py-2.5 text-center font-semibold tabular-nums">
+                  {formatAttackEfficiency(player.attackEfficiency)}
                 </td>
                 <td className="px-2 py-2.5 text-center tabular-nums">{player.matches_played}</td>
                 <td className="px-3 py-2.5">

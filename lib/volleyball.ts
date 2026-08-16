@@ -6,8 +6,26 @@ import {
 } from "@/lib/constants";
 import type { MatchEvent, PointType, SetScore } from "@/lib/types";
 
+const OWN_ERROR_TYPES: PointType[] = ["error", "attack_error", "serve_error"];
+
+const NON_SCORING_TYPES: PointType[] = [
+  "attack_continuation",
+  "serve_in",
+  "reception_good",
+  "reception_medium",
+  "reception_bad",
+];
+
+export function isScoringAction(pointType: PointType) {
+  return !NON_SCORING_TYPES.includes(pointType);
+}
+
+export function isOwnErrorType(pointType: PointType) {
+  return OWN_ERROR_TYPES.includes(pointType);
+}
+
 export function scoresForActingTeam(pointType: PointType) {
-  return pointType !== "error";
+  return !isOwnErrorType(pointType);
 }
 
 export function resolveScoringTeam(
@@ -15,7 +33,8 @@ export function resolveScoringTeam(
   homeTeamId: string,
   awayTeamId: string,
   pointType: PointType
-) {
+): string | null {
+  if (!isScoringAction(pointType)) return null;
   const opponentId = actingTeamId === homeTeamId ? awayTeamId : homeTeamId;
   return scoresForActingTeam(pointType) ? actingTeamId : opponentId;
 }
@@ -66,7 +85,7 @@ export function annotateEventScores<
       setNumber = event.set_number;
     }
     if (event.scoring_team_id === homeTeamId) home += 1;
-    else away += 1;
+    else if (event.scoring_team_id) away += 1;
     annotated.push({ ...event, homeScore: home, awayScore: away });
   }
 
@@ -78,10 +97,12 @@ export function computeMatchState(
   homeTeamId: string,
   currentStatus: "scheduled" | "live" | "finished" | "cancelled"
 ): ComputedMatchState {
-  const ordered = [...events].sort(
-    (a, b) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const ordered = [...events]
+    .filter((event) => event.scoring_team_id)
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
 
   let homeSets = 0;
   let awaySets = 0;
@@ -139,10 +160,14 @@ export function statFromPointType(pointType: PointType) {
     case "ace":
       return "aces" as const;
     case "error":
+    case "attack_error":
+    case "serve_error":
       return "errors" as const;
     case "opponent_error":
       return "opponent_errors" as const;
-    default:
+    case "other":
       return "other_points" as const;
+    default:
+      return null;
   }
 }
