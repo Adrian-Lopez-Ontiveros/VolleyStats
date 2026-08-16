@@ -103,19 +103,21 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
             name={match.home_team.name}
             shortName={match.home_team.short_name}
             logoUrl={match.home_team.logo_url}
+            federationTeamId={match.home_team.federation_team_id}
             size="sm"
           />
-          <span className="truncate">{match.home_team.short_name || match.home_team.name}</span>
+          <span className="line-clamp-2 leading-tight">{match.home_team.name}</span>
         </span>
         <span className="shrink-0 font-black tabular-nums">
           {match.home_sets}–{match.away_sets}
         </span>
         <span className="flex min-w-0 items-center justify-end gap-1.5 font-semibold">
-          <span className="truncate">{match.away_team.short_name || match.away_team.name}</span>
+          <span className="line-clamp-2 text-right leading-tight">{match.away_team.name}</span>
           <TeamLogo
             name={match.away_team.name}
             shortName={match.away_team.short_name}
             logoUrl={match.away_team.logo_url}
+            federationTeamId={match.away_team.federation_team_id}
             size="sm"
           />
         </span>

@@ -137,7 +137,7 @@ export const TEAM_SELECT =
   "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id, created_at, updated_at" as const;
 
 export const TEAM_SUMMARY_SELECT =
-  "id, name, short_name, logo_url, city, category, is_club_team" as const;
+  "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id" as const;
 
 export const MATCH_LIST_SELECT =
   `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, is_federation, federation_round, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;

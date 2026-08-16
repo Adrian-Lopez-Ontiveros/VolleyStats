@@ -124,11 +124,13 @@ function TeamName({ row }: { row: StandingRow }) {
         name={row.team.name}
         shortName={row.team.short_name}
         logoUrl={row.team.logo_url}
+        federationTeamId={row.team.federation_team_id}
         size="sm"
       />
       <span className="min-w-0">
         <span className="block font-semibold leading-tight">{row.team.name}</span>
-        {row.team.short_name ? (
+        {row.team.short_name &&
+        !row.team.name.toLowerCase().startsWith(row.team.short_name.toLowerCase()) ? (
           <span className="block text-[11px] font-normal text-muted-foreground">
             {row.team.short_name}
           </span>

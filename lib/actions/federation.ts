@@ -179,45 +179,36 @@ async function upsertFederationTeam(team: FmvTeam, category: TeamCategory) {
   const supabase = await createClient();
   const { data: byFed } = await supabase
     .from("teams")
-    .select("id")
+    .select("id, logo_url, is_club_team")
     .eq("federation_team_id", team.id)
     .maybeSingle();
-  if (byFed) return "exists";
+  if (byFed) {
+    await refreshFederationTeam(byFed.id, team, byFed.is_club_team, byFed.logo_url);
+    return "exists";
+  }
 
   if (isClubTeamName(team.name)) {
     const { data: club } = await supabase
       .from("teams")
-      .select("id, federation_team_id")
+      .select("id, federation_team_id, logo_url, is_club_team")
       .eq("is_club_team", true)
       .eq("category", category)
       .maybeSingle();
     if (club) {
-      if (!club.federation_team_id) {
-        await supabase
-          .from("teams")
-          .update({ federation_team_id: team.id })
-          .eq("id", club.id);
-        return "linked";
-      }
-      return "exists";
+      await refreshFederationTeam(club.id, team, true, club.logo_url);
+      return club.federation_team_id ? "exists" : "linked";
     }
   }
 
   const { data: sameName } = await supabase
     .from("teams")
-    .select("id, federation_team_id")
+    .select("id, federation_team_id, logo_url, is_club_team")
     .eq("category", category)
     .ilike("name", team.name)
     .maybeSingle();
   if (sameName) {
-    if (!sameName.federation_team_id) {
-      await supabase
-        .from("teams")
-        .update({ federation_team_id: team.id })
-        .eq("id", sameName.id);
-      return "linked";
-    }
-    return "exists";
+    await refreshFederationTeam(sameName.id, team, sameName.is_club_team, sameName.logo_url);
+    return sameName.federation_team_id ? "exists" : "linked";
   }
 
   const { error } = await supabase.from("teams").insert({
@@ -226,10 +217,35 @@ async function upsertFederationTeam(team: FmvTeam, category: TeamCategory) {
     category,
     is_club_team: isClubTeamName(team.name),
     federation_team_id: team.id,
+    logo_url: team.logoUrl || null,
     city: "Madrid",
   });
   if (error) throw new Error(error.message);
   return "created";
+}
+
+async function refreshFederationTeam(
+  teamId: string,
+  team: FmvTeam,
+  isClubTeam: boolean,
+  currentLogo: string | null
+) {
+  const supabase = await createClient();
+  const patch: {
+    federation_team_id: string;
+    name?: string;
+    logo_url?: string;
+  } = { federation_team_id: team.id };
+
+  if (!isClubTeam) {
+    patch.name = team.name;
+    if (team.logoUrl) patch.logo_url = team.logoUrl;
+  } else if (!currentLogo && team.logoUrl) {
+    patch.logo_url = team.logoUrl;
+  }
+
+  const { error } = await supabase.from("teams").update(patch).eq("id", teamId);
+  if (error) throw new Error(error.message);
 }
 
 async function upsertFederationMatch(

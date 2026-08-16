@@ -7,12 +7,10 @@ import { MATCH_STATUS_META } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/team-logo";
-import type { MatchWithTeams } from "@/lib/types";
+import type { MatchWithTeams, Team } from "@/lib/types";
 
 export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTeams }) {
   const status = MATCH_STATUS_META[match.status];
-  const homeName = match.home_team.short_name || match.home_team.name;
-  const awayName = match.away_team.short_name || match.away_team.name;
 
   return (
     <Link href={`/partidos/${match.id}`}>
@@ -36,18 +34,7 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
             </div>
           </div>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <div className="flex items-center justify-end gap-2 text-right">
-              <div>
-                <p className="font-semibold leading-tight">{homeName}</p>
-                <p className="text-[11px] text-muted-foreground">Local</p>
-              </div>
-              <TeamLogo
-                name={match.home_team.name}
-                shortName={match.home_team.short_name}
-                logoUrl={match.home_team.logo_url}
-                size="sm"
-              />
-            </div>
+            <TeamSide team={match.home_team} align="right" caption="Local" />
             <div className="min-w-[4.5rem] rounded-xl bg-primary px-3 py-2 text-center text-primary-foreground">
               <p className="text-xl font-bold tabular-nums leading-none">
                 {match.home_sets} – {match.away_sets}
@@ -58,18 +45,7 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
                 </p>
               ) : null}
             </div>
-            <div className="flex items-center gap-2">
-              <TeamLogo
-                name={match.away_team.name}
-                shortName={match.away_team.short_name}
-                logoUrl={match.away_team.logo_url}
-                size="sm"
-              />
-              <div>
-                <p className="font-semibold leading-tight">{awayName}</p>
-                <p className="text-[11px] text-muted-foreground">Visitante</p>
-              </div>
-            </div>
+            <TeamSide team={match.away_team} align="left" caption="Visitante" />
           </div>
           {match.location ? (
             <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
@@ -82,3 +58,49 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
     </Link>
   );
 });
+
+function TeamSide({
+  team,
+  align,
+  caption,
+}: {
+  team: Pick<Team, "name" | "short_name" | "logo_url" | "federation_team_id">;
+  align: "left" | "right";
+  caption: string;
+}) {
+  const logo = (
+    <TeamLogo
+      name={team.name}
+      shortName={team.short_name}
+      logoUrl={team.logo_url}
+      federationTeamId={team.federation_team_id}
+      size="sm"
+    />
+  );
+  const label = (
+    <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
+      <p className="text-[13px] font-semibold leading-tight [overflow-wrap:anywhere] sm:text-sm">
+        {team.name}
+      </p>
+      <p className="text-[11px] text-muted-foreground">{caption}</p>
+    </div>
+  );
+
+  return (
+    <div
+      className={`flex min-w-0 items-center gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}
+    >
+      {align === "right" ? (
+        <>
+          {label}
+          {logo}
+        </>
+      ) : (
+        <>
+          {logo}
+          {label}
+        </>
+      )}
+    </div>
+  );
+}

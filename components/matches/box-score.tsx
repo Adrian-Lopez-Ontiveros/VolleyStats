@@ -36,6 +36,7 @@ export function BoxScoreCard({
             name={match.home_team.name}
             shortName={match.home_team.short_name}
             logoUrl={match.home_team.logo_url}
+            federationTeamId={match.home_team.federation_team_id}
             align="right"
           />
           <div className="text-center">
@@ -54,6 +55,7 @@ export function BoxScoreCard({
             name={match.away_team.name}
             shortName={match.away_team.short_name}
             logoUrl={match.away_team.logo_url}
+            federationTeamId={match.away_team.federation_team_id}
             align="left"
           />
         </div>
@@ -185,23 +187,39 @@ function TeamSide({
   name,
   shortName,
   logoUrl,
+  federationTeamId,
   align,
 }: {
   name: string;
   shortName: string | null;
   logoUrl: string | null;
+  federationTeamId?: string | null;
   align: "left" | "right";
 }) {
   return (
-    <div className={`flex items-center gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}>
+    <div className={`flex min-w-0 items-center gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}>
       {align === "left" ? (
-        <TeamLogo name={name} shortName={shortName} logoUrl={logoUrl} size="sm" inverted />
+        <TeamLogo
+          name={name}
+          shortName={shortName}
+          logoUrl={logoUrl}
+          federationTeamId={federationTeamId}
+          size="sm"
+          inverted
+        />
       ) : null}
-      <p className={`text-sm font-bold leading-tight ${align === "right" ? "text-right" : "text-left"}`}>
-        {shortName || name}
+      <p className={`min-w-0 text-sm font-bold leading-tight [overflow-wrap:anywhere] ${align === "right" ? "text-right" : "text-left"}`}>
+        {name}
       </p>
       {align === "right" ? (
-        <TeamLogo name={name} shortName={shortName} logoUrl={logoUrl} size="sm" inverted />
+        <TeamLogo
+          name={name}
+          shortName={shortName}
+          logoUrl={logoUrl}
+          federationTeamId={federationTeamId}
+          size="sm"
+          inverted
+        />
       ) : null}
     </div>
   );

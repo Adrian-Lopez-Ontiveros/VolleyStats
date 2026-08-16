@@ -6,7 +6,7 @@ import type { Match, Player, PlayerStats, PointType, SetScore, Team } from "@/li
 
 export type StandingRow = {
   position: number;
-  team: Pick<Team, "id" | "name" | "short_name" | "logo_url" | "city">;
+  team: Pick<Team, "id" | "name" | "short_name" | "logo_url" | "city" | "federation_team_id">;
   played: number;
   won: number;
   lost: number;

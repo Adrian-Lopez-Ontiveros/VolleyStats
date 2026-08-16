@@ -1,3 +1,5 @@
+import { fmvCrestUrl } from "@/lib/federation/crests";
+
 const FMV_API = "https://intranet.fmvoley.com/api";
 
 type Json = Record<string, unknown>;
@@ -21,6 +23,7 @@ export type FmvTeam = {
   id: string;
   name: string;
   shortName: string;
+  logoUrl: string;
 };
 
 export type FmvMatch = {
@@ -243,22 +246,18 @@ export async function fetchFmvTeams(groupId: string): Promise<FmvTeam[]> {
       const id =
         pickString(row, ["equipoId", "idEquipo", "equipo_id"]) ||
         teamIdFromCrest(pickString(row, ["imagen", "img"]));
-      return {
-        id,
-        name,
-        shortName: name.replace(/\s+/g, " ").slice(0, 8).trim(),
-      };
+      return toFmvTeam(id, name);
     })
-    .filter((item) => item.id && item.name && !isByeName(item.name));
+    .filter((item): item is FmvTeam => Boolean(item));
 
   if (fromStandings.length) return uniqueTeams(fromStandings);
 
   const matches = await fetchFmvMatches(groupId);
   return uniqueTeams(
     matches.flatMap((match) => [
-      { id: match.homeId, name: match.homeName, shortName: match.homeName.slice(0, 8) },
-      { id: match.awayId, name: match.awayName, shortName: match.awayName.slice(0, 8) },
-    ])
+      toFmvTeam(match.homeId, match.homeName),
+      toFmvTeam(match.awayId, match.awayName),
+    ]).filter((item): item is FmvTeam => Boolean(item))
   );
 }
 
@@ -332,6 +331,16 @@ export async function resolveFmvTestLeague(): Promise<FmvCatalogPath> {
     phaseName: phase.name,
     groupId: group.id,
     groupName: group.name,
+  };
+}
+
+function toFmvTeam(id: string, name: string): FmvTeam | null {
+  if (!id || !name || isByeName(name)) return null;
+  return {
+    id,
+    name,
+    shortName: name.replace(/\s+/g, " ").slice(0, 8).trim(),
+    logoUrl: fmvCrestUrl(id) ?? "",
   };
 }
 

@@ -89,6 +89,7 @@ export function TeamsBrowser({
                     name={typedTeam.name}
                     shortName={typedTeam.short_name}
                     logoUrl={typedTeam.logo_url}
+                    federationTeamId={typedTeam.federation_team_id}
                     size="md"
                   />
                   <div className="min-w-0">

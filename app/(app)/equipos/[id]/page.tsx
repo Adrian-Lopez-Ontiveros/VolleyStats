@@ -164,6 +164,7 @@ export default async function TeamDetailPage({
             name={typedTeam.name}
             shortName={typedTeam.short_name}
             logoUrl={typedTeam.logo_url}
+            federationTeamId={typedTeam.federation_team_id}
             size="lg"
           />
         }

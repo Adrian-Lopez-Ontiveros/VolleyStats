@@ -49,41 +49,38 @@ function TeamBlock({
   team,
   align,
 }: {
-  team: Pick<Team, "name" | "short_name" | "logo_url">;
+  team: Pick<Team, "name" | "short_name" | "logo_url" | "federation_team_id">;
   align: "left" | "right";
 }) {
   const label = (
-    <div className={align === "right" ? "text-right" : "text-left"}>
-      <p className="text-lg font-bold leading-tight">{team.short_name || team.name}</p>
-      {team.short_name ? (
-        <p className="text-[11px] text-white/70">{team.name}</p>
-      ) : null}
+    <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
+      <p className="text-sm font-bold leading-tight [overflow-wrap:anywhere] sm:text-lg">
+        {team.name}
+      </p>
     </div>
+  );
+  const logo = (
+    <TeamLogo
+      name={team.name}
+      shortName={team.short_name}
+      logoUrl={team.logo_url}
+      federationTeamId={team.federation_team_id}
+      size="md"
+      inverted
+    />
   );
 
   return (
-    <div className={`flex items-center gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}>
+    <div className={`flex min-w-0 items-center gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}>
       {align === "left" ? (
         <>
-          <TeamLogo
-            name={team.name}
-            shortName={team.short_name}
-            logoUrl={team.logo_url}
-            size="md"
-            inverted
-          />
+          {logo}
           {label}
         </>
       ) : (
         <>
           {label}
-          <TeamLogo
-            name={team.name}
-            shortName={team.short_name}
-            logoUrl={team.logo_url}
-            size="md"
-            inverted
-          />
+          {logo}
         </>
       )}
     </div>

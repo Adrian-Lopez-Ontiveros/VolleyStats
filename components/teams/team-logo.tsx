@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { resolveTeamLogoUrl } from "@/lib/federation/crests";
 import { cn, initials } from "@/lib/utils";
 
 const SIZE_CLASS = {
@@ -11,6 +15,7 @@ export function TeamLogo({
   name,
   shortName,
   logoUrl,
+  federationTeamId,
   size = "md",
   className,
   inverted = false,
@@ -18,11 +23,14 @@ export function TeamLogo({
   name: string;
   shortName?: string | null;
   logoUrl?: string | null;
+  federationTeamId?: string | null;
   size?: keyof typeof SIZE_CLASS;
   className?: string;
   inverted?: boolean;
 }) {
-  const fallback = (shortName || initials(name)).slice(0, 3).toUpperCase();
+  const [failed, setFailed] = useState(false);
+  const src = failed ? null : resolveTeamLogoUrl({ logo_url: logoUrl, federation_team_id: federationTeamId });
+  const fallback = initials(name || shortName || "").slice(0, 2) || "·";
 
   return (
     <span
@@ -36,9 +44,14 @@ export function TeamLogo({
       )}
       aria-hidden
     >
-      {logoUrl ? (
+      {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="" className="h-full w-full object-contain p-0.5" />
+        <img
+          src={src}
+          alt=""
+          className="h-full w-full bg-white object-contain p-0.5"
+          onError={() => setFailed(true)}
+        />
       ) : (
         <span className="px-0.5 leading-none">{fallback}</span>
       )}
