@@ -52,3 +52,21 @@
     padding-top: max(0.5rem, env(safe-area-inset-top));
   }
 }
+
+@media print {
+  body {
+    background: white;
+    background-image: none;
+  }
+
+  header,
+  nav,
+  .print-hidden {
+    display: none !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}

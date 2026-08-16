@@ -403,12 +403,18 @@ export async function setMatchStatus(
   return { success: true };
 }
 
+function parseRotation(value: number | null | undefined) {
+  return typeof value === "number" && value >= 1 && value <= 6 ? value : null;
+}
+
 export async function recordPoint(input: {
   matchId: string;
   playerId?: string | null;
   actingTeamId: string;
   pointType: PointType;
   servingTeamId?: string | null;
+  homeRotation?: number | null;
+  awayRotation?: number | null;
 }) {
   const session = await requireAdmin();
   const supabase = await createClient();
@@ -472,6 +478,8 @@ export async function recordPoint(input: {
     acting_team_id: input.actingTeamId,
     scoring_team_id: scoringTeamId,
     serving_team_id: servingTeamId,
+    home_rotation: parseRotation(input.homeRotation),
+    away_rotation: parseRotation(input.awayRotation),
     point_type: input.pointType,
     created_by: session.id,
   });

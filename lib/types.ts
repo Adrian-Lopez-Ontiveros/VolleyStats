@@ -143,6 +143,8 @@ export type MatchEvent = {
   acting_team_id: string;
   scoring_team_id: string | null;
   serving_team_id: string | null;
+  home_rotation: number | null;
+  away_rotation: number | null;
   point_type: PointType;
   created_by: string | null;
   created_at: string;

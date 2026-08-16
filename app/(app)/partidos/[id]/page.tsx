@@ -3,16 +3,21 @@ import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { MapPin } from "lucide-react";
+import Link from "next/link";
 import { MatchAdminActions } from "@/components/matches/match-admin-actions";
+import { BoxScoreCard } from "@/components/matches/box-score";
+import { ShareBoxScore } from "@/components/matches/share-box-score";
 import { MatchLineup } from "@/components/matches/match-lineup";
 import { MatchStatsPanel } from "@/components/stats/match-stats-panel";
 import { PointHistory } from "@/components/matches/point-history";
 import { Scoreboard } from "@/components/matches/scoreboard";
 import { SubstitutionPanel } from "@/components/matches/substitution-panel";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
+import { buildBoxScore } from "@/lib/box-score";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
   MATCH_EVENT_SELECT,
@@ -126,8 +131,31 @@ export default async function MatchDetailPage({
           </Card>
         ) : null}
 
+        {typedEvents.length > 0 ? (
+          <div className="print-hidden">
+            <Button asChild variant="outline" className="w-full">
+              <Link href={`/partidos/${typedMatch.id}/resumen`}>Ver box score</Link>
+            </Button>
+          </div>
+        ) : null}
+
         {isAdmin ? (
           <MatchAdminActions matchId={typedMatch.id} status={typedMatch.status} />
+        ) : null}
+
+        {typedMatch.status === "finished" && typedEvents.length > 0 ? (
+          <section className="space-y-3">
+            <div className="print-hidden flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Box score</h2>
+            </div>
+            <div className="print-hidden">
+              <ShareBoxScore
+                captureId="match-box-score"
+                fileName={`fuenlastats-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`}
+              />
+            </div>
+            <BoxScoreCard data={buildBoxScore(typedMatch, typedEvents)} captureId="match-box-score" />
+          </section>
         ) : null}
 
         {clubTeamId ? (

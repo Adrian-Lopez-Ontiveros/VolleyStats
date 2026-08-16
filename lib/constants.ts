@@ -152,7 +152,7 @@ export const MATCH_TEAM_SERIES_SELECT =
   `id, home_team_id, away_team_id, scheduled_at, status, home_sets, away_sets, set_scores, home_team:teams!matches_home_team_id_fkey(name, short_name), away_team:teams!matches_away_team_id_fkey(name, short_name)` as const;
 
 export const MATCH_EVENT_SELECT =
-  "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, point_type, created_at, player:players(id, full_name, jersey_number)" as const;
+  "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, created_at, player:players(id, full_name, jersey_number)" as const;
 
 export const MATCH_LINEUP_SELECT =
   "id, match_id, team_id, player_id, is_starter, is_libero, created_at" as const;

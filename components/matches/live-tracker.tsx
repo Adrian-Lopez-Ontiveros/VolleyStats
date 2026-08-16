@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { addSubstitution, recordPoint, undoLastPoint } from "@/lib/actions/matches";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
-import { inferNextServer } from "@/lib/volleyball-stats";
+import { inferNextRotations, inferNextServer } from "@/lib/volleyball-stats";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -79,15 +79,25 @@ export function LiveTracker({
   const [playerInId, setPlayerInId] = useState("");
   const [actionGroup, setActionGroup] = useState<ActionGroup>("punto");
   const [servingOverride, setServingOverride] = useState<string | null>(null);
+  const [homeRotationOverride, setHomeRotationOverride] = useState<number | null>(null);
+  const [awayRotationOverride, setAwayRotationOverride] = useState<number | null>(null);
   const finished = match.status === "finished";
   const inferredServer = useMemo(
     () => inferNextServer(events, match.home_team_id, match.away_team_id, match.current_set),
     [events, match.home_team_id, match.away_team_id, match.current_set]
   );
+  const inferredRotations = useMemo(
+    () => inferNextRotations(events, match.home_team_id, match.away_team_id, match.current_set),
+    [events, match.home_team_id, match.away_team_id, match.current_set]
+  );
   const servingTeamId = servingOverride ?? inferredServer;
+  const homeRotation = homeRotationOverride ?? inferredRotations.home;
+  const awayRotation = awayRotationOverride ?? inferredRotations.away;
 
   useEffect(() => {
     setServingOverride(null);
+    setHomeRotationOverride(null);
+    setAwayRotationOverride(null);
   }, [events.length, match.current_set, match.home_points, match.away_points]);
   const homeOnCourtIds = useMemo(
     () => currentOnCourtIds(lineup, substitutions, match.home_team_id),
@@ -175,6 +185,8 @@ export function LiveTracker({
         playerId: target.player?.id ?? null,
         pointType,
         servingTeamId,
+        homeRotation,
+        awayRotation,
       });
       if (result.error) {
         toast.error(result.error);
@@ -249,6 +261,26 @@ export function LiveTracker({
           >
             {match.away_team.short_name || "Visitante"}
           </button>
+        </div>
+      ) : null}
+
+      {!finished ? (
+        <div className="space-y-2 rounded-2xl border bg-card px-3 py-3">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Rotación · se avanza sola al ganar el saque
+          </p>
+          <RotationPicker
+            label={match.home_team.short_name || "Local"}
+            value={homeRotation}
+            disabled={pending}
+            onChange={setHomeRotationOverride}
+          />
+          <RotationPicker
+            label={match.away_team.short_name || "Visitante"}
+            value={awayRotation}
+            disabled={pending}
+            onChange={setAwayRotationOverride}
+          />
         </div>
       ) : null}
 
@@ -437,6 +469,44 @@ export function LiveTracker({
           </div>
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function RotationPicker({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  disabled: boolean;
+  onChange: (rotation: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 truncate text-[11px] font-medium text-muted-foreground">
+        {label}
+      </span>
+      <div className="grid flex-1 grid-cols-6 gap-1">
+        {[1, 2, 3, 4, 5, 6].map((rotation) => (
+          <button
+            key={rotation}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(rotation)}
+            className={cn(
+              "h-8 rounded-lg text-xs font-bold tabular-nums",
+              value === rotation
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {rotation}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

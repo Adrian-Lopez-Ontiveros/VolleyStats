@@ -23,12 +23,14 @@ import {
   rankPlayers,
   summarizeTeamSeries,
 } from "@/lib/stats";
+import { RotationSummaryCards, RotationTable } from "@/components/stats/rotation-table";
 import { AttackServeCards, PossessionCards } from "@/components/stats/skill-stats";
 import {
   attackStatsFromEvents,
   filterTeamEvents,
   possessionStatsForTeam,
   receptionStatsFromEvents,
+  rotationStatsAcrossMatches,
   serveStatsFromEvents,
 } from "@/lib/volleyball-stats";
 import { formatJersey, initials } from "@/lib/utils";
@@ -88,7 +90,7 @@ export default async function TeamDetailPage({
     matchIds.length > 0
       ? supabase
           .from("match_events")
-          .select("match_id, point_type, acting_team_id, scoring_team_id, serving_team_id, set_number, created_at")
+          .select("match_id, point_type, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, set_number, created_at")
           .in("match_id", matchIds)
       : Promise.resolve({ data: [] }),
   ]);
@@ -130,6 +132,8 @@ export default async function TeamDetailPage({
     acting_team_id?: string | null;
     scoring_team_id?: string | null;
     serving_team_id?: string | null;
+    home_rotation?: number | null;
+    away_rotation?: number | null;
     set_number?: number;
     created_at?: string;
   }[];
@@ -138,6 +142,7 @@ export default async function TeamDetailPage({
   const teamServe = serveStatsFromEvents(teamActingEvents);
   const teamReception = receptionStatsFromEvents(teamActingEvents);
   const teamPossession = possessionStatsForTeam(typedMatches, typedTeamEvents, id);
+  const teamRotations = rotationStatsAcrossMatches(typedMatches, typedTeamEvents, id);
 
   return (
     <>
@@ -200,6 +205,9 @@ export default async function TeamDetailPage({
             sideOut={teamPossession.sideOut}
             breakPoint={teamPossession.breakPoint}
           />
+          <h3 className="text-base font-semibold">Por rotación</h3>
+          <RotationSummaryCards rows={teamRotations} />
+          <RotationTable rows={teamRotations} title="Temporada" />
         </section>
 
         <section>

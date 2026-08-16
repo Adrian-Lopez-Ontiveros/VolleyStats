@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { RotationTable } from "@/components/stats/rotation-table";
 import { AttackServeCards, PossessionCards } from "@/components/stats/skill-stats";
 import { formatJersey } from "@/lib/utils";
 import { countChartPointTypes, topMatchScorers } from "@/lib/stats";
@@ -10,6 +11,7 @@ import {
   formatSkillRate,
   possessionStatsFromEvents,
   receptionStatsFromEvents,
+  rotationStatsForTeam,
   serveStatsFromEvents,
 } from "@/lib/volleyball-stats";
 import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
@@ -78,6 +80,30 @@ export function MatchStatsPanel({
         <PossessionCards
           sideOut={possession.away.sideOut}
           breakPoint={possession.away.breakPoint}
+        />
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold">Rotaciones · {homeLabel}</h3>
+        <RotationTable
+          rows={rotationStatsForTeam(
+            events,
+            match.home_team_id,
+            match.home_team_id,
+            match.away_team_id
+          )}
+        />
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold">Rotaciones · {awayLabel}</h3>
+        <RotationTable
+          rows={rotationStatsForTeam(
+            events,
+            match.away_team_id,
+            match.home_team_id,
+            match.away_team_id
+          )}
         />
       </section>
 
