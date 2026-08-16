@@ -84,7 +84,7 @@ export function LiveTracker({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const queued = useSyncExternalStore(subscribeQueue, readQueue, () => [] as QueuedPoint[]);
+  const queued = useSyncExternalStore(subscribeQueue, readQueue, readQueue);
   const pendingForMatch = useMemo(
     () => queued.filter((item) => item.matchId === match.id),
     [queued, match.id]
@@ -478,6 +478,7 @@ export function LiveTracker({
         title={match.home_team.name}
         logoUrl={match.home_team.logo_url}
         shortName={match.home_team.short_name}
+        federationTeamId={match.home_team.federation_team_id}
         players={homeOnCourt}
         hasLineup={homeOnCourtIds !== null}
         canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
@@ -493,6 +494,7 @@ export function LiveTracker({
         title={match.away_team.name}
         logoUrl={match.away_team.logo_url}
         shortName={match.away_team.short_name}
+        federationTeamId={match.away_team.federation_team_id}
         players={awayOnCourt}
         hasLineup={awayOnCourtIds !== null}
         canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
@@ -679,6 +681,7 @@ const Roster = memo(function Roster({
   title,
   logoUrl,
   shortName,
+  federationTeamId,
   players,
   hasLineup,
   canSubstitute,
@@ -689,6 +692,7 @@ const Roster = memo(function Roster({
   title: string;
   logoUrl?: string | null;
   shortName?: string | null;
+  federationTeamId?: string | null;
   players: Player[];
   hasLineup: boolean;
   canSubstitute: boolean;
@@ -700,7 +704,13 @@ const Roster = memo(function Roster({
     <section>
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-          <TeamLogo name={title} shortName={shortName} logoUrl={logoUrl} size="sm" />
+          <TeamLogo
+            name={title}
+            shortName={shortName}
+            logoUrl={logoUrl}
+            federationTeamId={federationTeamId}
+            size="sm"
+          />
           <span className="truncate">{hasLineup ? `${title} · En pista` : title}</span>
         </h3>
         {canSubstitute ? (

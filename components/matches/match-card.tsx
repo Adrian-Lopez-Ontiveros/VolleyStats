@@ -3,14 +3,14 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { MapPin } from "lucide-react";
-import { MATCH_STATUS_META } from "@/lib/constants";
+import { FEDERATION_BADGE_CLASS, matchStatusMeta } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/team-logo";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
 export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTeams }) {
-  const status = MATCH_STATUS_META[match.status];
+  const status = matchStatusMeta(match.status);
 
   return (
     <Link href={`/partidos/${match.id}`}>
@@ -24,13 +24,11 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
             </p>
             <div className="flex flex-wrap justify-end gap-1">
               {match.is_federation ? (
-                <Badge variant="outline">Oficial FMV</Badge>
+                <Badge className={FEDERATION_BADGE_CLASS}>Oficial FMV</Badge>
               ) : (
-                <Badge variant="outline">Propio</Badge>
+                <Badge className="border-slate-300 bg-slate-100 text-slate-800">Propio</Badge>
               )}
-              <Badge className={status.className} variant="secondary">
-                {status.label}
-              </Badge>
+              <Badge className={status.className}>{status.label}</Badge>
             </div>
           </div>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">

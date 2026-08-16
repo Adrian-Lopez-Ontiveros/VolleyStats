@@ -117,21 +117,30 @@ export const MATCH_STATUS_META: Record<
 > = {
   scheduled: {
     label: "Próximo",
-    className: "bg-sky-100 text-sky-800",
+    className: "border-sky-700 bg-sky-600 text-white",
   },
   live: {
-    label: "En curso",
-    className: "bg-orange-100 text-orange-800",
+    label: "En vivo",
+    className: "border-orange-700 bg-orange-500 text-white",
   },
   finished: {
     label: "Finalizado",
-    className: "bg-emerald-100 text-emerald-800",
+    className: "border-slate-800 bg-slate-700 text-white",
   },
   cancelled: {
     label: "Cancelado",
-    className: "bg-slate-100 text-slate-600",
+    className: "border-slate-400 bg-slate-200 text-slate-900",
   },
 };
+
+export const FEDERATION_BADGE_CLASS = "border-violet-800 bg-violet-600 text-white";
+
+export function matchStatusMeta(status: string | null | undefined) {
+  if (status && status in MATCH_STATUS_META) {
+    return MATCH_STATUS_META[status as MatchStatus];
+  }
+  return MATCH_STATUS_META.scheduled;
+}
 
 export const TEAM_SELECT =
   "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id, created_at, updated_at" as const;

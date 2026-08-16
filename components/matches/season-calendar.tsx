@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { format, isSameDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { MATCH_STATUS_META } from "@/lib/constants";
+import { FEDERATION_BADGE_CLASS, matchStatusMeta } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams } from "@/lib/types";
 import { TeamLogo } from "@/components/teams/team-logo";
@@ -70,7 +70,7 @@ function groupByDay(matches: MatchWithTeams[]) {
 }
 
 function CalendarMatch({ match }: { match: MatchWithTeams }) {
-  const status = MATCH_STATUS_META[match.status];
+  const status = matchStatusMeta(match.status);
   const today = isSameDay(parseISO(match.scheduled_at), new Date());
 
   return (
@@ -88,11 +88,11 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
         </span>
         <span className="flex flex-wrap justify-end gap-1">
           {match.is_federation ? (
-            <span className="rounded-full border px-2 py-0.5 text-[10px] font-semibold">
-              Oficial
+            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", FEDERATION_BADGE_CLASS)}>
+              Oficial FMV
             </span>
           ) : null}
-          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
+          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", status.className)}>
             {status.label}
           </span>
         </span>

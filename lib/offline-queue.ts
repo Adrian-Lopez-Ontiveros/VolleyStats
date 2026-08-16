@@ -19,6 +19,10 @@ export type QueuedPoint = {
 };
 
 const listeners = new Set<() => void>();
+const EMPTY_QUEUE: QueuedPoint[] = [];
+
+let cachedRaw: string | null | undefined;
+let cachedQueue: QueuedPoint[] = EMPTY_QUEUE;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -30,17 +34,27 @@ export function subscribeQueue(listener: () => void) {
 }
 
 export function readQueue(): QueuedPoint[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_QUEUE;
   try {
     const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as QueuedPoint[]) : [];
+    if (raw === cachedRaw) return cachedQueue;
+    cachedRaw = raw;
+    const parsed = raw ? (JSON.parse(raw) as QueuedPoint[]) : EMPTY_QUEUE;
+    cachedQueue = Array.isArray(parsed) && parsed.length > 0 ? parsed : EMPTY_QUEUE;
+    return cachedQueue;
   } catch {
-    return [];
+    cachedRaw = undefined;
+    cachedQueue = EMPTY_QUEUE;
+    return EMPTY_QUEUE;
   }
 }
 
 function writeQueue(items: QueuedPoint[]) {
-  window.localStorage.setItem(KEY, JSON.stringify(items));
+  const next = items.length > 0 ? items : EMPTY_QUEUE;
+  const raw = JSON.stringify(next);
+  window.localStorage.setItem(KEY, raw);
+  cachedRaw = raw;
+  cachedQueue = next;
   emit();
 }
 

@@ -12,6 +12,7 @@ import {
   PLAYER_LINEUP_SELECT,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { unwrapOne } from "@/lib/utils";
 import type {
   MatchEventWithPlayer,
   MatchLineupEntry,
@@ -50,6 +51,12 @@ export default async function LiveMatchPage({
   if (!match) notFound();
 
   const typedMatch = match as MatchWithTeams;
+  const homeTeam = unwrapOne(typedMatch.home_team);
+  const awayTeam = unwrapOne(typedMatch.away_team);
+  if (!homeTeam || !awayTeam) notFound();
+  typedMatch.home_team = homeTeam;
+  typedMatch.away_team = awayTeam;
+  typedMatch.set_scores = typedMatch.set_scores ?? [];
   if (!canTrackLiveMatch(typedMatch)) {
     redirect(`/partidos/${id}`);
   }
