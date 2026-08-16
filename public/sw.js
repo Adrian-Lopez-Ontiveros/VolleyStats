@@ -1,4 +1,4 @@
-const CACHE_NAME = "fuelastats-v4";
+const CACHE_NAME = "fuelastats-v5";
 const OFFLINE_URL = "/offline";
 const PRECACHE = ["/", "/offline", "/partidos", "/liga", "/logo.png"];
 
@@ -54,6 +54,35 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
       return cached || fetched;
+    })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = { title: "FuenlaStats", body: "Hay una actualización del partido." };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    if (event.data) payload.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: payload.url || "/partidos",
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data || "/partidos";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const open = clients.find((client) => client.url.includes(self.location.origin));
+      if (open) return open.focus();
+      return self.clients.openWindow(url);
     })
   );
 });

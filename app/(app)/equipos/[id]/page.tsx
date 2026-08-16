@@ -9,6 +9,7 @@ import { TeamLogo } from "@/components/teams/team-logo";
 import { PlayerRankingTable } from "@/components/stats/player-ranking-table";
 import { StatSummary, WinRateCard } from "@/components/stats/stat-summary";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
@@ -167,7 +168,35 @@ export default async function TeamDetailPage({
           />
         }
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <ExportCsvButton
+              filename={`equipo-${typedTeam.short_name || typedTeam.name}`}
+              rows={[
+                ["Equipo", typedTeam.name],
+                ["PJ", teamTotals.played],
+                ["Ganados", teamTotals.won],
+                ["Perdidos", teamTotals.lost],
+                [],
+                ["Jugador", "Dorsal", "Puntos", "Ataques", "Bloqueos", "Aces", "Errores"],
+                ...typedPlayers.map((player) => [
+                  player.full_name,
+                  player.jersey_number,
+                  totalPlayerPoints(player),
+                  player.attack_points,
+                  player.block_points,
+                  player.aces,
+                  player.errors,
+                ]),
+                [],
+                ["Rotación", "PF", "PC", "Errores"],
+                ...teamRotations.map((row) => [
+                  row.rotation,
+                  row.pointsFor,
+                  row.pointsAgainst,
+                  row.errors,
+                ]),
+              ]}
+            />
             <Button asChild size="sm" variant="outline">
               <Link href="/comparar">Comparar</Link>
             </Button>

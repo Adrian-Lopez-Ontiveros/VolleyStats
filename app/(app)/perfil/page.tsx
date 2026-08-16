@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { AvatarUpload } from "@/components/profile/avatar-upload";
+import { NotificationToggle } from "@/components/profile/notification-toggle";
 import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
 import { AttendanceCard } from "@/components/stats/stat-summary";
 import { StatGrid } from "@/components/stats/stat-grid";
@@ -51,6 +52,15 @@ export default async function ProfilePage() {
     teamMatches = teamResult.count ?? 0;
   }
 
+  const { data: notifyPrefs } = await supabase
+    .from("profiles")
+    .select("notify_match_end")
+    .eq("id", user.id)
+    .maybeSingle();
+  const notifyEnabled = Boolean(
+    notifyPrefs && "notify_match_end" in notifyPrefs && notifyPrefs.notify_match_end
+  );
+
   return (
     <div className="space-y-6">
       <AvatarUpload
@@ -89,6 +99,8 @@ export default async function ProfilePage() {
           </p>
         </CardContent>
       </Card>
+
+      <NotificationToggle enabled={notifyEnabled} />
 
       {player ? (
         <>

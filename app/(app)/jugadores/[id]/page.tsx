@@ -8,9 +8,10 @@ import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel"
 import { StatGrid } from "@/components/stats/stat-grid";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
 import { requireViewer } from "@/lib/auth";
-import { PLAYER_ROSTER_SELECT, POSITION_LABELS, TEAM_SUMMARY_SELECT } from "@/lib/constants";
+import { PLAYER_ROSTER_SELECT, POINT_TYPE_META, POSITION_LABELS, TEAM_SUMMARY_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { formatJersey, initials } from "@/lib/utils";
 import type { PlayerWithTeam, PointType } from "@/lib/types";
@@ -66,7 +67,21 @@ export default async function PlayerDetailPage({
             title={`${formatJersey(typed.jersey_number)} ${typed.full_name}`}
             description={typed.team?.name ?? "Sin equipo"}
             action={
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <ExportCsvButton
+                  filename={`jugador-${typed.full_name.replace(/\s+/g, "-").toLowerCase()}`}
+                  rows={[
+                    ["Jugador", typed.full_name],
+                    ["Equipo", typed.team?.name ?? ""],
+                    [],
+                    ["Hora", "Partido", "Acción"],
+                    ...typedEvents.map((event) => [
+                      event.created_at,
+                      event.match_id,
+                      POINT_TYPE_META[event.point_type]?.label ?? event.point_type,
+                    ]),
+                  ]}
+                />
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/comparar?ids=${id}`}>Comparar</Link>
                 </Button>

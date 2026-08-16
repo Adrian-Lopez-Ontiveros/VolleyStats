@@ -13,11 +13,15 @@ import { PointHistory } from "@/components/matches/point-history";
 import { Scoreboard } from "@/components/matches/scoreboard";
 import { SubstitutionPanel } from "@/components/matches/substitution-panel";
 import { PageHeader } from "@/components/page-header";
+import { ActivityLog } from "@/components/matches/activity-log";
+import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
+import { getMatchActivity } from "@/lib/actions/activity";
 import { requireViewer } from "@/lib/auth";
 import { buildBoxScore } from "@/lib/box-score";
+import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
   MATCH_EVENT_SELECT,
@@ -106,6 +110,28 @@ export default async function MatchDetailPage({
       : "CV Fuenlabrada";
   const roster = (clubPlayers ?? []) as Player[];
   const onCourtIds = clubTeamId ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId) : null;
+  const activity = isAdmin ? await getMatchActivity(id) : [];
+  const exportRows = [
+    ["Partido", `${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`],
+    ["Fecha", typedMatch.scheduled_at],
+    ["Resultado", `${typedMatch.home_sets}-${typedMatch.away_sets}`],
+    [],
+    ["Hora", "Set", "Jugador", "Equipo", "Acción", "Punto para"],
+    ...typedEvents.map((event) => [
+      event.created_at,
+      event.set_number,
+      event.player?.full_name ?? "",
+      event.acting_team_id === typedMatch.home_team_id
+        ? typedMatch.home_team.name
+        : typedMatch.away_team.name,
+      POINT_TYPE_META[event.point_type]?.label ?? event.point_type,
+      event.scoring_team_id === typedMatch.home_team_id
+        ? typedMatch.home_team.name
+        : event.scoring_team_id
+          ? typedMatch.away_team.name
+          : "",
+    ]),
+  ];
 
   return (
     <>
@@ -114,6 +140,12 @@ export default async function MatchDetailPage({
         description={format(new Date(typedMatch.scheduled_at), "EEEE d MMMM yyyy · HH:mm", {
           locale: es,
         })}
+        action={
+          <ExportCsvButton
+            filename={`partido-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`}
+            rows={exportRows}
+          />
+        }
       />
       <div className="space-y-4">
         <Scoreboard match={typedMatch} />
@@ -186,6 +218,13 @@ export default async function MatchDetailPage({
             homeTeamId={typedMatch.home_team_id}
           />
         </section>
+
+        {isAdmin ? (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Historial de cambios</h2>
+            <ActivityLog entries={activity} />
+          </section>
+        ) : null}
       </div>
     </>
   );

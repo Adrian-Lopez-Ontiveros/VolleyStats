@@ -1,0 +1,118 @@
+"use client";
+
+import Link from "next/link";
+import { format, isSameDay, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+import { MATCH_STATUS_META } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import type { MatchWithTeams } from "@/lib/types";
+import { TeamLogo } from "@/components/teams/team-logo";
+
+export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
+  const groups = new Map<string, MatchWithTeams[]>();
+  const ordered = [...matches].sort(
+    (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+  );
+
+  for (const match of ordered) {
+    const key = format(parseISO(match.scheduled_at), "yyyy-MM");
+    const list = groups.get(key) ?? [];
+    list.push(match);
+    groups.set(key, list);
+  }
+
+  if (ordered.length === 0) return null;
+
+  return (
+    <div className="space-y-6">
+      {[...groups.entries()].map(([monthKey, monthMatches]) => {
+        const monthDate = parseISO(`${monthKey}-01`);
+        return (
+          <section key={monthKey} className="space-y-3">
+            <h2 className="text-base font-bold capitalize">
+              {format(monthDate, "LLLL yyyy", { locale: es })}
+            </h2>
+            <div className="space-y-2">
+              {groupByDay(monthMatches).map(([day, dayMatches]) => (
+                <div key={day} className="flex gap-3">
+                  <div className="flex w-12 shrink-0 flex-col items-center rounded-2xl bg-secondary py-2">
+                    <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                      {format(parseISO(day), "EEE", { locale: es })}
+                    </span>
+                    <span className="text-lg font-black tabular-nums">
+                      {format(parseISO(day), "d")}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {dayMatches.map((match) => (
+                      <CalendarMatch key={match.id} match={match} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function groupByDay(matches: MatchWithTeams[]) {
+  const map = new Map<string, MatchWithTeams[]>();
+  for (const match of matches) {
+    const key = format(parseISO(match.scheduled_at), "yyyy-MM-dd");
+    const list = map.get(key) ?? [];
+    list.push(match);
+    map.set(key, list);
+  }
+  return [...map.entries()];
+}
+
+function CalendarMatch({ match }: { match: MatchWithTeams }) {
+  const status = MATCH_STATUS_META[match.status];
+  const today = isSameDay(parseISO(match.scheduled_at), new Date());
+
+  return (
+    <Link
+      href={`/partidos/${match.id}`}
+      className={cn(
+        "block rounded-2xl border bg-card px-3 py-2.5",
+        match.status === "live" && "border-orange-300",
+        today && match.status === "scheduled" && "border-sky-300"
+      )}
+    >
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="text-xs font-medium tabular-nums text-muted-foreground">
+          {format(parseISO(match.scheduled_at), "HH:mm")}
+        </span>
+        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", status.className)}>
+          {status.label}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="flex min-w-0 items-center gap-1.5 font-semibold">
+          <TeamLogo
+            name={match.home_team.name}
+            shortName={match.home_team.short_name}
+            logoUrl={match.home_team.logo_url}
+            size="sm"
+          />
+          <span className="truncate">{match.home_team.short_name || match.home_team.name}</span>
+        </span>
+        <span className="shrink-0 font-black tabular-nums">
+          {match.home_sets}–{match.away_sets}
+        </span>
+        <span className="flex min-w-0 items-center justify-end gap-1.5 font-semibold">
+          <span className="truncate">{match.away_team.short_name || match.away_team.name}</span>
+          <TeamLogo
+            name={match.away_team.name}
+            shortName={match.away_team.short_name}
+            logoUrl={match.away_team.logo_url}
+            size="sm"
+          />
+        </span>
+      </div>
+    </Link>
+  );
+}

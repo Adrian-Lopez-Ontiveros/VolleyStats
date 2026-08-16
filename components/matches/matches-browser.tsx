@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Trophy } from "lucide-react";
+import { CalendarDays, List, Plus, Trophy } from "lucide-react";
+import { SeasonCalendar } from "@/components/matches/season-calendar";
 import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
 import { EmptyState } from "@/components/empty-state";
 import { MatchCard } from "@/components/matches/match-card";
@@ -52,6 +53,7 @@ export function MatchesBrowser({
   );
   const defaultTab = live.length ? "live" : upcoming.length ? "upcoming" : "all";
   const [tab, setTab] = useState(defaultTab);
+  const [view, setView] = useState<"list" | "calendar">("list");
 
   useEffect(() => {
     setTab(live.length ? "live" : upcoming.length ? "upcoming" : "all");
@@ -68,7 +70,7 @@ export function MatchesBrowser({
     <>
       <PageHeader
         title="Partidos"
-        description="Próximos, en curso y finalizados."
+        description="Lista o calendario de la temporada. Filtra por categoría arriba."
         action={
           isAdmin ? (
             <Button asChild variant="accent" size="sm">
@@ -92,6 +94,40 @@ export function MatchesBrowser({
         <QueryError message={`No se pudieron cargar los partidos: ${loadError}`} />
       ) : null}
 
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+        <button
+          type="button"
+          onClick={() => setView("list")}
+          className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold ${
+            view === "list" ? "bg-card shadow-sm" : "text-muted-foreground"
+          }`}
+        >
+          <List className="h-3.5 w-3.5" />
+          Lista
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("calendar")}
+          className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold ${
+            view === "calendar" ? "bg-card shadow-sm" : "text-muted-foreground"
+          }`}
+        >
+          <CalendarDays className="h-3.5 w-3.5" />
+          Calendario
+        </button>
+      </div>
+
+      {view === "calendar" ? (
+        filtered.length === 0 ? (
+          <EmptyState
+            icon={Trophy}
+            title="Sin partidos"
+            description="No hay partidos en esta categoría."
+          />
+        ) : (
+          <SeasonCalendar matches={filtered} />
+        )
+      ) : (
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="all">Todos</TabsTrigger>
@@ -103,6 +139,7 @@ export function MatchesBrowser({
           <MatchList matches={active.matches} empty={active.empty} />
         </TabsContent>
       </Tabs>
+      )}
     </>
   );
 }

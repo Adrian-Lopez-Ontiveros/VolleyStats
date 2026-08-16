@@ -8,8 +8,9 @@ export default function OfflinePage() {
       <WifiOff className="mb-4 h-10 w-10 text-accent" />
       <h1 className="text-2xl font-bold">Sin conexión</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Puedes consultar las pantallas que ya hayas visitado. Las acciones de
-        escritura requieren internet.
+        Puedes consultar las pantallas que ya hayas visitado. Si estabas
+        anotando un partido, las acciones se guardan en el dispositivo y se
+        envían al volver la conexión.
       </p>
       <Button asChild className="mt-6">
         <Link href="/partidos">Reintentar</Link>

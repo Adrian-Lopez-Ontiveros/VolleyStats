@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { logMatchActivity } from "@/lib/actions/activity";
+import { notifyMatchFinished } from "@/lib/actions/notifications";
 import { requireAdmin } from "@/lib/auth";
 import { currentOnCourtIds } from "@/lib/lineup";
 import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
@@ -273,6 +275,7 @@ export async function createMatch(formData: FormData) {
   );
   if (lineup.error) return { error: lineup.error };
 
+  await logMatchActivity(data.id, "Creó el partido", "Partido dado de alta");
   revalidatePath("/partidos");
   revalidatePath("/liga");
   redirect(`/partidos/${data.id}`);
@@ -354,6 +357,13 @@ export async function updateMatch(matchId: string, formData: FormData) {
   const lineup = await saveClubLineup(matchId, nextHome, nextAway, formData);
   if (lineup.error) return { error: lineup.error };
 
+  await logMatchActivity(
+    matchId,
+    "Editó el partido",
+    scores.update && Object.keys(scores.update).length > 0
+      ? "Actualizó datos, resultado o alineación"
+      : "Actualizó datos o alineación"
+  );
   revalidatePath("/partidos");
   revalidatePath("/liga");
   revalidatePath(`/partidos/${matchId}`);
@@ -396,6 +406,21 @@ export async function setMatchStatus(
     .eq("id", matchId);
 
   if (error) return { error: error.message };
+
+  await logMatchActivity(
+    matchId,
+    "Cambió el estado",
+    status === "finished"
+      ? "Finalizó el partido"
+      : status === "live"
+        ? "Inició el partido"
+        : status === "cancelled"
+          ? "Canceló el partido"
+          : "Volvió a programado"
+  );
+  if (status === "finished") {
+    await notifyMatchFinished(matchId);
+  }
 
   revalidatePath(`/partidos/${matchId}`);
   revalidatePath("/partidos");
@@ -498,6 +523,9 @@ export async function recordPoint(input: {
       awayTeamId: match.away_team_id,
       finished: nextStatus === "finished",
     });
+    if (nextStatus === "finished") {
+      await notifyMatchFinished(match.id);
+    }
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "No se pudo actualizar el marcador",
@@ -638,6 +666,7 @@ export async function addSubstitution(matchId: string, formData: FormData) {
 
   if (error) return { error: error.message };
 
+  await logMatchActivity(matchId, "Sustitución", "Registró un cambio de jugadores");
   revalidatePath(`/partidos/${matchId}`);
   revalidatePath(`/partidos/${matchId}/seguimiento`);
   return { success: true };
@@ -654,6 +683,7 @@ export async function deleteSubstitution(matchId: string, substitutionId: string
 
   if (error) return { error: error.message };
 
+  await logMatchActivity(matchId, "Sustitución", "Eliminó un cambio");
   revalidatePath(`/partidos/${matchId}`);
   revalidatePath(`/partidos/${matchId}/seguimiento`);
   return { success: true };

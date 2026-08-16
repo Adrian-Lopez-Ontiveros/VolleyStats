@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { StandingsTable } from "@/components/stats/standings-table";
+import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCategoryMeta, parseCategory, type TeamCategory } from "@/lib/categories";
@@ -63,14 +64,34 @@ export function LeagueBrowser({
         title="Clasificación"
         description={`${meta.label}. Tabla calculada con los partidos finalizados de esta liga.`}
         action={
-          isAdmin ? (
-            <Button asChild variant="accent" size="sm">
-              <Link href={`/liga/rival?categoria=${activeCategory}`}>
-                <Plus className="h-4 w-4" />
-                Rival
-              </Link>
-            </Button>
-          ) : null
+          <div className="flex flex-wrap justify-end gap-2">
+            <ExportCsvButton
+              filename={`clasificacion-${activeCategory}`}
+              rows={[
+                ["Pos", "Equipo", "Pts", "PJ", "G", "P", "SF", "SC", "PF", "PC"],
+                ...rows.map((row) => [
+                  row.position,
+                  row.team.name,
+                  row.leaguePoints,
+                  row.played,
+                  row.won,
+                  row.lost,
+                  row.setsFor,
+                  row.setsAgainst,
+                  row.pointsFor,
+                  row.pointsAgainst,
+                ]),
+              ]}
+            />
+            {isAdmin ? (
+              <Button asChild variant="accent" size="sm">
+                <Link href={`/liga/rival?categoria=${activeCategory}`}>
+                  <Plus className="h-4 w-4" />
+                  Rival
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
