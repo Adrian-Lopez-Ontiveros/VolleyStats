@@ -18,6 +18,10 @@ export const FEDERATION_LEAGUES: {
   },
 ];
 
+export function inferCategoryFromFmv(text: string): TeamCategory | null {
+  return matchFederationLeague(text);
+}
+
 export function matchFederationLeague(text: string): TeamCategory | null {
   const haystack = text
     .normalize("NFD")

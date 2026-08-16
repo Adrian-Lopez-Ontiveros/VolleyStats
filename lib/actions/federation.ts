@@ -2,23 +2,31 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { TEAM_CATEGORIES, type TeamCategory } from "@/lib/categories";
 import { createClient } from "@/lib/supabase/server";
 import {
-  applyActaToMatch,
-  fetchFmvActa,
-  fetchFmvGroups,
+  FMV_TEST_LEAGUE,
+  fetchFmvCompetitionTypes,
+  fetchFmvCompetitions,
+  fetchFmvDivisions,
+  fetchFmvGroupInfo,
+  fetchFmvGroupOptions,
   fetchFmvMatches,
+  fetchFmvPhases,
   fetchFmvTeams,
+  resolveFmvTestLeague,
+  type FmvCatalogPath,
   type FmvMatch,
+  type FmvOption,
   type FmvTeam,
 } from "@/lib/federation/client";
-import { isClubTeamName, matchFederationLeague } from "@/lib/federation/leagues";
+import { inferCategoryFromFmv, isClubTeamName } from "@/lib/federation/leagues";
 import { matchScoreFromSets } from "@/lib/match-result";
-import type { TeamCategory } from "@/lib/categories";
 import type { Team } from "@/lib/types";
 
 export type FederationSyncReport = {
   groups: number;
+  groupName: string;
   teamsCreated: number;
   teamsLinked: number;
   matchesCreated: number;
@@ -27,13 +35,15 @@ export type FederationSyncReport = {
   errors: string[];
 };
 
-export async function syncFederationLeagues(): Promise<
-  FederationSyncReport | { error: string }
-> {
-  await requireAdmin();
+export type FmvTestLeagueResult = FmvCatalogPath & {
+  label: string;
+  category: TeamCategory;
+};
 
-  const report: FederationSyncReport = {
+function emptyReport(groupName = ""): FederationSyncReport {
+  return {
     groups: 0,
+    groupName,
     teamsCreated: 0,
     teamsLinked: 0,
     matchesCreated: 0,
@@ -41,47 +51,113 @@ export async function syncFederationLeagues(): Promise<
     matchesSkipped: 0,
     errors: [],
   };
+}
+
+export async function listFmvCompetitionTypes(): Promise<FmvOption[] | { error: string }> {
+  await requireAdmin();
+  try {
+    return await fetchFmvCompetitionTypes();
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+export async function listFmvCompetitions(
+  typeId: string
+): Promise<FmvOption[] | { error: string }> {
+  await requireAdmin();
+  if (!typeId) return [];
+  try {
+    return await fetchFmvCompetitions(typeId);
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+export async function listFmvDivisions(
+  competitionId: string
+): Promise<FmvOption[] | { error: string }> {
+  await requireAdmin();
+  if (!competitionId) return [];
+  try {
+    return await fetchFmvDivisions(competitionId);
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+export async function listFmvPhases(
+  divisionId: string
+): Promise<FmvOption[] | { error: string }> {
+  await requireAdmin();
+  if (!divisionId) return [];
+  try {
+    return await fetchFmvPhases(divisionId);
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+export async function listFmvGroups(phaseId: string): Promise<FmvOption[] | { error: string }> {
+  await requireAdmin();
+  if (!phaseId) return [];
+  try {
+    return await fetchFmvGroupOptions(phaseId);
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+export async function getFmvTestLeague(): Promise<FmvTestLeagueResult | { error: string }> {
+  await requireAdmin();
+  try {
+    const path = await resolveFmvTestLeague();
+    const category =
+      inferCategoryFromFmv(
+        `${path.competitionName} ${path.divisionName} ${path.phaseName} ${path.groupName}`
+      ) ?? "cadete_femenino";
+    return {
+      ...path,
+      label: FMV_TEST_LEAGUE.label,
+      category,
+    };
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+export async function syncFederationGroup(
+  groupId: string,
+  category: TeamCategory
+): Promise<FederationSyncReport | { error: string }> {
+  await requireAdmin();
+
+  if (!groupId) return { error: "Selecciona un grupo de la federación." };
+  if (!TEAM_CATEGORIES.some((item) => item.id === category)) {
+    return { error: "La liga de destino no es válida." };
+  }
+
+  const report = emptyReport();
 
   try {
-    const groups = await fetchFmvGroups();
-    const relevant = groups.filter((group) =>
-      matchFederationLeague(`${group.competition} ${group.name}`)
-    );
-    report.groups = relevant.length;
+    const group = await fetchFmvGroupInfo(groupId);
+    report.groups = 1;
+    report.groupName = group.path;
 
-    for (const group of relevant) {
-      const category = matchFederationLeague(`${group.competition} ${group.name}`);
-      if (!category) continue;
-      try {
-        const teams = await fetchFmvTeams(group.id);
-        for (const team of teams) {
-          const result = await upsertFederationTeam(team, category);
-          if (result === "created") report.teamsCreated += 1;
-          if (result === "linked") report.teamsLinked += 1;
-        }
+    const teams = await fetchFmvTeams(group.id);
+    for (const team of teams) {
+      const result = await upsertFederationTeam(team, category);
+      if (result === "created") report.teamsCreated += 1;
+      if (result === "linked") report.teamsLinked += 1;
+    }
 
-        const matches = await fetchFmvMatches(group.id);
-        for (const raw of matches) {
-          let match = raw;
-          if (raw.finished || (raw.homeSets ?? 0) + (raw.awaySets ?? 0) > 0) {
-            match = applyActaToMatch(raw, await fetchFmvActa(raw.id));
-          }
-          const result = await upsertFederationMatch(match, category);
-          report[result] += 1;
-        }
-      } catch (error) {
-        report.errors.push(
-          `${group.name}: ${error instanceof Error ? error.message : "error de sincronización"}`
-        );
-      }
+    const matches = await fetchFmvMatches(group.id);
+    for (const match of matches) {
+      const result = await upsertFederationMatch(match, category);
+      report[result] += 1;
     }
   } catch (error) {
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "No se pudo leer la API de la Federación de Madrid.",
-    };
+    return { error: fmvError(error) };
   }
 
   revalidatePath("/partidos");
@@ -89,6 +165,14 @@ export async function syncFederationLeagues(): Promise<
   revalidatePath("/equipos");
   revalidatePath("/admin");
   return report;
+}
+
+export async function syncFederationLeagues(): Promise<
+  FederationSyncReport | { error: string }
+> {
+  const test = await getFmvTestLeague();
+  if ("error" in test) return test;
+  return syncFederationGroup(test.groupId, test.category);
 }
 
 async function upsertFederationTeam(team: FmvTeam, category: TeamCategory) {
@@ -230,4 +314,10 @@ async function findTeam(federationId: string, name: string, category: TeamCatego
     .ilike("name", name)
     .maybeSingle();
   return (data as Pick<Team, "id"> | null) ?? null;
+}
+
+function fmvError(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "No se pudo leer la API de la Federación de Madrid.";
 }
