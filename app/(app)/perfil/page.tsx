@@ -107,9 +107,11 @@ export default async function ProfilePage() {
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Evolución de rendimiento</h2>
-              <Button asChild size="sm" variant="outline">
-                <Link href={`/comparar?ids=${player.id}`}>Comparar</Link>
-              </Button>
+              {user.profile.role === "admin" && player.team_id ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/comparar?ids=${player.id}`}>Comparar</Link>
+                </Button>
+              ) : null}
             </div>
             <PlayerEvolutionPanel events={skillEvents} teamId={player.team_id} />
           </div>

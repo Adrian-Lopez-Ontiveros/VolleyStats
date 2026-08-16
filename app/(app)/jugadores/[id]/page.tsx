@@ -82,16 +82,18 @@ export default async function PlayerDetailPage({
                     ]),
                   ]}
                 />
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/comparar?ids=${id}`}>Comparar</Link>
-                </Button>
                 {isAdmin ? (
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/jugadores/${id}/editar`}>
-                      <Pencil className="h-4 w-4" />
-                      Editar
-                    </Link>
-                  </Button>
+                  <>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/comparar?ids=${id}`}>Comparar</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/jugadores/${id}/editar`}>
+                        <Pencil className="h-4 w-4" />
+                        Editar
+                      </Link>
+                    </Button>
+                  </>
                 ) : null}
               </div>
             }

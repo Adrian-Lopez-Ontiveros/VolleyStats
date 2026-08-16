@@ -197,16 +197,18 @@ export default async function TeamDetailPage({
                 ]),
               ]}
             />
-            <Button asChild size="sm" variant="outline">
-              <Link href="/comparar">Comparar</Link>
-            </Button>
             {isAdmin ? (
-              <Button asChild size="sm" variant="outline">
-                <Link href={`/equipos/${id}/editar`}>
-                  <Pencil className="h-4 w-4" />
-                  Editar
-                </Link>
-              </Button>
+              <>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/comparar?team=${id}`}>Comparar</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/equipos/${id}/editar`}>
+                    <Pencil className="h-4 w-4" />
+                    Editar
+                  </Link>
+                </Button>
+              </>
             ) : null}
           </div>
         }

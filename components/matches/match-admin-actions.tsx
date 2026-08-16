@@ -68,9 +68,6 @@ export function MatchAdminActions({
           Cancelar partido
         </Button>
       ) : null}
-      <Button asChild variant="outline">
-        <Link href={`/partidos/${matchId}/resumen`}>Box score</Link>
-      </Button>
       {status !== "cancelled" ? (
         <Button asChild variant="outline">
           <Link href={`/partidos/${matchId}/editar`}>Editar partido</Link>

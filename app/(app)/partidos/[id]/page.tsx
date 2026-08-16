@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { MapPin } from "lucide-react";
-import Link from "next/link";
 import { MatchAdminActions } from "@/components/matches/match-admin-actions";
 import { BoxScoreCard } from "@/components/matches/box-score";
+import { BoxScoreReveal } from "@/components/matches/box-score-reveal";
 import { ShareBoxScore } from "@/components/matches/share-box-score";
 import { MatchLineup } from "@/components/matches/match-lineup";
 import { MatchStatsPanel } from "@/components/stats/match-stats-panel";
@@ -15,7 +15,6 @@ import { SubstitutionPanel } from "@/components/matches/substitution-panel";
 import { PageHeader } from "@/components/page-header";
 import { ActivityLog } from "@/components/matches/activity-log";
 import { ExportCsvButton } from "@/components/export-csv-button";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { getMatchActivity } from "@/lib/actions/activity";
@@ -164,30 +163,17 @@ export default async function MatchDetailPage({
         ) : null}
 
         {typedEvents.length > 0 ? (
-          <div className="print-hidden">
-            <Button asChild variant="outline" className="w-full">
-              <Link href={`/partidos/${typedMatch.id}/resumen`}>Ver box score</Link>
-            </Button>
-          </div>
+          <BoxScoreReveal>
+            <ShareBoxScore
+              captureId="match-box-score"
+              fileName={`fuenlastats-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`}
+            />
+            <BoxScoreCard data={buildBoxScore(typedMatch, typedEvents)} captureId="match-box-score" />
+          </BoxScoreReveal>
         ) : null}
 
         {isAdmin ? (
           <MatchAdminActions matchId={typedMatch.id} status={typedMatch.status} />
-        ) : null}
-
-        {typedMatch.status === "finished" && typedEvents.length > 0 ? (
-          <section className="space-y-3">
-            <div className="print-hidden flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Box score</h2>
-            </div>
-            <div className="print-hidden">
-              <ShareBoxScore
-                captureId="match-box-score"
-                fileName={`fuenlastats-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`}
-              />
-            </div>
-            <BoxScoreCard data={buildBoxScore(typedMatch, typedEvents)} captureId="match-box-score" />
-          </section>
         ) : null}
 
         {clubTeamId ? (
