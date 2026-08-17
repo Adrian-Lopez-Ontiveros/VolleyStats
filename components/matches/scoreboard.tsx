@@ -18,12 +18,15 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
         <TeamBlock team={match.home_team} align="right" />
         <div className="text-center">
           <p className="text-4xl font-black tabular-nums tracking-tight">
-            {match.home_sets}
+            {match.home_points}
             <span className="mx-1 text-orange-300">–</span>
-            {match.away_sets}
+            {match.away_points}
           </p>
-          <p className="mt-1 text-sm font-semibold tabular-nums text-orange-200">
-            {match.home_points} · {match.away_points}
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-orange-200/90">
+            Sets{" "}
+            <span className="tabular-nums">
+              {match.home_sets}–{match.away_sets}
+            </span>
           </p>
         </div>
         <TeamBlock team={match.away_team} align="left" />
