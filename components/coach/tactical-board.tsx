@@ -247,7 +247,10 @@ export function TacticalBoard({
             key={piece.id}
             type="button"
             className={cn(
-              "absolute z-10 flex -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center",
+              "absolute z-10 -translate-x-1/2 -translate-y-1/2 touch-none appearance-none border-0 bg-transparent p-0 leading-none",
+              piece.kind === "ball"
+                ? "flex h-10 w-10 items-center justify-center sm:h-11 sm:w-11"
+                : "flex items-center justify-center",
               selectedId === piece.id && "z-20"
             )}
             style={{ left: `${piece.x * 100}%`, top: `${piece.y * 100}%` }}
@@ -259,11 +262,17 @@ export function TacticalBoard({
             {piece.kind === "ball" ? (
               <span
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-200 bg-amber-400 text-[10px] font-black text-amber-950 shadow-md sm:h-9 sm:w-9",
-                  selectedId === piece.id && "ring-2 ring-white ring-offset-2 ring-offset-[#8b5a2b]"
+                  "block h-full w-full overflow-hidden rounded-full shadow-md",
+                  selectedId === piece.id && "ring-2 ring-white"
                 )}
               >
-                ●
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/icons/volleyball.png"
+                  alt=""
+                  draggable={false}
+                  className="pointer-events-none h-full w-full select-none object-cover"
+                />
               </span>
             ) : (
               <span className="flex flex-col items-center">
@@ -358,7 +367,8 @@ export function TacticalBoard({
           <span className="h-3 w-3 rounded-full bg-rose-600" /> Rival
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-3 w-3 rounded-full bg-amber-400" /> Balón
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/volleyball.png" alt="" className="h-4 w-4 object-contain" /> Balón
         </span>
         {selected?.kind === "player" ? (
           <span className="font-medium text-foreground">Seleccionado: {selected.name}</span>
@@ -529,9 +539,6 @@ function CourtLines() {
       <line x1="6" y1="93.3" x2="84" y2="93.3" stroke="#f7ecd4" strokeWidth="1.15" strokeDasharray="3 2" />
       <text x="45" y="16" textAnchor="middle" fill="#5c3310" fillOpacity="0.55" fontSize="5" fontWeight="700">
         RIVAL
-      </text>
-      <text x="45" y="69.2" textAnchor="middle" fill="#f7ecd4" fontSize="4.5" fontWeight="800">
-        RED
       </text>
       <text x="45" y="132" textAnchor="middle" fill="#5c3310" fillOpacity="0.55" fontSize="5" fontWeight="700">
         NOSOTROS
