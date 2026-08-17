@@ -116,7 +116,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && (pathname === "/login" || pathname === "/registro")) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/partidos";
+    redirectUrl.pathname = "/noticias";
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
@@ -135,7 +135,7 @@ export async function updateSession(request: NextRequest) {
 
     if (!allowed) {
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/partidos";
+      redirectUrl.pathname = "/noticias";
       redirectUrl.search = "";
       return NextResponse.redirect(redirectUrl);
     }

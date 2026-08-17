@@ -10,7 +10,7 @@ export default function NotFound() {
         Ese enlace no existe o ya no está disponible.
       </p>
       <Button asChild className="mt-6">
-        <Link href="/partidos">Volver a partidos</Link>
+        <Link href="/noticias">Volver al inicio</Link>
       </Button>
     </main>
   );

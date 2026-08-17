@@ -9,8 +9,8 @@ import { APP_NAME } from "@/lib/constants";
 
 export default async function HomePage() {
   const session = await getSessionUser();
-  if (session) redirect("/partidos");
-  if (await isSpectatorGuest()) redirect("/partidos");
+  if (session) redirect("/noticias");
+  if (await isSpectatorGuest()) redirect("/noticias");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-5 py-10">

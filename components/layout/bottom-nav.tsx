@@ -6,10 +6,10 @@ import { CircleDot, ClipboardList, Medal, Newspaper, Shield, Trophy, UserRound }
 import { cn } from "@/lib/utils";
 
 const baseItems = [
+  { href: "/noticias", label: "Noticias", icon: Newspaper },
   { href: "/partidos", label: "Partidos", icon: Trophy },
   { href: "/liga", label: "Liga", icon: Medal },
   { href: "/equipos", label: "Equipos", icon: CircleDot },
-  { href: "/noticias", label: "Noticias", icon: Newspaper },
 ];
 
 export function BottomNav({

@@ -13,7 +13,7 @@ export default function OfflinePage() {
         envían al volver la conexión.
       </p>
       <Button asChild className="mt-6">
-        <Link href="/partidos">Reintentar</Link>
+        <Link href="/noticias">Reintentar</Link>
       </Button>
     </main>
   );
