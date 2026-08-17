@@ -12,6 +12,7 @@ import { MatchStatsPanel } from "@/components/stats/match-stats-panel";
 import { PointHistory } from "@/components/matches/point-history";
 import { Scoreboard } from "@/components/matches/scoreboard";
 import { SubstitutionPanel } from "@/components/matches/substitution-panel";
+import { BackButton } from "@/components/back-button";
 import { PageHeader } from "@/components/page-header";
 import { ActivityLog } from "@/components/matches/activity-log";
 import { ExportCsvButton } from "@/components/export-csv-button";
@@ -135,6 +136,9 @@ export default async function MatchDetailPage({
 
   return (
     <>
+      <div className="mb-3">
+        <BackButton href="/partidos" />
+      </div>
       <PageHeader
         title={`${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`}
         description={format(new Date(typedMatch.scheduled_at), "EEEE d MMMM yyyy · HH:mm", {

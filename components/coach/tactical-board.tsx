@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, RotateCcw, Save, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Maximize2, Plus, RotateCcw, Save, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { deleteTacticalPlay, saveTacticalPlay } from "@/lib/actions/plays";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,22 @@ export function TacticalBoard({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [picker, setPicker] = useState<BoardSide | null>(null);
   const [pending, setPending] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const dragRef = useRef<{ id: string; pointerId: number } | null>(null);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [fullscreen]);
 
   const clubTeams = teams.filter((team) => team.is_club_team);
   const teamOptions = clubTeams.length > 0 ? clubTeams : teams;
@@ -214,6 +229,65 @@ export function TacticalBoard({
 
   const selected = board.pieces.find((piece) => piece.id === selectedId) ?? null;
 
+  const court = (
+      <div
+        ref={courtRef}
+        className={cn(
+          "relative touch-none select-none overflow-hidden border shadow-sm",
+          fullscreen
+            ? "h-full min-h-0 w-full rounded-xl border-[#7a451c]/50"
+            : "mx-auto w-full max-w-md rounded-2xl border-[#7a451c]/40"
+        )}
+        style={fullscreen ? undefined : { aspectRatio: "9 / 14", maxHeight: "65dvh" }}
+        onPointerDown={() => setSelectedId(null)}
+      >
+        <CourtLines />
+        {board.pieces.map((piece) => (
+          <button
+            key={piece.id}
+            type="button"
+            className={cn(
+              "absolute z-10 flex -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center",
+              selectedId === piece.id && "z-20"
+            )}
+            style={{ left: `${piece.x * 100}%`, top: `${piece.y * 100}%` }}
+            onPointerDown={(event) => onPiecePointerDown(event, piece.id)}
+            onPointerMove={onPiecePointerMove}
+            onPointerUp={onPiecePointerUp}
+            onPointerCancel={onPiecePointerUp}
+          >
+            {piece.kind === "ball" ? (
+              <span
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-200 bg-amber-400 text-[10px] font-black text-amber-950 shadow-md sm:h-9 sm:w-9",
+                  selectedId === piece.id && "ring-2 ring-white ring-offset-2 ring-offset-[#8b5a2b]"
+                )}
+              >
+                ●
+              </span>
+            ) : (
+              <span className="flex flex-col items-center">
+                <span
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full border-2 text-xs font-black tabular-nums shadow-md sm:h-11 sm:w-11 sm:text-sm",
+                    piece.team === "us"
+                      ? "border-white/80 bg-primary text-primary-foreground"
+                      : "border-white/80 bg-rose-600 text-white",
+                    selectedId === piece.id && "ring-2 ring-white ring-offset-2 ring-offset-[#8b5a2b]"
+                  )}
+                >
+                  {piece.jersey ?? piece.name.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="mt-0.5 max-w-16 truncate text-[9px] font-semibold text-white drop-shadow">
+                  {piece.name}
+                </span>
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+  );
+
   return (
     <div className="space-y-4">
       {plays.length > 0 ? (
@@ -247,57 +321,34 @@ export function TacticalBoard({
         </div>
       ) : null}
 
-      <div
-        ref={courtRef}
-        className="relative mx-auto w-full max-w-md touch-none select-none overflow-hidden rounded-2xl border border-emerald-950/30 bg-emerald-950 shadow-sm"
-        style={{ aspectRatio: "9 / 14", maxHeight: "65dvh" }}
-        onPointerDown={() => setSelectedId(null)}
-      >
-        <CourtLines />
-        {board.pieces.map((piece) => (
-          <button
-            key={piece.id}
-            type="button"
-            className={cn(
-              "absolute z-10 flex -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center",
-              selectedId === piece.id && "z-20"
-            )}
-            style={{ left: `${piece.x * 100}%`, top: `${piece.y * 100}%` }}
-            onPointerDown={(event) => onPiecePointerDown(event, piece.id)}
-            onPointerMove={onPiecePointerMove}
-            onPointerUp={onPiecePointerUp}
-            onPointerCancel={onPiecePointerUp}
-          >
-            {piece.kind === "ball" ? (
-              <span
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-200 bg-amber-400 text-[10px] font-black text-amber-950 shadow-md sm:h-9 sm:w-9",
-                  selectedId === piece.id && "ring-2 ring-white ring-offset-2 ring-offset-emerald-800"
-                )}
-              >
-                ●
-              </span>
-            ) : (
-              <span className="flex flex-col items-center">
-                <span
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border-2 text-xs font-black tabular-nums shadow-md sm:h-11 sm:w-11 sm:text-sm",
-                    piece.team === "us"
-                      ? "border-white/80 bg-primary text-primary-foreground"
-                      : "border-white/80 bg-rose-600 text-white",
-                    selectedId === piece.id && "ring-2 ring-white ring-offset-2 ring-offset-emerald-800"
-                  )}
-                >
-                  {piece.jersey ?? piece.name.slice(0, 2).toUpperCase()}
-                </span>
-                <span className="mt-0.5 max-w-16 truncate text-[9px] font-semibold text-white drop-shadow">
-                  {piece.name}
-                </span>
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {fullscreen ? (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#1f140c] pt-safe">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="bg-white text-foreground hover:bg-white/90"
+              onClick={() => setFullscreen(false)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+            <p className="truncate text-sm font-semibold text-amber-50">Pizarra táctica</p>
+          </div>
+          <div className="min-h-0 flex-1 px-3 pb-3">{court}</div>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-end">
+            <Button type="button" size="sm" variant="outline" onClick={() => setFullscreen(true)}>
+              <Maximize2 className="h-4 w-4" />
+              Pantalla completa
+            </Button>
+          </div>
+          {court}
+        </>
+      )}
 
       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
@@ -447,23 +498,42 @@ function CourtLines() {
   return (
     <svg viewBox="0 0 90 140" className="absolute inset-0 h-full w-full" aria-hidden>
       <defs>
-        <linearGradient id="court-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#047857" />
-          <stop offset="100%" stopColor="#065f46" />
+        <linearGradient id="court-wood" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#e2a45d" />
+          <stop offset="45%" stopColor="#c47b36" />
+          <stop offset="100%" stopColor="#a86228" />
         </linearGradient>
+        <pattern id="court-grain" width="90" height="10" patternUnits="userSpaceOnUse">
+          <path
+            d="M0 2.2 C 18 0.6 36 3.4 54 1.8 S 80 3 90 2.4"
+            fill="none"
+            stroke="#8a4d1d"
+            strokeOpacity="0.22"
+            strokeWidth="0.7"
+          />
+          <path
+            d="M0 6.8 C 16 8.4 38 5.6 58 7.4 S 78 6.2 90 7"
+            fill="none"
+            stroke="#f0c48a"
+            strokeOpacity="0.16"
+            strokeWidth="0.55"
+          />
+        </pattern>
       </defs>
-      <rect width="90" height="140" fill="url(#court-fill)" />
-      <rect x="6" y="6" width="78" height="128" fill="none" stroke="white" strokeWidth="1.6" />
-      <line x1="6" y1="70" x2="84" y2="70" stroke="#e4e4e7" strokeWidth="3" />
-      <line x1="6" y1="46.7" x2="84" y2="46.7" stroke="white" strokeWidth="1.2" strokeDasharray="3 2" />
-      <line x1="6" y1="93.3" x2="84" y2="93.3" stroke="white" strokeWidth="1.2" strokeDasharray="3 2" />
-      <text x="45" y="16" textAnchor="middle" fill="white" fillOpacity="0.45" fontSize="5" fontWeight="700">
+      <rect width="90" height="140" fill="url(#court-wood)" />
+      <rect width="90" height="140" fill="url(#court-grain)" />
+      <rect x="6" y="6" width="78" height="128" fill="none" stroke="#f7ecd4" strokeWidth="1.6" />
+      <rect x="6" y="68.2" width="78" height="3.6" fill="#6b3a16" fillOpacity="0.55" />
+      <line x1="6" y1="70" x2="84" y2="70" stroke="#f7ecd4" strokeWidth="2.2" />
+      <line x1="6" y1="46.7" x2="84" y2="46.7" stroke="#f7ecd4" strokeWidth="1.15" strokeDasharray="3 2" />
+      <line x1="6" y1="93.3" x2="84" y2="93.3" stroke="#f7ecd4" strokeWidth="1.15" strokeDasharray="3 2" />
+      <text x="45" y="16" textAnchor="middle" fill="#5c3310" fillOpacity="0.55" fontSize="5" fontWeight="700">
         RIVAL
       </text>
-      <text x="45" y="69" textAnchor="middle" fill="#fafafa" fontSize="4.5" fontWeight="800">
+      <text x="45" y="69.2" textAnchor="middle" fill="#f7ecd4" fontSize="4.5" fontWeight="800">
         RED
       </text>
-      <text x="45" y="132" textAnchor="middle" fill="white" fillOpacity="0.45" fontSize="5" fontWeight="700">
+      <text x="45" y="132" textAnchor="middle" fill="#5c3310" fillOpacity="0.55" fontSize="5" fontWeight="700">
         NOSOTROS
       </text>
     </svg>

@@ -116,7 +116,7 @@ export function VolleyballCourt({
 
   return (
     <div className="space-y-2">
-      <div className="overflow-hidden rounded-2xl border border-emerald-950/20 bg-emerald-950 shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[#7a451c]/40 bg-[#a86228] shadow-sm">
         <div className="flex items-center justify-center gap-2 bg-zinc-800 px-3 py-1.5">
           <span className="h-1 flex-1 rounded-full bg-zinc-500/80" />
           <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-200">
@@ -125,8 +125,9 @@ export function VolleyballCourt({
           <span className="h-1 flex-1 rounded-full bg-zinc-500/80" />
         </div>
 
-        <div className="relative bg-gradient-to-b from-emerald-700 to-emerald-800 p-2 sm:p-2.5">
-          <div className="rounded-lg border-2 border-white/85">
+        <div className="relative p-2 sm:p-2.5">
+          <LineupCourtWood />
+          <div className="relative rounded-lg border-2 border-[#f7ecd4]/85">
             {COURT_LAYOUT.map((row, rowIndex) => (
               <div key={row.join("-")}>
                 {rowIndex === 1 ? (
@@ -168,7 +169,7 @@ export function VolleyballCourt({
               </div>
             ))}
           </div>
-          <p className="mt-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-white/55">
+          <p className="relative mt-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-[#f7ecd4]/80">
             Fondo · posición 1 saque
           </p>
         </div>
@@ -199,5 +200,37 @@ export function VolleyballCourt({
         </span>
       </LiberoTag>
     </div>
+  );
+}
+
+function LineupCourtWood() {
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
+      <defs>
+        <linearGradient id="lineup-court-wood" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#e2a45d" />
+          <stop offset="45%" stopColor="#c47b36" />
+          <stop offset="100%" stopColor="#a86228" />
+        </linearGradient>
+        <pattern id="lineup-court-grain" width="90" height="10" patternUnits="userSpaceOnUse">
+          <path
+            d="M0 2.2 C 18 0.6 36 3.4 54 1.8 S 80 3 90 2.4"
+            fill="none"
+            stroke="#8a4d1d"
+            strokeOpacity="0.22"
+            strokeWidth="0.7"
+          />
+          <path
+            d="M0 6.8 C 16 8.4 38 5.6 58 7.4 S 78 6.2 90 7"
+            fill="none"
+            stroke="#f0c48a"
+            strokeOpacity="0.16"
+            strokeWidth="0.55"
+          />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#lineup-court-wood)" />
+      <rect width="100%" height="100%" fill="url(#lineup-court-grain)" />
+    </svg>
   );
 }

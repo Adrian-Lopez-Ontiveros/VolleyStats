@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { format, isSameDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { FEDERATION_BADGE_CLASS, matchStatusMeta } from "@/lib/constants";
+import { matchStatusMeta } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams } from "@/lib/types";
 import { TeamLogo } from "@/components/teams/team-logo";
@@ -88,16 +88,24 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
         </span>
         <span className="flex flex-wrap justify-end gap-1">
           {match.is_federation ? (
-            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", FEDERATION_BADGE_CLASS)}>
+            <span className="rounded-full border border-violet-800 bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white">
               Oficial FMV
             </span>
           ) : null}
-          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", status.className)}>
+          <span
+            className={cn(
+              "rounded-full border px-2 py-0.5 text-[10px] font-semibold text-white",
+              match.status === "live" && "border-orange-800 bg-orange-500",
+              match.status === "scheduled" && "border-sky-800 bg-sky-600",
+              match.status === "finished" && "border-slate-800 bg-slate-700",
+              match.status === "cancelled" && "border-slate-400 bg-slate-200 text-slate-900"
+            )}
+          >
             {status.label}
           </span>
         </span>
       </div>
-      <div className="flex items-center justify-between gap-2 text-sm">
+      <div className="grid grid-cols-[minmax(0,1fr)_3.25rem_minmax(0,1fr)] items-center gap-1.5 text-sm">
         <span className="flex min-w-0 items-center gap-1.5 font-semibold">
           <TeamLogo
             name={match.home_team.name}
@@ -108,7 +116,7 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
           />
           <span className="line-clamp-2 leading-tight">{match.home_team.name}</span>
         </span>
-        <span className="shrink-0 font-black tabular-nums">
+        <span className="text-center font-black tabular-nums leading-none">
           {match.home_sets}–{match.away_sets}
         </span>
         <span className="flex min-w-0 items-center justify-end gap-1.5 font-semibold">
