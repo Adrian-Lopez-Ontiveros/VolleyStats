@@ -210,15 +210,20 @@ export function PlayerCardVisual({
                 </p>
               </div>
 
-              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 px-1 text-[11px] font-bold uppercase tracking-wide">
+              <dl className="mx-auto mt-2 grid w-max grid-cols-2 gap-x-5 gap-y-[3px] text-[11px] font-bold uppercase">
                 {CARD_STAT_KEYS.map((key) => {
                   const value = data.stats?.[key];
                   return (
-                    <div key={key} className="flex items-baseline gap-1.5">
-                      <dt className="text-white/55">{CARD_STAT_META[key].short}</dt>
+                    <div
+                      key={key}
+                      className="grid grid-cols-[2.35rem_1.45rem] items-center justify-items-center"
+                    >
+                      <dt className="tracking-wider text-white/55">
+                        {CARD_STAT_META[key].short}
+                      </dt>
                       <dd
                         className={cn(
-                          "[font-variant-numeric:tabular-nums]",
+                          "tracking-normal [font-variant-numeric:tabular-nums]",
                           value == null ? "text-white/40" : statValueTone(value, true)
                         )}
                       >
