@@ -75,10 +75,17 @@ export type PlayerCardStats = {
   defense: number;
 };
 
+export type CardNameMode = "last" | "full" | "custom";
+
 export type PlayerCard = {
   id: string;
   player_id: string;
   photo_url: string | null;
+  photo_focus_x: number | null;
+  photo_focus_y: number | null;
+  photo_zoom: number | null;
+  name_mode: CardNameMode | null;
+  display_name: string | null;
   position: PlayerPosition | null;
   rating_override: number | null;
   created_at: string;

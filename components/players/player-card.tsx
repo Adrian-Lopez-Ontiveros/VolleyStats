@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { cn, initials } from "@/lib/utils";
 import { POSITION_LABELS } from "@/lib/constants";
 import {
   CARD_STAT_KEYS,
   CARD_STAT_META,
+  DEFAULT_PHOTO_FRAME,
   POSITION_SHORT,
   calculateCardRating,
-  cardDisplayName,
   cardPosition,
   cardTier,
+  clampPhotoFocus,
+  resolveCardName,
   statValueTone,
+  type CardPhotoFrame,
 } from "@/lib/player-card";
-import type { PlayerCardStats, PlayerPosition } from "@/lib/types";
+import type { CardNameMode, PlayerCardStats, PlayerPosition } from "@/lib/types";
 
 export type PlayerCardView = {
   fullName: string;
@@ -21,6 +24,9 @@ export type PlayerCardView = {
   rosterPosition?: PlayerPosition | null;
   cardPosition?: PlayerPosition | null;
   photoUrl?: string | null;
+  photoFrame?: CardPhotoFrame;
+  nameMode?: CardNameMode | null;
+  displayName?: string | null;
   teamName?: string | null;
   teamLogoUrl?: string | null;
   stats?: PlayerCardStats | null;
@@ -38,13 +44,24 @@ export function PlayerCardVisual({
   data,
   captureId,
   className,
+  onPhotoFrameChange,
 }: {
   data: PlayerCardView;
   captureId?: string;
   className?: string;
+  onPhotoFrameChange?: (frame: CardPhotoFrame) => void;
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const photoBoxRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    id: number;
+    x: number;
+    y: number;
+    fx: number;
+    fy: number;
+  } | null>(null);
 
   useEffect(() => {
     setPhotoFailed(false);
@@ -62,10 +79,47 @@ export function PlayerCardVisual({
     ? calculateCardRating(data.stats, position, data.ratingOverride)
     : null;
   const tier = cardTier(rating);
-  const lastName = cardDisplayName(data.fullName);
+  const shownName = resolveCardName(data.fullName, data.nameMode, data.displayName);
   const photo = !photoFailed && data.photoUrl ? data.photoUrl : null;
   const logo = !logoFailed && data.teamLogoUrl ? data.teamLogoUrl : null;
   const mark = initials(data.teamName || data.fullName).slice(0, 2);
+  const frame = data.photoFrame ?? DEFAULT_PHOTO_FRAME;
+  const canDrag = Boolean(onPhotoFrameChange && photo);
+
+  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (!canDrag || !onPhotoFrameChange) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      fx: frame.x,
+      fy: frame.y,
+    };
+    setDragging(true);
+  }
+
+  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current || dragRef.current.id !== event.pointerId || !onPhotoFrameChange) {
+      return;
+    }
+    const box = photoBoxRef.current?.getBoundingClientRect();
+    if (!box?.width || !box.height) return;
+    const dx = ((event.clientX - dragRef.current.x) / box.width) * 100;
+    const dy = ((event.clientY - dragRef.current.y) / box.height) * 100;
+    onPhotoFrameChange({
+      ...frame,
+      x: clampPhotoFocus(dragRef.current.fx - dx),
+      y: clampPhotoFocus(dragRef.current.fy - dy),
+    });
+  }
+
+  function onPointerUp(event: PointerEvent<HTMLDivElement>) {
+    if (dragRef.current?.id !== event.pointerId) return;
+    dragRef.current = null;
+    setDragging(false);
+  }
 
   return (
     <article
@@ -77,14 +131,31 @@ export function PlayerCardVisual({
         <div className="player-card-surface relative overflow-hidden rounded-[1.2rem] text-white">
           <div className="player-card-shine pointer-events-none absolute inset-0 z-20" />
           <div className="relative aspect-[5/7]">
-            <div className="absolute inset-x-0 top-0 bottom-[7.6rem]">
+            <div
+              ref={photoBoxRef}
+              className={cn(
+                "absolute inset-x-0 top-0 bottom-[7.6rem] overflow-hidden",
+                canDrag && (dragging ? "cursor-grabbing" : "cursor-grab")
+              )}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              style={canDrag ? { touchAction: "none" } : undefined}
+            >
               {photo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={photo}
                   alt={data.fullName}
+                  draggable={false}
                   crossOrigin="anonymous"
-                  className="h-full w-full object-cover object-top"
+                  className="h-full w-full select-none object-cover"
+                  style={{
+                    objectPosition: `${frame.x}% ${frame.y}%`,
+                    transform: frame.zoom > 1 ? `scale(${frame.zoom})` : undefined,
+                    transformOrigin: `${frame.x}% ${frame.y}%`,
+                  }}
                   onError={() => setPhotoFailed(true)}
                 />
               ) : (
@@ -97,7 +168,7 @@ export function PlayerCardVisual({
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#0b1f3a] to-transparent" />
             </div>
 
-            <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 pt-3">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 pt-3">
               <div className="min-w-[4.5rem] rounded-xl bg-[#0b1f3a]/80 px-2 py-1.5">
                 <p className="font-black leading-none tracking-tight [font-variant-numeric:tabular-nums]">
                   <span className="text-[2.6rem]">{rating ?? "—"}</span>
@@ -127,16 +198,23 @@ export function PlayerCardVisual({
 
             <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3 pt-2">
               <div className="rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-2 py-1.5 text-center shadow-lg">
-                <p className="truncate text-[13px] font-black uppercase tracking-[0.16em] text-white">
-                  {lastName}
+                <p
+                  className={cn(
+                    "truncate font-black uppercase text-white",
+                    shownName.length > 16
+                      ? "text-[11px] tracking-[0.08em]"
+                      : "text-[13px] tracking-[0.16em]"
+                  )}
+                >
+                  {shownName}
                 </p>
               </div>
 
-              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 px-1 text-[11px] font-bold uppercase tracking-wide">
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 px-1 text-[11px] font-bold uppercase tracking-wide">
                 {CARD_STAT_KEYS.map((key) => {
                   const value = data.stats?.[key];
                   return (
-                    <div key={key} className="flex items-baseline justify-between gap-2">
+                    <div key={key} className="flex items-baseline gap-1.5">
                       <dt className="text-white/55">{CARD_STAT_META[key].short}</dt>
                       <dd
                         className={cn(

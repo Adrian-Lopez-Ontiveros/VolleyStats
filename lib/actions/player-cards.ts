@@ -3,14 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
-import { canManagePlayerCard, clampCardStat } from "@/lib/player-card";
+import {
+  canManagePlayerCard,
+  clampCardStat,
+  clampPhotoFocus,
+  clampPhotoZoom,
+} from "@/lib/player-card";
 import { createClient } from "@/lib/supabase/server";
-import type { PlayerPosition } from "@/lib/types";
+import type { CardNameMode, PlayerPosition } from "@/lib/types";
 
 const statField = z.coerce.number().int().min(1).max(99);
 
 const cardSchema = z.object({
   photoUrl: z.string().url().optional().or(z.literal("")),
+  photoFocusX: z.coerce.number().min(0).max(100),
+  photoFocusY: z.coerce.number().min(0).max(100),
+  photoZoom: z.coerce.number().min(1).max(2.5),
+  nameMode: z.enum(["last", "full", "custom"]),
+  displayName: z.string().max(40).optional().or(z.literal("")),
   position: z
     .enum(["opuesto", "central", "receptor", "colocador", "libero", "universal", ""])
     .optional(),
@@ -31,6 +41,11 @@ export async function upsertPlayerCard(playerId: string, formData: FormData) {
 
   const parsed = cardSchema.safeParse({
     photoUrl: formData.get("photoUrl") ?? "",
+    photoFocusX: formData.get("photoFocusX") ?? 50,
+    photoFocusY: formData.get("photoFocusY") ?? 18,
+    photoZoom: formData.get("photoZoom") ?? 1,
+    nameMode: formData.get("nameMode") ?? "last",
+    displayName: formData.get("displayName") ?? "",
     position: formData.get("position") ?? "",
     jump: formData.get("jump"),
     attack: formData.get("attack"),
@@ -68,6 +83,12 @@ export async function upsertPlayerCard(playerId: string, formData: FormData) {
     {
       player_id: playerId,
       photo_url: parsed.data.photoUrl || null,
+      photo_focus_x: clampPhotoFocus(parsed.data.photoFocusX),
+      photo_focus_y: clampPhotoFocus(parsed.data.photoFocusY),
+      photo_zoom: clampPhotoZoom(parsed.data.photoZoom),
+      name_mode: parsed.data.nameMode as CardNameMode,
+      display_name:
+        parsed.data.nameMode === "custom" ? parsed.data.displayName?.trim() || null : null,
       position: (parsed.data.position || null) as PlayerPosition | null,
       jump: parsed.data.jump,
       attack: parsed.data.attack,
@@ -81,10 +102,12 @@ export async function upsertPlayerCard(playerId: string, formData: FormData) {
   );
 
   if (error) {
-    if (error.message.toLowerCase().includes("player_cards")) {
+    if (
+      /player_cards|photo_focus|photo_zoom|name_mode|display_name/i.test(error.message)
+    ) {
       return {
         error:
-          "No se pudo guardar. Ejecuta la migración supabase/migrations/015_player_cards.sql en el SQL Editor de Supabase.",
+          "No se pudo guardar. Ejecuta las migraciones 015 y 016 de player_cards en el SQL Editor de Supabase.",
       };
     }
     return { error: error.message };

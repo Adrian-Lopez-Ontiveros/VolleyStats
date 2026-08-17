@@ -80,6 +80,7 @@ Si el proyecto ya estaba creado, ejecuta también:
 
 - `supabase/migrations/014_coach_tools.sql` para el rol `coach` y las tablas de entrenador
 - `supabase/migrations/015_player_cards.sql` para los cromos de jugador
+- `supabase/migrations/016_player_card_framing.sql` para el reencuadre de foto y el nombre de la carta
 
 ### Convertirte en admin a mano
 

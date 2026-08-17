@@ -126,7 +126,7 @@ export const POSITION_LABELS: Record<PlayerPosition, string> = {
 };
 
 export const PLAYER_CARD_SELECT =
-  "id, player_id, photo_url, position, jump, attack, block, serve, reception, defense, rating_override, created_at, updated_at" as const;
+  "id, player_id, photo_url, photo_focus_x, photo_focus_y, photo_zoom, name_mode, display_name, position, jump, attack, block, serve, reception, defense, rating_override, created_at, updated_at" as const;
 
 export const MATCH_STATUS_META: Record<
   MatchStatus,

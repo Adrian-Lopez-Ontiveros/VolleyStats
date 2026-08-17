@@ -1,4 +1,10 @@
-import type { PlayerCard, PlayerCardStats, PlayerPosition, SessionUser } from "@/lib/types";
+import type {
+  CardNameMode,
+  PlayerCard,
+  PlayerCardStats,
+  PlayerPosition,
+  SessionUser,
+} from "@/lib/types";
 
 export const CARD_STAT_KEYS = [
   "jump",
@@ -78,6 +84,38 @@ export function calculateCardRating(
   return clampCardStat(total / weightSum);
 }
 
+export type CardPhotoFrame = {
+  x: number;
+  y: number;
+  zoom: number;
+};
+
+export const DEFAULT_PHOTO_FRAME: CardPhotoFrame = { x: 50, y: 18, zoom: 1 };
+
+export const CARD_NAME_MODE_LABELS: Record<CardNameMode, string> = {
+  last: "Solo apellido",
+  full: "Nombre completo",
+  custom: "Personalizado",
+};
+
+export function clampPhotoFocus(value: number) {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(100, Math.max(0, Math.round(value * 10) / 10));
+}
+
+export function clampPhotoZoom(value: number) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(2.5, Math.max(1, Math.round(value * 100) / 100));
+}
+
+export function photoFrameFromCard(card?: PlayerCard | null): CardPhotoFrame {
+  return {
+    x: clampPhotoFocus(Number(card?.photo_focus_x ?? DEFAULT_PHOTO_FRAME.x)),
+    y: clampPhotoFocus(Number(card?.photo_focus_y ?? DEFAULT_PHOTO_FRAME.y)),
+    zoom: clampPhotoZoom(Number(card?.photo_zoom ?? DEFAULT_PHOTO_FRAME.zoom)),
+  };
+}
+
 export function cardDisplayName(fullName: string) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "JUGADOR";
@@ -89,6 +127,22 @@ export function cardDisplayName(fullName: string) {
     start -= 1;
   }
   return parts.slice(start).join(" ").toLocaleUpperCase("es");
+}
+
+export function resolveCardName(
+  fullName: string,
+  mode?: CardNameMode | null,
+  custom?: string | null
+) {
+  if (mode === "custom") {
+    const customName = custom?.trim();
+    if (customName) return customName.toLocaleUpperCase("es");
+  }
+  if (mode === "full") {
+    const complete = fullName.trim();
+    if (complete) return complete.toLocaleUpperCase("es");
+  }
+  return cardDisplayName(fullName);
 }
 
 export function cardPhotoUrl(card?: Pick<PlayerCard, "photo_url"> | null, avatarUrl?: string | null) {

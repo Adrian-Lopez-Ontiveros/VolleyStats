@@ -4,7 +4,7 @@ import { PlayerCardVisual, type PlayerCardView } from "@/components/players/play
 import { SharePlayerCard } from "@/components/players/share-player-card";
 import { Button } from "@/components/ui/button";
 import { resolveTeamLogoUrl } from "@/lib/federation/crests";
-import { cardPhotoUrl, statsFromCard } from "@/lib/player-card";
+import { cardPhotoUrl, photoFrameFromCard, statsFromCard } from "@/lib/player-card";
 import type { Player, PlayerCard, Team } from "@/lib/types";
 
 export function PlayerCardSection({
@@ -28,6 +28,9 @@ export function PlayerCardSection({
     rosterPosition: player.position,
     cardPosition: card?.position ?? null,
     photoUrl: cardPhotoUrl(card, player.avatar_url),
+    photoFrame: photoFrameFromCard(card),
+    nameMode: card?.name_mode ?? "last",
+    displayName: card?.display_name ?? null,
     teamName: team?.name,
     teamLogoUrl: team ? resolveTeamLogoUrl(team) : null,
     stats: statsFromCard(card),

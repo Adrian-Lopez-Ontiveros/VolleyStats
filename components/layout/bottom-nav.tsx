@@ -27,9 +27,8 @@ export function BottomNav({
     : [
         ...baseItems,
         ...(isCoach ? [{ href: "/entrenador", label: "Entrenador", icon: ClipboardList }] : []),
-        ...(isAdmin
-          ? [{ href: "/admin", label: "Admin", icon: Shield }]
-          : [{ href: "/perfil", label: "Perfil", icon: UserRound }]),
+        { href: "/perfil", label: "Perfil", icon: UserRound },
+        ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
       ];
 
   const columns = navItems.length;
@@ -39,7 +38,13 @@ export function BottomNav({
       <ul
         className={cn(
           "mx-auto grid max-w-3xl",
-          columns === 5 ? "grid-cols-5" : columns === 3 ? "grid-cols-3" : "grid-cols-4"
+          columns >= 6
+            ? "grid-cols-6"
+            : columns === 5
+              ? "grid-cols-5"
+              : columns === 3
+                ? "grid-cols-3"
+                : "grid-cols-4"
         )}
       >
         {navItems.map((item) => {
@@ -52,7 +57,8 @@ export function BottomNav({
                 href={item.href}
                 prefetch
                 className={cn(
-                  "flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
+                  "flex flex-col items-center gap-0.5 py-2 font-medium",
+                  columns >= 6 ? "text-[10px]" : "text-[11px]",
                   active ? "text-accent" : "text-muted-foreground"
                 )}
               >

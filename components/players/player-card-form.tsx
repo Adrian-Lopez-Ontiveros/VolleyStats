@@ -12,17 +12,21 @@ import { Label } from "@/components/ui/label";
 import { upsertPlayerCard } from "@/lib/actions/player-cards";
 import { POSITION_LABELS } from "@/lib/constants";
 import {
+  CARD_NAME_MODE_LABELS,
   CARD_STAT_KEYS,
   CARD_STAT_META,
   DEFAULT_CARD_STATS,
+  DEFAULT_PHOTO_FRAME,
   calculateCardRating,
   cardPhotoUrl,
   clampCardStat,
+  photoFrameFromCard,
   statValueTone,
+  type CardPhotoFrame,
 } from "@/lib/player-card";
 import { resolveTeamLogoUrl } from "@/lib/federation/crests";
 import { createClient } from "@/lib/supabase/client";
-import type { Player, PlayerCard, PlayerCardStats, PlayerPosition, Team } from "@/lib/types";
+import type { CardNameMode, Player, PlayerCard, PlayerCardStats, PlayerPosition, Team } from "@/lib/types";
 
 export function PlayerCardForm({
   player,
@@ -57,6 +61,9 @@ export function PlayerCardForm({
   const [ratingOverride, setRatingOverride] = useState(
     card?.rating_override != null ? String(card.rating_override) : ""
   );
+  const [photoFrame, setPhotoFrame] = useState<CardPhotoFrame>(photoFrameFromCard(card));
+  const [nameMode, setNameMode] = useState<CardNameMode>(card?.name_mode ?? "last");
+  const [displayName, setDisplayName] = useState(card?.display_name ?? "");
 
   const previewPhoto = cardPhotoUrl({ photo_url: photoUrl || null }, player.avatar_url);
   const previewPosition = (position || player.position) as PlayerPosition | null;
@@ -99,7 +106,8 @@ export function PlayerCardForm({
       if (error) throw error;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setPhotoUrl(data.publicUrl);
-      toast.success("Foto de la carta lista. Recuerda guardar.");
+      setPhotoFrame(DEFAULT_PHOTO_FRAME);
+      toast.success("Foto de la carta lista. Arrástrala para reencuadrar y guarda.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo subir la foto");
     } finally {
@@ -128,12 +136,16 @@ export function PlayerCardForm({
         <PlayerCardVisual
           captureId="edit-player-card"
           className="mx-auto"
+          onPhotoFrameChange={previewPhoto ? setPhotoFrame : undefined}
           data={{
             fullName: player.full_name,
             jerseyNumber: player.jersey_number,
             rosterPosition: player.position,
             cardPosition: position || null,
             photoUrl: previewPhoto,
+            photoFrame,
+            nameMode,
+            displayName,
             teamName: team?.name,
             teamLogoUrl: team ? resolveTeamLogoUrl(team) : null,
             stats,
@@ -141,6 +153,11 @@ export function PlayerCardForm({
               overrideValue != null && Number.isFinite(overrideValue) ? overrideValue : null,
           }}
         />
+        {previewPhoto ? (
+          <p className="text-center text-xs text-muted-foreground">
+            Arrastra la foto para moverla dentro de la carta
+          </p>
+        ) : null}
         <SharePlayerCard
           captureId="edit-player-card"
           fileName={fileSlug}
@@ -150,6 +167,11 @@ export function PlayerCardForm({
 
       <form action={onSubmit} className="space-y-5">
         <input type="hidden" name="photoUrl" value={photoUrl} />
+        <input type="hidden" name="photoFocusX" value={photoFrame.x} />
+        <input type="hidden" name="photoFocusY" value={photoFrame.y} />
+        <input type="hidden" name="photoZoom" value={photoFrame.zoom} />
+        <input type="hidden" name="nameMode" value={nameMode} />
+        <input type="hidden" name="displayName" value={displayName} />
         {CARD_STAT_KEYS.map((key) => (
           <input key={key} type="hidden" name={key} value={stats[key]} />
         ))}
@@ -174,8 +196,65 @@ export function PlayerCardForm({
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            Mejor un recorte vertical de pecho hacia arriba. Máximo 3 MB.
+            Arrastra la foto sobre la carta para reencuadrarla. Máximo 3 MB.
           </p>
+          {previewPhoto ? (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="photoZoom">Zoom</Label>
+                <span className="text-sm font-semibold tabular-nums">
+                  {Math.round(photoFrame.zoom * 100)}%
+                </span>
+              </div>
+              <input
+                id="photoZoom"
+                type="range"
+                min={1}
+                max={2.5}
+                step={0.05}
+                value={photoFrame.zoom}
+                onChange={(event) =>
+                  setPhotoFrame((current) => ({
+                    ...current,
+                    zoom: Number(event.target.value),
+                  }))
+                }
+                className="stat-slider w-full"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setPhotoFrame(DEFAULT_PHOTO_FRAME)}
+              >
+                Centrar foto
+              </Button>
+            </div>
+          ) : null}
+
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="nameMode">Nombre en la carta</Label>
+            <select
+              id="nameMode"
+              value={nameMode}
+              onChange={(event) => setNameMode(event.target.value as CardNameMode)}
+              className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm"
+            >
+              {Object.entries(CARD_NAME_MODE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {nameMode === "custom" ? (
+              <Input
+                value={displayName}
+                maxLength={40}
+                placeholder="Ej. VANESA"
+                onChange={(event) => setDisplayName(event.target.value)}
+              />
+            ) : null}
+          </div>
           <input
             ref={inputRef}
             type="file"
