@@ -124,13 +124,14 @@ export function PlayerCardVisual({
   return (
     <article
       id={captureId}
-      className={cn("w-full max-w-[280px]", className)}
+      className={cn("w-full max-w-[280px] overflow-visible", className)}
       aria-label={`Cromo de ${data.fullName}`}
     >
       <div className={cn("rounded-[1.35rem] p-[3px]", TIER_FRAME[tier])}>
         <div className="player-card-surface relative overflow-hidden rounded-[1.2rem] text-white">
           <div className="player-card-shine pointer-events-none absolute inset-0 z-20" />
-          <div className="relative aspect-[5/7]">
+          <div className="relative w-full" style={{ paddingBottom: "140%" }}>
+            <div className="absolute inset-0">
             <div
               ref={photoBoxRef}
               className={cn(
@@ -240,6 +241,7 @@ export function PlayerCardVisual({
                   {position ? POSITION_LABELS[position] : data.teamName ?? "Voleibol"}
                 </span>
               </div>
+            </div>
             </div>
           </div>
         </div>

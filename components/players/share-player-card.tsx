@@ -4,10 +4,8 @@ import { useState } from "react";
 import { Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { captureNodePng } from "@/lib/capture-node";
 import { APP_NAME } from "@/lib/constants";
-
-const PLACEHOLDER =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
 export function SharePlayerCard({
   captureId,
@@ -20,23 +18,16 @@ export function SharePlayerCard({
 }) {
   const [pending, setPending] = useState(false);
 
-  async function capturePng() {
+  async function captureCard() {
     const node = document.getElementById(captureId);
     if (!node) throw new Error("No se encontró la carta");
-    const { toPng } = await import("html-to-image");
-    return toPng(node, {
-      cacheBust: true,
-      pixelRatio: 2,
-      backgroundColor: "#0B1F3A",
-      imagePlaceholder: PLACEHOLDER,
-    });
+    return captureNodePng(node);
   }
 
   async function onShare() {
     setPending(true);
     try {
-      const dataUrl = await capturePng();
-      const blob = await (await fetch(dataUrl)).blob();
+      const blob = await captureCard();
       const file = new File([blob], `${fileName}.png`, { type: "image/png" });
       const payload = {
         files: [file],
@@ -49,7 +40,7 @@ export function SharePlayerCard({
         return;
       }
 
-      downloadDataUrl(dataUrl, `${fileName}.png`);
+      downloadBlob(blob, `${fileName}.png`);
       toast.success("Imagen guardada. Ya puedes adjuntarla en WhatsApp.");
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
@@ -62,8 +53,8 @@ export function SharePlayerCard({
   async function onDownload() {
     setPending(true);
     try {
-      const dataUrl = await capturePng();
-      downloadDataUrl(dataUrl, `${fileName}.png`);
+      const blob = await captureCard();
+      downloadBlob(blob, `${fileName}.png`);
       toast.success("Carta descargada");
     } catch {
       toast.error("No se pudo descargar la imagen.");
@@ -86,9 +77,14 @@ export function SharePlayerCard({
   );
 }
 
-function downloadDataUrl(dataUrl: string, name: string) {
+function downloadBlob(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = dataUrl;
+  link.href = url;
   link.download = name;
+  link.rel = "noopener";
+  document.body.appendChild(link);
   link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
