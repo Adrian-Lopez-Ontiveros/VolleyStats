@@ -144,12 +144,17 @@ async function saveClubLineup(
     .eq("team_id", parsed.teamId);
   if (deleteError) return { error: deleteError.message };
 
+  const positionByPlayer = new Map(
+    Object.entries(parsed.starterPositions).map(([position, playerId]) => [playerId, Number(position)])
+  );
+
   const rows = playerIds.map((playerId) => ({
     match_id: matchId,
     team_id: parsed.teamId,
     player_id: playerId,
     is_starter: parsed.starterIds.includes(playerId),
     is_libero: parsed.liberoId === playerId,
+    court_position: positionByPlayer.get(playerId) ?? null,
   }));
 
   if (rows.length === 0) return { success: true };

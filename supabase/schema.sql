@@ -138,6 +138,7 @@ create table if not exists public.match_lineups (
   player_id uuid not null references public.players (id) on delete cascade,
   is_starter boolean not null default false,
   is_libero boolean not null default false,
+  court_position int check (court_position is null or (court_position >= 1 and court_position <= 6)),
   created_at timestamptz not null default now(),
   constraint match_lineups_unique_player unique (match_id, player_id)
 );
@@ -175,6 +176,9 @@ create index if not exists idx_match_lineups_match on public.match_lineups (matc
 create unique index if not exists idx_match_lineups_one_libero
   on public.match_lineups (match_id, team_id)
   where is_libero;
+create unique index if not exists idx_match_lineups_unique_court_position
+  on public.match_lineups (match_id, team_id, court_position)
+  where court_position is not null;
 create index if not exists idx_match_substitutions_match
   on public.match_substitutions (match_id, created_at);
 

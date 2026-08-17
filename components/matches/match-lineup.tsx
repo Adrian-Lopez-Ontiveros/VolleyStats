@@ -1,5 +1,12 @@
 import { Badge } from "@/components/ui/badge";
+import { VolleyballCourt } from "@/components/matches/volleyball-court";
 import { POSITION_LABELS } from "@/lib/constants";
+import {
+  currentCourtSlots,
+  currentLiberoPlayer,
+  liberoOffCourt,
+  lineupHasCourtPositions,
+} from "@/lib/court";
 import { formatJersey } from "@/lib/utils";
 import type { MatchLineupEntry } from "@/lib/types";
 
@@ -10,9 +17,16 @@ export function MatchLineup({
   teamName: string;
   entries: MatchLineupEntry[];
 }) {
-  const starters = entries.filter((entry) => entry.is_starter);
+  const starters = entries.filter((entry) => entry.is_starter && !entry.is_libero);
   const libero = entries.find((entry) => entry.is_libero) ?? null;
-  const liberoIsStarter = Boolean(libero && starters.some((entry) => entry.player_id === libero.player_id));
+  const roster = entries
+    .map((entry) => entry.player)
+    .filter((player): player is NonNullable<typeof player> => Boolean(player));
+  const showCourt = lineupHasCourtPositions(entries);
+  const courtSlots = showCourt ? currentCourtSlots(entries, [], roster, 1) : {};
+  const courtLibero = showCourt
+    ? liberoOffCourt(currentLiberoPlayer(entries, [], roster), courtSlots)
+    : null;
 
   if (entries.length === 0) {
     return (
@@ -28,19 +42,17 @@ export function MatchLineup({
   return (
     <section>
       <h2 className="mb-3 text-lg font-semibold">Alineación titular</h2>
-      <p className="mb-3 text-xs text-muted-foreground">{teamName}</p>
-      <ul className="space-y-2">
-        {starters.map((entry) => (
-          <LineupRow
-            key={entry.id}
-            entry={entry}
-            tag={entry.is_libero ? "Líbero" : "Titular"}
-          />
-        ))}
-        {libero && !liberoIsStarter ? (
-          <LineupRow key={libero.id} entry={libero} tag="Líbero" />
-        ) : null}
-      </ul>
+      <p className="mb-3 text-xs text-muted-foreground">{teamName} · rotación 1</p>
+      {showCourt ? (
+        <VolleyballCourt slots={courtSlots} libero={courtLibero} />
+      ) : (
+        <ul className="space-y-2">
+          {starters.map((entry) => (
+            <LineupRow key={entry.id} entry={entry} tag="Titular" />
+          ))}
+          {libero ? <LineupRow key={libero.id} entry={libero} tag="Líbero" /> : null}
+        </ul>
+      )}
     </section>
   );
 }

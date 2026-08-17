@@ -25,8 +25,16 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PointHistory } from "@/components/matches/point-history";
 import { Scoreboard } from "@/components/matches/scoreboard";
+import { VolleyballCourt } from "@/components/matches/volleyball-court";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { useLiveMatchEvents } from "@/components/matches/use-live-match-events";
+import {
+  currentCourtSlots,
+  currentLiberoPlayer,
+  liberoOffCourt,
+  lineupHasCourtPositions,
+  type CourtOccupant,
+} from "@/lib/court";
 import type {
   MatchEventWithPlayer,
   MatchLineupEntry,
@@ -219,6 +227,32 @@ export function LiveTracker({
   const awayBench = useMemo(
     () => playersOnBench(awayPlayers, awayOnCourtIds),
     [awayPlayers, awayOnCourtIds]
+  );
+  const homeHasCourt = useMemo(
+    () => lineupHasCourtPositions(lineup, match.home_team_id),
+    [lineup, match.home_team_id]
+  );
+  const awayHasCourt = useMemo(
+    () => lineupHasCourtPositions(lineup, match.away_team_id),
+    [lineup, match.away_team_id]
+  );
+  const homeCourtSlots = useMemo(
+    () =>
+      currentCourtSlots(lineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id),
+    [lineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id]
+  );
+  const awayCourtSlots = useMemo(
+    () =>
+      currentCourtSlots(lineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id),
+    [lineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id]
+  );
+  const homeLibero = useMemo(
+    () => currentLiberoPlayer(lineup, liveSubstitutions, homePlayers, match.home_team_id),
+    [lineup, liveSubstitutions, homePlayers, match.home_team_id]
+  );
+  const awayLibero = useMemo(
+    () => currentLiberoPlayer(lineup, liveSubstitutions, awayPlayers, match.away_team_id),
+    [lineup, liveSubstitutions, awayPlayers, match.away_team_id]
   );
 
   useEffect(() => {
@@ -426,6 +460,7 @@ export function LiveTracker({
       setSwapTeamId(null);
       setPlayerOutId("");
       setPlayerInId("");
+      void pullEvents();
       router.refresh();
     });
   }
@@ -515,38 +550,86 @@ export function LiveTracker({
         </div>
       )}
 
-      <Roster
-        title={match.home_team.name}
-        logoUrl={match.home_team.logo_url}
-        shortName={match.home_team.short_name}
-        federationTeamId={match.home_team.federation_team_id}
-        players={homeOnCourt}
-        hasLineup={homeOnCourtIds !== null}
-        canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
-        disabled={finished || pending}
-        onPick={(player) => openTeam(match.home_team_id, match.home_team.name, player)}
-        onSubstitute={() => {
-          setSwapTeamId(match.home_team_id);
-          setPlayerOutId("");
-          setPlayerInId("");
-        }}
-      />
-      <Roster
-        title={match.away_team.name}
-        logoUrl={match.away_team.logo_url}
-        shortName={match.away_team.short_name}
-        federationTeamId={match.away_team.federation_team_id}
-        players={awayOnCourt}
-        hasLineup={awayOnCourtIds !== null}
-        canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
-        disabled={finished || pending}
-        onPick={(player) => openTeam(match.away_team_id, match.away_team.name, player)}
-        onSubstitute={() => {
-          setSwapTeamId(match.away_team_id);
-          setPlayerOutId("");
-          setPlayerInId("");
-        }}
-      />
+      {homeHasCourt ? (
+        <LiveTeamCourt
+          title={match.home_team.name}
+          logoUrl={match.home_team.logo_url}
+          shortName={match.home_team.short_name}
+          federationTeamId={match.home_team.federation_team_id}
+          rotation={homeRotation}
+          slots={homeCourtSlots}
+          libero={liberoOffCourt(homeLibero, homeCourtSlots)}
+          serving={servingTeamId === match.home_team_id}
+          canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
+          disabled={finished || pending}
+          onPick={(player) => {
+            const full = homePlayers.find((item) => item.id === player.id);
+            if (full) openTeam(match.home_team_id, match.home_team.name, full);
+          }}
+          onSubstitute={() => {
+            setSwapTeamId(match.home_team_id);
+            setPlayerOutId("");
+            setPlayerInId("");
+          }}
+        />
+      ) : (
+        <Roster
+          title={match.home_team.name}
+          logoUrl={match.home_team.logo_url}
+          shortName={match.home_team.short_name}
+          federationTeamId={match.home_team.federation_team_id}
+          players={homeOnCourt}
+          hasLineup={homeOnCourtIds !== null}
+          canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
+          disabled={finished || pending}
+          onPick={(player) => openTeam(match.home_team_id, match.home_team.name, player)}
+          onSubstitute={() => {
+            setSwapTeamId(match.home_team_id);
+            setPlayerOutId("");
+            setPlayerInId("");
+          }}
+        />
+      )}
+      {awayHasCourt ? (
+        <LiveTeamCourt
+          title={match.away_team.name}
+          logoUrl={match.away_team.logo_url}
+          shortName={match.away_team.short_name}
+          federationTeamId={match.away_team.federation_team_id}
+          rotation={awayRotation}
+          slots={awayCourtSlots}
+          libero={liberoOffCourt(awayLibero, awayCourtSlots)}
+          serving={servingTeamId === match.away_team_id}
+          canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
+          disabled={finished || pending}
+          onPick={(player) => {
+            const full = awayPlayers.find((item) => item.id === player.id);
+            if (full) openTeam(match.away_team_id, match.away_team.name, full);
+          }}
+          onSubstitute={() => {
+            setSwapTeamId(match.away_team_id);
+            setPlayerOutId("");
+            setPlayerInId("");
+          }}
+        />
+      ) : (
+        <Roster
+          title={match.away_team.name}
+          logoUrl={match.away_team.logo_url}
+          shortName={match.away_team.short_name}
+          federationTeamId={match.away_team.federation_team_id}
+          players={awayOnCourt}
+          hasLineup={awayOnCourtIds !== null}
+          canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
+          disabled={finished || pending}
+          onPick={(player) => openTeam(match.away_team_id, match.away_team.name, player)}
+          onSubstitute={() => {
+            setSwapTeamId(match.away_team_id);
+            setPlayerOutId("");
+            setPlayerInId("");
+          }}
+        />
+      )}
 
       <Button
         variant="outline"
@@ -717,6 +800,67 @@ function RotationPicker({
     </div>
   );
 }
+
+const LiveTeamCourt = memo(function LiveTeamCourt({
+  title,
+  logoUrl,
+  shortName,
+  federationTeamId,
+  rotation,
+  slots,
+  libero,
+  serving,
+  canSubstitute,
+  disabled,
+  onPick,
+  onSubstitute,
+}: {
+  title: string;
+  logoUrl?: string | null;
+  shortName?: string | null;
+  federationTeamId?: string | null;
+  rotation: number;
+  slots: ReturnType<typeof currentCourtSlots>;
+  libero: CourtOccupant | null;
+  serving: boolean;
+  canSubstitute: boolean;
+  disabled: boolean;
+  onPick: (player: CourtOccupant) => void;
+  onSubstitute: () => void;
+}) {
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+          <TeamLogo
+            name={title}
+            shortName={shortName}
+            logoUrl={logoUrl}
+            federationTeamId={federationTeamId}
+            size="sm"
+          />
+          <span className="truncate">{title}</span>
+        </h3>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold tabular-nums text-muted-foreground">
+            R{rotation}
+          </span>
+          {canSubstitute ? (
+            <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={onSubstitute}>
+              Cambio
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <VolleyballCourt
+        slots={slots}
+        libero={libero}
+        serving={serving}
+        onPlayerClick={disabled ? undefined : onPick}
+      />
+    </section>
+  );
+});
 
 const Roster = memo(function Roster({
   title,

@@ -121,6 +121,7 @@ export type MatchLineupEntry = {
   player_id: string;
   is_starter: boolean;
   is_libero: boolean;
+  court_position?: number | null;
   created_at: string;
   player?: Pick<Player, "id" | "full_name" | "jersey_number" | "position" | "avatar_url"> | null;
 };

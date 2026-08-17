@@ -164,7 +164,7 @@ export const MATCH_EVENT_SELECT =
   "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, created_at, player:players(id, full_name, jersey_number)" as const;
 
 export const MATCH_LINEUP_SELECT =
-  "id, match_id, team_id, player_id, is_starter, is_libero, created_at" as const;
+  "id, match_id, team_id, player_id, is_starter, is_libero, court_position, created_at" as const;
 
 export const MATCH_SUB_SELECT =
   "id, match_id, team_id, player_out_id, player_in_id, set_number, occurred_at, created_at" as const;
