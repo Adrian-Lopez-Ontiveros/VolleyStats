@@ -2,50 +2,39 @@
 
 import { useEffect } from "react";
 
-const MIN_MS = 650;
-const MAX_MS = 2800;
+const MIN_MS = 400;
+const MAX_MS = 3500;
 
 let hideStarted = false;
 
-function splashStartedAt() {
-  const marked = Number((window as Window & { __splashAt?: number }).__splashAt);
-  return Number.isFinite(marked) && marked > 0 ? marked : performance.now();
-}
-
 export function hideAppSplash() {
   if (hideStarted || typeof document === "undefined") return;
-  const el = document.getElementById("app-splash");
-  if (!el) {
-    hideStarted = true;
-    document.documentElement.classList.add("app-ready");
-    return;
-  }
+  hideStarted = true;
 
-  const wait = Math.max(0, MIN_MS - (performance.now() - splashStartedAt()));
+  const el = document.getElementById("app-splash");
+  document.documentElement.classList.add("app-ready");
+  if (!el) return;
+
+  const started = Number((window as Window & { __splashAt?: number }).__splashAt);
+  const elapsed = Number.isFinite(started) ? Date.now() - started : MIN_MS;
+  const wait = Math.max(0, Math.min(MIN_MS - elapsed, 800));
+
   window.setTimeout(() => {
-    if (hideStarted) return;
-    hideStarted = true;
     el.classList.add("app-splash-hide");
-    document.documentElement.classList.add("app-ready");
-    window.setTimeout(() => el.remove(), 500);
+    window.setTimeout(() => el.remove(), 450);
   }, wait);
 }
 
 export function SplashDismiss() {
   useEffect(() => {
-    const onReady = () => hideAppSplash();
-    const max = window.setTimeout(onReady, MAX_MS);
+    const ready = () => hideAppSplash();
+    window.setTimeout(ready, MAX_MS);
 
     if (document.readyState === "complete") {
-      requestAnimationFrame(() => requestAnimationFrame(onReady));
+      ready();
     } else {
-      window.addEventListener("load", onReady, { once: true });
+      window.addEventListener("load", ready, { once: true });
     }
-
-    return () => {
-      window.clearTimeout(max);
-      window.removeEventListener("load", onReady);
-    };
   }, []);
 
   return null;

@@ -49,6 +49,14 @@ export const viewport: Viewport = {
 
 const splashBoot = `
 window.__splashAt = Date.now();
+window.setTimeout(function () {
+  var el = document.getElementById("app-splash");
+  document.documentElement.classList.add("app-ready");
+  if (el) {
+    el.classList.add("app-splash-hide");
+    window.setTimeout(function () { if (el && el.parentNode) el.parentNode.removeChild(el); }, 450);
+  }
+}, 3500);
 `;
 
 export default function RootLayout({
@@ -62,7 +70,8 @@ export default function RootLayout({
         <link rel="preload" href="/logo.png" as="image" />
         <style>{`
           html:not(.app-ready),html:not(.app-ready) body{background:#0B1F3A}
-          #app-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 50% at 0% 0%,rgba(249,115,22,.28),transparent 55%),radial-gradient(ellipse 60% 45% at 100% 0%,rgba(56,189,248,.14),transparent 52%),#0B1F3A}
+          #app-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 50% at 0% 0%,rgba(249,115,22,.28),transparent 55%),radial-gradient(ellipse 60% 45% at 100% 0%,rgba(56,189,248,.14),transparent 52%),#0B1F3A;transition:opacity .4s ease,visibility .4s ease}
+          #app-splash.app-splash-hide{opacity:0;visibility:hidden;pointer-events:none}
         `}</style>
       </head>
       <body className={`${font.className} min-h-dvh`}>
