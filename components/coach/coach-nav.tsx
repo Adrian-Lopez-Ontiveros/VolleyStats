@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { href: "/entrenador", label: "Entrenamientos", icon: ClipboardList, match: "trainings" },
   { href: "/entrenador/pizarra", label: "Pizarra", icon: PenLine, match: "board" },
-  { href: "/entrenador/saltos", label: "Saltos", icon: ArrowUpFromLine, match: "jumps" },
+  { href: "/entrenador/saltos", label: "Salto", icon: ArrowUpFromLine, match: "jumps" },
 ] as const;
 
 function activeFor(pathname: string, match: (typeof items)[number]["match"]) {
