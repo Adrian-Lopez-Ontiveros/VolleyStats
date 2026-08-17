@@ -225,7 +225,7 @@ function TeamMiniStats({
     <Card>
       <CardContent className="space-y-1 p-4 text-sm">
         <p className="font-semibold">{label}</p>
-        <p className="text-muted-foreground">Kills {attacks}</p>
+        <p className="text-muted-foreground">Remates {attacks}</p>
         <p className="text-muted-foreground">Bloqueos {blocks}</p>
         <p className="text-muted-foreground">Aces {aces}</p>
         <p className="text-muted-foreground">Errores {errors}</p>

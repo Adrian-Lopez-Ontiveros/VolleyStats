@@ -175,7 +175,7 @@ export function buildBoxScore(
     label: "Eff. ataque",
     value: formatAttackEfficiency(clubAttack.efficiency),
     detail: clubAttack.attempts
-      ? `${clubAttack.kills} kills · ${clubAttack.errors} err`
+      ? `${clubAttack.kills} remates · ${clubAttack.errors} err`
       : clubLabel,
   });
   highlights.push({
