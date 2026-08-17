@@ -162,12 +162,12 @@ export function buildBoxScore(
     });
   }
   highlights.push({
-    label: "Side-out",
+    label: "Puntos recibiendo",
     value: formatSkillRate(clubSide.sideOut.rate),
     detail: clubLabel,
   });
   highlights.push({
-    label: "Break-point",
+    label: "Puntos con el saque",
     value: formatSkillRate(clubSide.breakPoint.rate),
     detail: clubLabel,
   });

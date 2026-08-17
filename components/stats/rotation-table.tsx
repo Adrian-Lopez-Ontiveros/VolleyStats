@@ -39,8 +39,8 @@ export function RotationTable({
                 <th className="px-2 py-3 text-center">PF</th>
                 <th className="px-2 py-3 text-center">PC</th>
                 <th className="px-2 py-3 text-center">Dif</th>
-                <th className="px-2 py-3 text-center">SO</th>
-                <th className="px-2 py-3 text-center">BP</th>
+                <th className="px-2 py-3 text-center">Recibiendo</th>
+                <th className="px-2 py-3 text-center">Con saque</th>
                 <th className="px-2 py-3 text-center">Err</th>
                 <th className="px-2 py-3 text-center">ATK%</th>
               </tr>
@@ -109,7 +109,7 @@ export function RotationSummaryCards({ rows }: { rows: RotationRow[] }) {
           </p>
           <p className="mt-1 text-2xl font-bold">R{best.rotation}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {best.pointsFor}-{best.pointsAgainst} · SO {formatSkillRate(best.sideOut.rate)}
+            {best.pointsFor}-{best.pointsAgainst} · Recibiendo {formatSkillRate(best.sideOut.rate)}
           </p>
         </CardContent>
       </Card>
@@ -121,7 +121,7 @@ export function RotationSummaryCards({ rows }: { rows: RotationRow[] }) {
           <p className="mt-1 text-2xl font-bold">R{worst?.rotation ?? "—"}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {worst
-              ? `${worst.pointsFor}-${worst.pointsAgainst} · SO ${formatSkillRate(worst.sideOut.rate)}`
+              ? `${worst.pointsFor}-${worst.pointsAgainst} · Recibiendo ${formatSkillRate(worst.sideOut.rate)}`
               : "Sin datos"}
           </p>
         </CardContent>

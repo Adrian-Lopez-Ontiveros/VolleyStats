@@ -151,8 +151,8 @@ export function BoxScoreCard({
                 <tr className="bg-slate-100 text-[10px] uppercase tracking-wide text-slate-500">
                   <th className="px-2 py-2 text-left">R</th>
                   <th className="px-1 py-2 text-center">PF-PC</th>
-                  <th className="px-1 py-2 text-center">SO</th>
-                  <th className="px-1 py-2 text-center">BP</th>
+                  <th className="px-1 py-2 text-center">Recibiendo</th>
+                  <th className="px-1 py-2 text-center">Con saque</th>
                   <th className="px-1 py-2 text-center">ATK%</th>
                 </tr>
               </thead>

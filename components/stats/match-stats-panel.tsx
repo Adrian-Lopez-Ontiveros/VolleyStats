@@ -142,7 +142,7 @@ export function MatchStatsPanel({
       {possession.bySet.length > 0 ? (
         <Card>
           <CardContent className="space-y-3 p-4">
-            <h3 className="text-sm font-semibold">Side-out y break-point por set</h3>
+            <h3 className="text-sm font-semibold">Puntos recibiendo y con el saque por set</h3>
             <ul className="space-y-2 text-sm">
               {possession.bySet.map((row) => (
                 <li
@@ -153,12 +153,12 @@ export function MatchStatsPanel({
                     Set {row.setNumber}
                   </p>
                   <p className="tabular-nums">
-                    {homeLabel}: SO {formatSkillRate(row.home.sideOut.rate)} · BP{" "}
-                    {formatSkillRate(row.home.breakPoint.rate)}
+                    {homeLabel}: Recibiendo {formatSkillRate(row.home.sideOut.rate)} · Con
+                    saque {formatSkillRate(row.home.breakPoint.rate)}
                   </p>
                   <p className="tabular-nums">
-                    {awayLabel}: SO {formatSkillRate(row.away.sideOut.rate)} · BP{" "}
-                    {formatSkillRate(row.away.breakPoint.rate)}
+                    {awayLabel}: Recibiendo {formatSkillRate(row.away.sideOut.rate)} · Con
+                    saque {formatSkillRate(row.away.breakPoint.rate)}
                   </p>
                 </li>
               ))}

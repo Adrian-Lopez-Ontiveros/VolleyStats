@@ -84,21 +84,21 @@ export function PossessionCards({
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatBlock
-        label="Side-out"
+        label="Puntos recibiendo"
         value={formatSkillRate(sideOut.rate)}
         hint={
           sideOut.opportunities
-            ? `${sideOut.won} de ${sideOut.opportunities} al recibir`
-            : "Sin puntos al recibir"
+            ? `${sideOut.won} de ${sideOut.opportunities} recibiendo`
+            : "Sin puntos recibiendo"
         }
       />
       <StatBlock
-        label="Break-point"
+        label="Puntos con el saque"
         value={formatSkillRate(breakPoint.rate)}
         hint={
           breakPoint.opportunities
-            ? `${breakPoint.won} de ${breakPoint.opportunities} al sacar`
-            : "Sin puntos al sacar"
+            ? `${breakPoint.won} de ${breakPoint.opportunities} con el saque`
+            : "Sin puntos con el saque"
         }
       />
     </div>
