@@ -66,6 +66,25 @@ export type PlayerWithTeam = Player & {
   team: Team | null;
 };
 
+export type PlayerCardStats = {
+  jump: number;
+  attack: number;
+  block: number;
+  serve: number;
+  reception: number;
+  defense: number;
+};
+
+export type PlayerCard = {
+  id: string;
+  player_id: string;
+  photo_url: string | null;
+  position: PlayerPosition | null;
+  rating_override: number | null;
+  created_at: string;
+  updated_at: string;
+} & PlayerCardStats;
+
 export type Profile = {
   id: string;
   email: string;

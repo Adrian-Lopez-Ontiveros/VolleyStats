@@ -125,6 +125,9 @@ export const POSITION_LABELS: Record<PlayerPosition, string> = {
   universal: "Universal",
 };
 
+export const PLAYER_CARD_SELECT =
+  "id, player_id, photo_url, position, jump, attack, block, serve, reception, defense, rating_override, created_at, updated_at" as const;
+
 export const MATCH_STATUS_META: Record<
   MatchStatus,
   { label: string; className: string }
@@ -190,7 +193,7 @@ export const PLAYER_LINEUP_SELECT =
   "id, team_id, full_name, jersey_number, position, avatar_url" as const;
 
 export const PROFILE_SESSION_SELECT =
-  "id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(id, name, short_name, logo_url, city, category, is_club_team)" as const;
+  "id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(id, name, short_name, logo_url, city, category, is_club_team, federation_team_id)" as const;
 
 export const TRAINING_LIST_SELECT =
   "id, name, scheduled_at, team_id, notes, created_by, created_at, updated_at, team:teams(id, name, short_name, category), files:training_files(id)" as const;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyRound } from "lucide-react";
+import { PlayerCardSection } from "@/components/players/player-card-section";
 import { AvatarUpload } from "@/components/profile/avatar-upload";
 import { NotificationToggle } from "@/components/profile/notification-toggle";
 import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
@@ -10,9 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
-import { POSITION_LABELS, ROLE_LABELS } from "@/lib/constants";
+import { PLAYER_CARD_SELECT, POSITION_LABELS, ROLE_LABELS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
-import type { PointType } from "@/lib/types";
+import type { PlayerCard, PointType } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Mi perfil" };
 
@@ -52,14 +53,20 @@ export default async function ProfilePage() {
     teamMatches = teamResult.count ?? 0;
   }
 
-  const { data: notifyPrefs } = await supabase
-    .from("profiles")
-    .select("notify_match_end")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: notifyPrefs }, cardResult] = await Promise.all([
+    supabase.from("profiles").select("notify_match_end").eq("id", user.id).maybeSingle(),
+    player?.id
+      ? supabase
+          .from("player_cards")
+          .select(PLAYER_CARD_SELECT as "*")
+          .eq("player_id", player.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
   const notifyEnabled = Boolean(
     notifyPrefs && "notify_match_end" in notifyPrefs && notifyPrefs.notify_match_end
   );
+  const playerCard = (cardResult.data as PlayerCard | null) ?? null;
 
   return (
     <div className="space-y-6">
@@ -91,6 +98,17 @@ export default async function ProfilePage() {
         </div>
       </div>
 
+      {player ? (
+        <PlayerCardSection
+          player={player}
+          card={playerCard}
+          team={user.profile.team}
+          canEdit
+          editHref="/perfil/carta"
+          title="Mi cromo"
+        />
+      ) : null}
+
       <Card>
         <CardContent className="space-y-2 p-4 text-sm">
           <Row label="Equipo" value={user.profile.team?.name ?? "Sin equipo"} />
@@ -103,7 +121,7 @@ export default async function ProfilePage() {
             value={player?.position ? POSITION_LABELS[player.position] : "—"}
           />
           <p className="pt-2 text-xs text-muted-foreground">
-            Puedes cambiar tu foto. El resto de datos lo edita un administrador.
+            Puedes cambiar tu foto y editar tu cromo. El resto de datos lo edita un administrador.
           </p>
         </CardContent>
       </Card>

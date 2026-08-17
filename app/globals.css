@@ -53,6 +53,49 @@
   }
 }
 
+.player-card-surface {
+  background-color: #0b1f3a;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(249, 115, 22, 0.28), transparent 58%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(232, 197, 71, 0.12), transparent 50%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 255, 255, 0.035) 11px,
+      rgba(255, 255, 255, 0.035) 12px
+    );
+}
+
+.player-card-gold {
+  background-image: linear-gradient(160deg, #f6e27a 0%, #e8b923 42%, #f97316 100%);
+}
+
+.player-card-rare {
+  background-image: linear-gradient(160deg, #fb923c 0%, #f97316 48%, #c2410c 100%);
+}
+
+.player-card-silver {
+  background-image: linear-gradient(160deg, #e2e8f0 0%, #94a3b8 50%, #64748b 100%);
+}
+
+.player-card-bronze {
+  background-image: linear-gradient(160deg, #38bdf8 0%, #1d4ed8 46%, #0b1f3a 100%);
+}
+
+.player-card-shine {
+  background-image: linear-gradient(
+    115deg,
+    transparent 36%,
+    rgba(255, 255, 255, 0.16) 48%,
+    transparent 60%
+  );
+}
+
+.stat-slider {
+  accent-color: hsl(24 95% 53%);
+}
+
 @media print {
   body {
     background: white;

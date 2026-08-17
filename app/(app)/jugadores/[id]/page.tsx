@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { DeletePlayerButton } from "@/components/players/delete-player-button";
+import { PlayerCardSection } from "@/components/players/player-card-section";
 import { PageHeader } from "@/components/page-header";
 import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
 import { StatGrid } from "@/components/stats/stat-grid";
@@ -11,10 +12,17 @@ import { Badge } from "@/components/ui/badge";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
 import { requireViewer } from "@/lib/auth";
-import { PLAYER_ROSTER_SELECT, POINT_TYPE_META, POSITION_LABELS, TEAM_SUMMARY_SELECT } from "@/lib/constants";
+import {
+  PLAYER_CARD_SELECT,
+  PLAYER_ROSTER_SELECT,
+  POINT_TYPE_META,
+  POSITION_LABELS,
+  TEAM_SUMMARY_SELECT,
+} from "@/lib/constants";
+import { canManagePlayerCard } from "@/lib/player-card";
 import { createClient } from "@/lib/supabase/server";
 import { formatJersey, initials } from "@/lib/utils";
-import type { PlayerWithTeam, PointType } from "@/lib/types";
+import type { PlayerCard, PlayerWithTeam, PointType } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Jugador" };
 
@@ -24,10 +32,10 @@ export default async function PlayerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { isAdmin } = await requireViewer();
+  const { user, isAdmin } = await requireViewer();
   const supabase = await createClient();
 
-  const [{ data: player }, { data: events }] = await Promise.all([
+  const [{ data: player }, { data: events }, { data: card }] = await Promise.all([
     supabase
       .from("players")
       .select(`${PLAYER_ROSTER_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})` as "*")
@@ -40,6 +48,7 @@ export default async function PlayerDetailPage({
       )
       .eq("player_id", id)
       .order("created_at", { ascending: false }),
+    supabase.from("player_cards").select(PLAYER_CARD_SELECT as "*").eq("player_id", id).maybeSingle(),
   ]);
 
   if (!player) notFound();
@@ -111,6 +120,18 @@ export default async function PlayerDetailPage({
             ) : null}
           </div>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <PlayerCardSection
+          player={typed}
+          card={(card as PlayerCard | null) ?? null}
+          team={typed.team}
+          canEdit={canManagePlayerCard(user, id)}
+          editHref={
+            user?.profile.player?.id === id ? "/perfil/carta" : `/jugadores/${id}/carta`
+          }
+        />
       </div>
 
       <h2 className="mb-3 text-lg font-semibold">Evolución de rendimiento</h2>

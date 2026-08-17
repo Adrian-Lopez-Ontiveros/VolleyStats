@@ -46,6 +46,7 @@ function isCoachPath(pathname: string) {
 }
 
 function isSpectatorPath(pathname: string) {
+  if (pathname.includes("/carta")) return false;
   return SPECTATOR_PREFIXES.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );

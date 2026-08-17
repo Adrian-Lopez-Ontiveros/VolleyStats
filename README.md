@@ -64,6 +64,7 @@ Eso crea:
 | `jump_analyses` | Mediciones de salto vertical |
 | `teams` | Equipos |
 | `players` | Plantilla (puede existir sin cuenta) y estadísticas acumuladas |
+| `player_cards` | Cromo tipo FIFA: foto, posición y 6 stats (1-99) |
 | `matches` | Partidos, marcador y sets |
 | `match_events` | Cada punto registrado |
 
@@ -75,7 +76,10 @@ También activa:
 - Bucket público `coach-media` para vídeos y archivos de entrenador
 - Función `recompute_player_stats`
 
-Si el proyecto ya estaba creado, ejecuta también `supabase/migrations/014_coach_tools.sql` para añadir el rol `coach` y las tablas de entrenador.
+Si el proyecto ya estaba creado, ejecuta también:
+
+- `supabase/migrations/014_coach_tools.sql` para el rol `coach` y las tablas de entrenador
+- `supabase/migrations/015_player_cards.sql` para los cromos de jugador
 
 ### Convertirte en admin a mano
 
