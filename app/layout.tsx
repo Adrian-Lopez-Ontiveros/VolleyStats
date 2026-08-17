@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: APP_NAME,
   },
   formatDetection: {
@@ -47,6 +47,10 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+const splashBoot = `
+window.__splashAt = Date.now();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -54,7 +58,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
+      <head>
+        <link rel="preload" href="/logo.png" as="image" />
+        <style>{`
+          html:not(.app-ready),html:not(.app-ready) body{background:#0B1F3A}
+          #app-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 50% at 0% 0%,rgba(249,115,22,.28),transparent 55%),radial-gradient(ellipse 60% 45% at 100% 0%,rgba(56,189,248,.14),transparent 52%),#0B1F3A}
+        `}</style>
+      </head>
       <body className={`${font.className} min-h-dvh`}>
+        <script dangerouslySetInnerHTML={{ __html: splashBoot }} />
+        <div id="app-splash" role="status" aria-live="polite" aria-label="Cargando FuenlaStats">
+          <div className="app-splash-mark">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="" width={76} height={76} />
+          </div>
+          <p className="app-splash-name">{APP_NAME}</p>
+          <div className="app-splash-spin" aria-hidden />
+        </div>
+        <noscript>
+          <style>{`#app-splash{display:none!important} html,body{background:hsl(210 40% 98%)}`}</style>
+        </noscript>
         <Providers>{children}</Providers>
       </body>
     </html>

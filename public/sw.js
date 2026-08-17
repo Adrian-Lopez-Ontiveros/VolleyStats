@@ -1,6 +1,6 @@
-const CACHE_NAME = "fuelastats-v5";
+const CACHE_NAME = "fuelastats-v6";
 const OFFLINE_URL = "/offline";
-const PRECACHE = ["/", "/offline", "/partidos", "/liga", "/logo.png"];
+const PRECACHE = ["/", "/offline", "/noticias", "/partidos", "/liga", "/logo.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
