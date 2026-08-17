@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { FederationSync } from "@/components/admin/federation-sync";
-import { RoleToggle } from "@/components/admin/role-toggle";
+import { RoleSelect } from "@/components/admin/role-select";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/types";
+import { ROLE_LABELS } from "@/lib/constants";
+import type { Profile, UserRole } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Administración" };
 
@@ -57,16 +58,14 @@ export default async function AdminPage() {
       <div className="space-y-3">
         {((users ?? []) as Profile[]).map((profile) => (
           <Card key={profile.id}>
-            <CardContent className="flex items-center justify-between gap-3 p-4">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="truncate font-semibold">{profile.full_name}</p>
                 <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={profile.role === "admin" ? "accent" : "secondary"}>
-                  {profile.role === "admin" ? "Admin" : "Jugador"}
-                </Badge>
-                <RoleToggle
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <Badge variant={roleBadgeVariant(profile.role)}>{ROLE_LABELS[profile.role]}</Badge>
+                <RoleSelect
                   userId={profile.id}
                   role={profile.role}
                   disabled={profile.id === session.id}
@@ -78,4 +77,10 @@ export default async function AdminPage() {
       </div>
     </>
   );
+}
+
+function roleBadgeVariant(role: UserRole) {
+  if (role === "admin") return "accent" as const;
+  if (role === "coach") return "default" as const;
+  return "secondary" as const;
 }

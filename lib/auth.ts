@@ -1,13 +1,19 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SPECTATOR_COOKIE, PLAYER_ROSTER_SELECT, PROFILE_SESSION_SELECT } from "@/lib/constants";
+import {
+  SPECTATOR_COOKIE,
+  PLAYER_ROSTER_SELECT,
+  PROFILE_SESSION_SELECT,
+  hasCoachAccess,
+} from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { Player, ProfileWithRelations, SessionUser } from "@/lib/types";
 
 export type Viewer = {
   user: SessionUser | null;
   isAdmin: boolean;
+  isCoach: boolean;
   isGuest: boolean;
 };
 
@@ -91,12 +97,13 @@ export async function requireViewer(): Promise<Viewer> {
     return {
       user,
       isAdmin: user.profile.role === "admin",
+      isCoach: hasCoachAccess(user.profile.role),
       isGuest: false,
     };
   }
 
   if (await isSpectatorGuest()) {
-    return { user: null, isAdmin: false, isGuest: true };
+    return { user: null, isAdmin: false, isCoach: false, isGuest: true };
   }
 
   redirect("/login");
@@ -105,5 +112,11 @@ export async function requireViewer(): Promise<Viewer> {
 export async function requireAdmin() {
   const session = await requireUser();
   if (session.profile.role !== "admin") redirect("/partidos");
+  return session;
+}
+
+export async function requireCoach() {
+  const session = await requireUser();
+  if (!hasCoachAccess(session.profile.role)) redirect("/partidos");
   return session;
 }

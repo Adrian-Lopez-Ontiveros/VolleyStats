@@ -17,7 +17,12 @@ export async function setUserRole(userId: string, role: UserRole) {
     .update({ role })
     .eq("id", userId);
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.message.includes("invalid input value for enum")) {
+      return { error: "Falta ejecutar en Supabase la migración 014_coach_tools.sql" };
+    }
+    return { error: error.message };
+  }
 
   revalidatePath("/admin");
   return { success: true };

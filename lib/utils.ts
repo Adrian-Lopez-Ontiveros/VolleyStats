@@ -67,6 +67,24 @@ export function personNamesMatch(a: string, b: string) {
   return shorter.length >= 2 && shorter.every((token) => longer.includes(token));
 }
 
+export function toLocalDateTimeInput(value?: string | Date | null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function formatBytes(bytes: number | null | undefined) {
+  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function safeStorageName(name: string) {
+  return name.replace(/[^\w.\-()\sÀ-ÿ]/gi, "_").replace(/\s+/g, "-").slice(0, 80);
+}
+
 export function closestPersonName(query: string, names: string[]) {
   const queryTokens = personNameTokens(query);
   if (queryTokens.length === 0) return null;

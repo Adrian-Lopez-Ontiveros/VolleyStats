@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, ROLE_LABELS } from "@/lib/constants";
 import type { SessionUser } from "@/lib/types";
 
 export function AppHeader({ user }: { user: SessionUser | null }) {
@@ -14,11 +14,7 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
           <div className="min-w-0 leading-tight">
             <p className="truncate text-sm font-bold tracking-tight md:text-base">{APP_NAME}</p>
             <p className="text-[11px] text-muted-foreground">
-              {user
-                ? user.profile.role === "admin"
-                  ? "Administrador"
-                  : "Jugador"
-                : "Espectador"}
+              {user ? ROLE_LABELS[user.profile.role] : "Espectador"}
             </p>
           </div>
         </Link>

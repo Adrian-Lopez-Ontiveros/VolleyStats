@@ -1,6 +1,6 @@
 import type { TeamCategory } from "@/lib/categories";
 
-export type UserRole = "player" | "admin";
+export type UserRole = "player" | "coach" | "admin";
 
 export type MatchStatus = "scheduled" | "live" | "finished" | "cancelled";
 
@@ -163,4 +163,65 @@ export type SessionUser = {
   id: string;
   email: string;
   profile: ProfileWithRelations;
+};
+
+export type Training = {
+  id: string;
+  name: string;
+  scheduled_at: string;
+  team_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TrainingFile = {
+  id: string;
+  training_id: string;
+  file_name: string;
+  file_url: string;
+  file_path: string;
+  mime_type: string | null;
+  file_size: number | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type TrainingWithTeam = Training & {
+  team: Pick<Team, "id" | "name" | "short_name" | "category"> | null;
+  files?: Pick<TrainingFile, "id">[] | null;
+};
+
+export type TacticalPlay = {
+  id: string;
+  name: string;
+  notes: string | null;
+  team_id: string | null;
+  board: unknown;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type JumpSource = "auto" | "manual";
+
+export type JumpAnalysis = {
+  id: string;
+  player_id: string;
+  training_id: string | null;
+  height_cm: number;
+  source: JumpSource;
+  video_url: string | null;
+  video_path: string | null;
+  takeoff_sec: number | null;
+  landing_sec: number | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type JumpAnalysisWithRelations = JumpAnalysis & {
+  player: Pick<Player, "id" | "full_name" | "jersey_number" | "team_id"> | null;
+  training: Pick<Training, "id" | "name" | "scheduled_at"> | null;
 };

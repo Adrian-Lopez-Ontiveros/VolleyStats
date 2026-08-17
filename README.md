@@ -6,7 +6,7 @@ PWA de gestión de equipos de voleibol: plantillas, partidos, seguimiento en viv
 - **Backend:** Supabase (Auth, PostgreSQL, Storage, Realtime opcional)
 - **Despliegue:** Vercel
 - **Idioma de la UI:** español
-- **Roles:** `player` (solo lectura + su foto) y `admin` (gestión completa)
+- **Roles:** `player` (solo lectura + su foto), `coach` (lectura + pestaña Entrenador) y `admin` (gestión completa)
 
 El primer usuario que se registre se convierte automáticamente en **administrador**.
 
@@ -57,7 +57,11 @@ Eso crea:
 
 | Tabla | Uso |
 |---|---|
-| `profiles` | Usuarios autenticados + `role` (`player` \| `admin`) |
+| `profiles` | Usuarios autenticados + `role` (`player` \| `coach` \| `admin`) |
+| `trainings` | Entrenamientos del cuerpo técnico |
+| `training_files` | Vídeos y archivos de un entrenamiento |
+| `tactical_plays` | Disposiciones guardadas de la pizarra |
+| `jump_analyses` | Mediciones de salto vertical |
 | `teams` | Equipos |
 | `players` | Plantilla (puede existir sin cuenta) y estadísticas acumuladas |
 | `matches` | Partidos, marcador y sets |
@@ -68,7 +72,10 @@ También activa:
 - Trigger `on_auth_user_created`: al registrarse se crea `profiles` + `players`. El primer usuario es admin.
 - RLS en todas las tablas
 - Bucket público `avatars` en Storage
+- Bucket público `coach-media` para vídeos y archivos de entrenador
 - Función `recompute_player_stats`
+
+Si el proyecto ya estaba creado, ejecuta también `supabase/migrations/014_coach_tools.sql` para añadir el rol `coach` y las tablas de entrenador.
 
 ### Convertirte en admin a mano
 

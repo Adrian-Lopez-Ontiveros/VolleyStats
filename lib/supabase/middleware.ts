@@ -28,6 +28,9 @@ function isPublicPath(pathname: string) {
 }
 
 function isAdminPath(pathname: string) {
+  if (pathname === "/entrenador" || pathname.startsWith("/entrenador/")) {
+    return false;
+  }
   if (ADMIN_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return true;
   }
@@ -36,6 +39,10 @@ function isAdminPath(pathname: string) {
     return true;
   }
   return false;
+}
+
+function isCoachPath(pathname: string) {
+  return pathname === "/entrenador" || pathname.startsWith("/entrenador/");
 }
 
 function isSpectatorPath(pathname: string) {
@@ -112,14 +119,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && isAdminPath(pathname)) {
+  if (user && (isAdminPath(pathname) || isCoachPath(pathname))) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.role !== "admin") {
+    const role = profile?.role;
+    const allowed = isAdminPath(pathname)
+      ? role === "admin"
+      : role === "admin" || role === "coach";
+
+    if (!allowed) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/partidos";
       redirectUrl.search = "";

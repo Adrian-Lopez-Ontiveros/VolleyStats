@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDot, Medal, Shield, Trophy, UserRound } from "lucide-react";
+import { CircleDot, ClipboardList, Medal, Shield, Trophy, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const baseItems = [
@@ -13,25 +13,33 @@ const baseItems = [
 
 export function BottomNav({
   isAdmin,
+  isCoach = false,
   isGuest = false,
 }: {
   isAdmin: boolean;
+  isCoach?: boolean;
   isGuest?: boolean;
 }) {
   const pathname = usePathname();
 
   const navItems = isGuest
     ? baseItems
-    : isAdmin
-      ? [...baseItems, { href: "/perfil", label: "Perfil", icon: UserRound }, { href: "/admin", label: "Admin", icon: Shield }]
-      : [...baseItems, { href: "/perfil", label: "Perfil", icon: UserRound }];
+    : [
+        ...baseItems,
+        ...(isCoach ? [{ href: "/entrenador", label: "Entrenador", icon: ClipboardList }] : []),
+        ...(isAdmin
+          ? [{ href: "/admin", label: "Admin", icon: Shield }]
+          : [{ href: "/perfil", label: "Perfil", icon: UserRound }]),
+      ];
+
+  const columns = navItems.length;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 shadow-nav backdrop-blur pb-safe">
       <ul
         className={cn(
           "mx-auto grid max-w-3xl",
-          isGuest ? "grid-cols-3" : isAdmin ? "grid-cols-5" : "grid-cols-4"
+          columns === 5 ? "grid-cols-5" : columns === 3 ? "grid-cols-3" : "grid-cols-4"
         )}
       >
         {navItems.map((item) => {

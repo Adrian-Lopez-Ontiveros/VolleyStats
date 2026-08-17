@@ -1,8 +1,22 @@
-import type { MatchStatus, PlayerPosition, PointType } from "@/lib/types";
+import type { MatchStatus, PlayerPosition, PointType, UserRole } from "@/lib/types";
 
 export const APP_NAME = "FuenlaStats";
 export const APP_DESCRIPTION =
   "Gestiona equipos, jugadores, partidos y estadísticas de voleibol en Fuenlabrada.";
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  player: "Jugador",
+  coach: "Entrenador",
+  admin: "Administrador",
+};
+
+export function hasCoachAccess(role?: string | null) {
+  return role === "coach" || role === "admin";
+}
+
+export const COACH_MEDIA_BUCKET = "coach-media";
+export const MAX_TRAINING_FILE_BYTES = 20 * 1024 * 1024;
+export const MAX_TRAINING_VIDEO_BYTES = 50 * 1024 * 1024;
 
 export const SPECTATOR_COOKIE = "fuenla_spectator";
 
@@ -177,6 +191,21 @@ export const PLAYER_LINEUP_SELECT =
 
 export const PROFILE_SESSION_SELECT =
   "id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(id, name, short_name, logo_url, city, category, is_club_team)" as const;
+
+export const TRAINING_LIST_SELECT =
+  "id, name, scheduled_at, team_id, notes, created_by, created_at, updated_at, team:teams(id, name, short_name, category), files:training_files(id)" as const;
+
+export const TRAINING_DETAIL_SELECT =
+  "id, name, scheduled_at, team_id, notes, created_by, created_at, updated_at, team:teams(id, name, short_name, category)" as const;
+
+export const TRAINING_FILE_SELECT =
+  "id, training_id, file_name, file_url, file_path, mime_type, file_size, created_by, created_at" as const;
+
+export const TACTICAL_PLAY_SELECT =
+  "id, name, notes, team_id, board, created_by, created_at, updated_at" as const;
+
+export const JUMP_ANALYSIS_SELECT =
+  "id, player_id, training_id, height_cm, source, video_url, video_path, takeoff_sec, landing_sec, notes, created_by, created_at, player:players(id, full_name, jersey_number, team_id), training:trainings(id, name, scheduled_at)" as const;
 
 export const SETS_TO_WIN = 3;
 export const REGULAR_SET_POINTS = 25;

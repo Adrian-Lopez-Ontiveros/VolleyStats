@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
-import { POSITION_LABELS } from "@/lib/constants";
+import { POSITION_LABELS, ROLE_LABELS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { PointType } from "@/lib/types";
 
@@ -73,8 +73,16 @@ export default async function ProfilePage() {
         <h1 className="text-2xl font-bold">{user.profile.full_name}</h1>
         <p className="text-sm text-muted-foreground">{user.email}</p>
         <div className="mt-3 flex flex-wrap justify-center gap-2">
-          <Badge variant={user.profile.role === "admin" ? "accent" : "secondary"}>
-            {user.profile.role === "admin" ? "Administrador" : "Jugador"}
+          <Badge
+            variant={
+              user.profile.role === "admin"
+                ? "accent"
+                : user.profile.role === "coach"
+                  ? "default"
+                  : "secondary"
+            }
+          >
+            {ROLE_LABELS[user.profile.role]}
           </Badge>
           {user.profile.team ? <Badge variant="outline">{user.profile.team.name}</Badge> : null}
           {player?.position ? (
