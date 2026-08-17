@@ -224,6 +224,7 @@ export type TacticalPlay = {
   name: string;
   notes: string | null;
   team_id: string | null;
+  training_id: string | null;
   board: unknown;
   created_by: string | null;
   created_at: string;

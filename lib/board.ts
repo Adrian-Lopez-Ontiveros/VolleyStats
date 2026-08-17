@@ -18,7 +18,29 @@ export type BoardBallPiece = {
   y: number;
 };
 
-export type BoardPiece = BoardPlayerPiece | BoardBallPiece;
+export const BOARD_GEAR_KINDS = ["cone", "box", "hoop", "ladder"] as const;
+
+export type BoardGearKind = (typeof BOARD_GEAR_KINDS)[number];
+
+export type BoardGearPiece = {
+  id: string;
+  kind: BoardGearKind;
+  x: number;
+  y: number;
+};
+
+export type BoardPiece = BoardPlayerPiece | BoardBallPiece | BoardGearPiece;
+
+export const BOARD_GEAR_META: Record<BoardGearKind, { label: string; short: string }> = {
+  cone: { label: "Cono", short: "Cono" },
+  box: { label: "Cajón", short: "Cajón" },
+  hoop: { label: "Aro", short: "Aro" },
+  ladder: { label: "Escalera", short: "Escalera" },
+};
+
+export function isGearKind(value: unknown): value is BoardGearKind {
+  return BOARD_GEAR_KINDS.includes(value as BoardGearKind);
+}
 
 export type BoardState = {
   pieces: BoardPiece[];
@@ -109,6 +131,16 @@ export function parseBoard(value: unknown): BoardState {
       continue;
     }
 
+    if (isGearKind(piece.kind)) {
+      parsed.push({
+        id: String(piece.id ?? pieceId()),
+        kind: piece.kind,
+        x,
+        y,
+      });
+      continue;
+    }
+
     if (piece.kind === "player") {
       const jerseyRaw = piece.jersey;
       const jersey =
@@ -160,4 +192,23 @@ export function createPlayerPiece(
 
 export function createBallPiece(x = 0.5, y = 0.5): BoardBallPiece {
   return { id: pieceId(), kind: "ball", x, y };
+}
+
+export function createGearPiece(kind: BoardGearKind, x?: number, y?: number): BoardGearPiece {
+  return {
+    id: pieceId(),
+    kind,
+    x: x ?? 0.5,
+    y: y ?? 0.52,
+  };
+}
+
+export function nextFreeSpot(pieces: BoardPiece[], kind: BoardPiece["kind"]) {
+  const same = pieces.filter((piece) => piece.kind === kind).length;
+  const ox = ((same % 5) - 2) * 0.08;
+  const oy = Math.floor(same / 5) * 0.07;
+  return {
+    x: clamp01(0.5 + ox),
+    y: clamp01(0.5 + oy),
+  };
 }

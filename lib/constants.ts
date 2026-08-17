@@ -205,7 +205,7 @@ export const TRAINING_FILE_SELECT =
   "id, training_id, file_name, file_url, file_path, mime_type, file_size, created_by, created_at" as const;
 
 export const TACTICAL_PLAY_SELECT =
-  "id, name, notes, team_id, board, created_by, created_at, updated_at" as const;
+  "id, name, notes, team_id, training_id, board, created_by, created_at, updated_at" as const;
 
 export const JUMP_ANALYSIS_SELECT =
   "id, player_id, training_id, height_cm, source, video_url, video_path, takeoff_sec, landing_sec, notes, created_by, created_at, player:players(id, full_name, jersey_number, team_id), training:trainings(id, name, scheduled_at)" as const;

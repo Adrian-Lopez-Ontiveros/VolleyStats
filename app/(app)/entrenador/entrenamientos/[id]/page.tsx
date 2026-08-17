@@ -3,18 +3,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
+import { BoardPreview } from "@/components/coach/board-preview";
 import { DeleteTrainingButton } from "@/components/coach/delete-training-button";
 import { TrainingFiles } from "@/components/coach/training-files";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireCoach } from "@/lib/auth";
-import { JUMP_ANALYSIS_SELECT, TRAINING_DETAIL_SELECT, TRAINING_FILE_SELECT } from "@/lib/constants";
+import {
+  JUMP_ANALYSIS_SELECT,
+  TACTICAL_PLAY_SELECT,
+  TRAINING_DETAIL_SELECT,
+  TRAINING_FILE_SELECT,
+} from "@/lib/constants";
 import { formatJumpCm } from "@/lib/jump-analysis";
 import { createClient } from "@/lib/supabase/server";
 import { formatJersey } from "@/lib/utils";
-import type { JumpAnalysisWithRelations, TrainingFile, TrainingWithTeam } from "@/lib/types";
+import type { JumpAnalysisWithRelations, TacticalPlay, TrainingFile, TrainingWithTeam } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Entrenamiento" };
 
@@ -26,7 +32,7 @@ export default async function TrainingDetailPage({
   const { id } = await params;
   await requireCoach();
   const supabase = await createClient();
-  const [{ data: training }, { data: files }, { data: jumps }] = await Promise.all([
+  const [{ data: training }, { data: files }, { data: jumps }, playsResult] = await Promise.all([
     supabase.from("trainings").select(TRAINING_DETAIL_SELECT as "*").eq("id", id).maybeSingle(),
     supabase
       .from("training_files")
@@ -38,7 +44,13 @@ export default async function TrainingDetailPage({
       .select(JUMP_ANALYSIS_SELECT as "*")
       .eq("training_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("tactical_plays")
+      .select(TACTICAL_PLAY_SELECT as "*")
+      .eq("training_id", id)
+      .order("updated_at", { ascending: false }),
   ]);
+  const linkedPlays = (playsResult.error ? [] : playsResult.data ?? []) as TacticalPlay[];
 
   if (!training) notFound();
   const typed = training as TrainingWithTeam;
@@ -70,6 +82,46 @@ export default async function TrainingDetailPage({
           />
         </CardContent>
       </Card>
+
+      <section className="mb-8 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Pizarra del ejercicio</h2>
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/entrenador/pizarra?entrenamiento=${id}`}>
+              <Plus className="h-4 w-4" />
+              Nueva pizarra
+            </Link>
+          </Button>
+        </div>
+        {linkedPlays.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Todavía no hay una pizarra vinculada. Crea una para colocar jugadores, conos y aros.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {linkedPlays.map((item) => (
+              <Card key={item.id}>
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold">{item.name}</p>
+                      {item.notes ? (
+                        <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
+                          {item.notes}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/entrenador/pizarra/${item.id}`}>Abrir</Link>
+                    </Button>
+                  </div>
+                  <BoardPreview board={item.board} uid={item.id} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
 
       <TrainingFiles trainingId={id} files={(files ?? []) as TrainingFile[]} />
 

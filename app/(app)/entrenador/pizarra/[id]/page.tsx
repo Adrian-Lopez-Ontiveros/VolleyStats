@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { requireCoach } from "@/lib/auth";
 import { PLAYER_LINEUP_SELECT, TACTICAL_PLAY_SELECT, TEAM_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
-import type { Player, TacticalPlay, Team } from "@/lib/types";
+import type { Player, TacticalPlay, Team, Training } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Jugada" };
 
@@ -17,18 +17,24 @@ export default async function BoardPlayPage({
   const { id } = await params;
   await requireCoach();
   const supabase = await createClient();
-  const [{ data: play }, { data: plays }, { data: teams }, { data: players }] = await Promise.all([
-    supabase.from("tactical_plays").select(TACTICAL_PLAY_SELECT as "*").eq("id", id).maybeSingle(),
-    supabase
-      .from("tactical_plays")
-      .select(TACTICAL_PLAY_SELECT as "*")
-      .order("updated_at", { ascending: false }),
-    supabase.from("teams").select(TEAM_SELECT as "*").order("name"),
-    supabase
-      .from("players")
-      .select(PLAYER_LINEUP_SELECT as "*")
-      .order("jersey_number", { ascending: true, nullsFirst: false }),
-  ]);
+  const [{ data: play }, { data: plays }, { data: teams }, { data: players }, { data: trainings }] =
+    await Promise.all([
+      supabase.from("tactical_plays").select(TACTICAL_PLAY_SELECT as "*").eq("id", id).maybeSingle(),
+      supabase
+        .from("tactical_plays")
+        .select(TACTICAL_PLAY_SELECT as "*")
+        .order("updated_at", { ascending: false }),
+      supabase.from("teams").select(TEAM_SELECT as "*").order("name"),
+      supabase
+        .from("players")
+        .select(PLAYER_LINEUP_SELECT as "*")
+        .order("jersey_number", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("trainings")
+        .select("id, name, scheduled_at, team_id")
+        .order("scheduled_at", { ascending: false })
+        .limit(40),
+    ]);
 
   if (!play) notFound();
 
@@ -44,6 +50,7 @@ export default async function BoardPlayPage({
         plays={(plays ?? []) as TacticalPlay[]}
         teams={(teams ?? []) as Team[]}
         players={(players ?? []) as Player[]}
+        trainings={(trainings ?? []) as Pick<Training, "id" | "name" | "scheduled_at" | "team_id">[]}
       />
     </>
   );

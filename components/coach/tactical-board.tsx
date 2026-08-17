@@ -16,12 +16,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { BoardPieceVisual, CourtLines, pieceLabel } from "@/components/coach/board-markers";
 import {
+  BOARD_GEAR_KINDS,
+  BOARD_GEAR_META,
   clamp01,
   createBallPiece,
+  createGearPiece,
   createPlayerPiece,
   defaultBoard,
+  nextFreeSpot,
   parseBoard,
+  type BoardGearKind,
   type BoardPiece,
   type BoardPlayerPiece,
   type BoardSide,
@@ -29,7 +35,7 @@ import {
 } from "@/lib/board";
 import { firstName } from "@/lib/court";
 import { cn, formatJersey } from "@/lib/utils";
-import type { Player, TacticalPlay, Team } from "@/lib/types";
+import type { Player, TacticalPlay, Team, Training } from "@/lib/types";
 
 type RosterPlayer = Pick<Player, "id" | "full_name" | "jersey_number" | "team_id">;
 
@@ -38,20 +44,29 @@ export function TacticalBoard({
   plays,
   teams,
   players,
+  trainings = [],
+  defaultTrainingId = "",
+  defaultName = "",
+  defaultTeamId = "",
 }: {
   play?: TacticalPlay | null;
   plays: TacticalPlay[];
   teams: Team[];
   players: RosterPlayer[];
+  trainings?: Pick<Training, "id" | "name" | "scheduled_at">[];
+  defaultTrainingId?: string;
+  defaultName?: string;
+  defaultTeamId?: string;
 }) {
   const router = useRouter();
   const courtRef = useRef<HTMLDivElement>(null);
   const [board, setBoard] = useState<BoardState>(() =>
     play ? parseBoard(play.board) : defaultBoard()
   );
-  const [name, setName] = useState(play?.name ?? "");
+  const [name, setName] = useState(play?.name ?? defaultName);
   const [notes, setNotes] = useState(play?.notes ?? "");
-  const [teamId, setTeamId] = useState(play?.team_id ?? "");
+  const [teamId, setTeamId] = useState(play?.team_id ?? defaultTeamId);
+  const [trainingId, setTrainingId] = useState(play?.training_id ?? defaultTrainingId ?? "");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [picker, setPicker] = useState<BoardSide | null>(null);
   const [pending, setPending] = useState(false);
@@ -150,11 +165,17 @@ export function TacticalBoard({
   }
 
   function addBall() {
-    if (board.pieces.some((piece) => piece.kind === "ball")) {
-      toast.message("Ya hay un balón en la pista");
-      return;
-    }
-    setBoard((current) => ({ pieces: [...current.pieces, createBallPiece()] }));
+    const spot = nextFreeSpot(board.pieces, "ball");
+    setBoard((current) => ({
+      pieces: [...current.pieces, createBallPiece(spot.x, spot.y)],
+    }));
+  }
+
+  function addGear(kind: BoardGearKind) {
+    const spot = nextFreeSpot(board.pieces, kind);
+    setBoard((current) => ({
+      pieces: [...current.pieces, createGearPiece(kind, spot.x, spot.y)],
+    }));
   }
 
   function removeSelected() {
@@ -196,6 +217,7 @@ export function TacticalBoard({
       name: trimmed,
       notes,
       teamId,
+      trainingId,
       board,
     });
     setPending(false);
@@ -241,7 +263,7 @@ export function TacticalBoard({
         style={fullscreen ? undefined : { aspectRatio: "9 / 14", maxHeight: "65dvh" }}
         onPointerDown={() => setSelectedId(null)}
       >
-        <CourtLines />
+        <CourtLines uid="editor" />
         {board.pieces.map((piece) => (
           <button
             key={piece.id}
@@ -259,39 +281,7 @@ export function TacticalBoard({
             onPointerUp={onPiecePointerUp}
             onPointerCancel={onPiecePointerUp}
           >
-            {piece.kind === "ball" ? (
-              <span
-                className={cn(
-                  "block h-full w-full overflow-hidden rounded-full shadow-md",
-                  selectedId === piece.id && "ring-2 ring-white"
-                )}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/icons/volleyball.png"
-                  alt=""
-                  draggable={false}
-                  className="pointer-events-none h-full w-full select-none object-cover"
-                />
-              </span>
-            ) : (
-              <span className="flex flex-col items-center">
-                <span
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border-2 text-xs font-black tabular-nums shadow-md sm:h-11 sm:w-11 sm:text-sm",
-                    piece.team === "us"
-                      ? "border-white/80 bg-primary text-primary-foreground"
-                      : "border-white/80 bg-rose-600 text-white",
-                    selectedId === piece.id && "ring-2 ring-white ring-offset-2 ring-offset-[#8b5a2b]"
-                  )}
-                >
-                  {piece.jersey ?? piece.name.slice(0, 2).toUpperCase()}
-                </span>
-                <span className="mt-0.5 max-w-16 truncate text-[9px] font-semibold text-white drop-shadow">
-                  {piece.name}
-                </span>
-              </span>
-            )}
+            <BoardPieceVisual piece={piece} selected={selectedId === piece.id} />
           </button>
         ))}
       </div>
@@ -345,7 +335,24 @@ export function TacticalBoard({
             </Button>
             <p className="truncate text-sm font-semibold text-amber-50">Pizarra táctica</p>
           </div>
-          <div className="min-h-0 flex-1 px-3 pb-3">{court}</div>
+          <div className="min-h-0 flex-1 px-3">{court}</div>
+          <div className="grid grid-cols-5 gap-1 px-3 pb-3 pt-2">
+            <Button type="button" size="sm" variant="secondary" className="px-1 text-[10px]" onClick={addBall}>
+              Balón
+            </Button>
+            {BOARD_GEAR_KINDS.map((kind) => (
+              <Button
+                key={kind}
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="px-1 text-[10px]"
+                onClick={() => addGear(kind)}
+              >
+                {BOARD_GEAR_META[kind].short}
+              </Button>
+            ))}
+          </div>
         </div>
       ) : (
         <>
@@ -370,22 +377,28 @@ export function TacticalBoard({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/volleyball.png" alt="" className="h-4 w-4 object-contain" /> Balón
         </span>
-        {selected?.kind === "player" ? (
-          <span className="font-medium text-foreground">Seleccionado: {selected.name}</span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-3 w-2.5 bg-orange-500 [clip-path:polygon(50%_0,100%_100%,0_100%)]" /> Cono
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-3.5 rounded-[2px] bg-amber-700" /> Cajón
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-3 w-3 rounded-full border-2 border-sky-400" /> Aro
+        </span>
+        {selected ? (
+          <span className="font-medium text-foreground">Seleccionado: {pieceLabel(selected)}</span>
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-3">
         <Button type="button" variant="secondary" size="sm" onClick={() => setPicker("us")}>
           <Users className="h-4 w-4" />
-          Añadir
+          Jugador
         </Button>
         <Button type="button" variant="secondary" size="sm" onClick={() => addPlayer("them")}>
           <Plus className="h-4 w-4" />
           Rival
-        </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={addBall}>
-          Balón
         </Button>
         <Button
           type="button"
@@ -399,6 +412,24 @@ export function TacticalBoard({
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
+      </div>
+
+      <div className="grid grid-cols-5 gap-2">
+        <Button type="button" variant="outline" size="sm" className="px-1 text-xs" onClick={addBall}>
+          Balón
+        </Button>
+        {BOARD_GEAR_KINDS.map((kind) => (
+          <Button
+            key={kind}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="px-1 text-xs"
+            onClick={() => addGear(kind)}
+          >
+            {BOARD_GEAR_META[kind].short}
+          </Button>
+        ))}
       </div>
 
       {selected ? (
@@ -417,6 +448,22 @@ export function TacticalBoard({
             onChange={(event) => setName(event.target.value)}
             placeholder="Recepción W · Rotación 1"
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="play-training">Entrenamiento (opcional)</Label>
+          <select
+            id="play-training"
+            value={trainingId}
+            onChange={(event) => setTrainingId(event.target.value)}
+            className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm"
+          >
+            <option value="">Sin vincular</option>
+            {trainings.map((training) => (
+              <option key={training.id} value={training.id}>
+                {training.name}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="play-team">Equipo (opcional)</Label>
@@ -501,48 +548,5 @@ export function TacticalBoard({
         </SheetContent>
       </Sheet>
     </div>
-  );
-}
-
-function CourtLines() {
-  return (
-    <svg viewBox="0 0 90 140" className="absolute inset-0 h-full w-full" aria-hidden>
-      <defs>
-        <linearGradient id="court-wood" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#e2a45d" />
-          <stop offset="45%" stopColor="#c47b36" />
-          <stop offset="100%" stopColor="#a86228" />
-        </linearGradient>
-        <pattern id="court-grain" width="90" height="10" patternUnits="userSpaceOnUse">
-          <path
-            d="M0 2.2 C 18 0.6 36 3.4 54 1.8 S 80 3 90 2.4"
-            fill="none"
-            stroke="#8a4d1d"
-            strokeOpacity="0.22"
-            strokeWidth="0.7"
-          />
-          <path
-            d="M0 6.8 C 16 8.4 38 5.6 58 7.4 S 78 6.2 90 7"
-            fill="none"
-            stroke="#f0c48a"
-            strokeOpacity="0.16"
-            strokeWidth="0.55"
-          />
-        </pattern>
-      </defs>
-      <rect width="90" height="140" fill="url(#court-wood)" />
-      <rect width="90" height="140" fill="url(#court-grain)" />
-      <rect x="6" y="6" width="78" height="128" fill="none" stroke="#f7ecd4" strokeWidth="1.6" />
-      <rect x="6" y="68.2" width="78" height="3.6" fill="#6b3a16" fillOpacity="0.55" />
-      <line x1="6" y1="70" x2="84" y2="70" stroke="#f7ecd4" strokeWidth="2.2" />
-      <line x1="6" y1="46.7" x2="84" y2="46.7" stroke="#f7ecd4" strokeWidth="1.15" strokeDasharray="3 2" />
-      <line x1="6" y1="93.3" x2="84" y2="93.3" stroke="#f7ecd4" strokeWidth="1.15" strokeDasharray="3 2" />
-      <text x="45" y="16" textAnchor="middle" fill="#5c3310" fillOpacity="0.55" fontSize="5" fontWeight="700">
-        RIVAL
-      </text>
-      <text x="45" y="132" textAnchor="middle" fill="#5c3310" fillOpacity="0.55" fontSize="5" fontWeight="700">
-        NOSOTROS
-      </text>
-    </svg>
   );
 }

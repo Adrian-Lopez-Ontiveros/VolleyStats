@@ -882,6 +882,7 @@ create table if not exists public.tactical_plays (
   name text not null,
   notes text,
   team_id uuid references public.teams (id) on delete set null,
+  training_id uuid references public.trainings (id) on delete set null,
   board jsonb not null default '{"pieces":[]}'::jsonb,
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),
@@ -907,6 +908,7 @@ create index if not exists idx_trainings_date on public.trainings (scheduled_at 
 create index if not exists idx_trainings_team on public.trainings (team_id);
 create index if not exists idx_training_files_training on public.training_files (training_id);
 create index if not exists idx_tactical_plays_updated on public.tactical_plays (updated_at desc);
+create index if not exists idx_tactical_plays_training on public.tactical_plays (training_id);
 create index if not exists idx_jump_analyses_player on public.jump_analyses (player_id, created_at desc);
 create index if not exists idx_jump_analyses_training on public.jump_analyses (training_id);
 
