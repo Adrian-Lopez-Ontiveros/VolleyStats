@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDot, ClipboardList, Medal, Shield, Trophy, UserRound } from "lucide-react";
+import { CircleDot, ClipboardList, Medal, Newspaper, Shield, Trophy, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const baseItems = [
   { href: "/partidos", label: "Partidos", icon: Trophy },
   { href: "/liga", label: "Liga", icon: Medal },
   { href: "/equipos", label: "Equipos", icon: CircleDot },
+  { href: "/noticias", label: "Noticias", icon: Newspaper },
 ];
 
 export function BottomNav({
@@ -38,13 +39,15 @@ export function BottomNav({
       <ul
         className={cn(
           "mx-auto grid max-w-3xl",
-          columns >= 6
-            ? "grid-cols-6"
-            : columns === 5
-              ? "grid-cols-5"
-              : columns === 3
-                ? "grid-cols-3"
-                : "grid-cols-4"
+          columns >= 7
+            ? "grid-cols-7"
+            : columns >= 6
+              ? "grid-cols-6"
+              : columns === 5
+                ? "grid-cols-5"
+                : columns === 3
+                  ? "grid-cols-3"
+                  : "grid-cols-4"
         )}
       >
         {navItems.map((item) => {
@@ -58,7 +61,7 @@ export function BottomNav({
                 prefetch
                 className={cn(
                   "flex flex-col items-center gap-0.5 py-2 font-medium",
-                  columns >= 6 ? "text-[10px]" : "text-[11px]",
+                  columns >= 6 ? "text-[9px]" : "text-[11px]",
                   active ? "text-accent" : "text-muted-foreground"
                 )}
               >

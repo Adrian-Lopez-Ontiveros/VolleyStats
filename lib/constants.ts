@@ -15,6 +15,11 @@ export function hasCoachAccess(role?: string | null) {
 }
 
 export const COACH_MEDIA_BUCKET = "coach-media";
+export const NEWS_BUCKET = "news";
+export const MAX_NEWS_COVER_BYTES = 4 * 1024 * 1024;
+
+export const NEWS_SELECT =
+  "id, title, body, cover_url, cover_path, cover_focus_x, cover_focus_y, cover_zoom, published_at, created_by, created_at, updated_at" as const;
 export const MAX_TRAINING_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_TRAINING_VIDEO_BYTES = 50 * 1024 * 1024;
 

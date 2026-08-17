@@ -5,6 +5,7 @@ $urls = @(
   "/offline",
   "/manifest.webmanifest",
   "/partidos",
+  "/noticias",
   "/entrenador",
   "/sw.js",
   "/icons/icon-192.png"

@@ -67,6 +67,7 @@ Eso crea:
 | `player_cards` | Cromo tipo FIFA: foto, posición y 6 stats (1-99) |
 | `matches` | Partidos, marcador y sets |
 | `match_events` | Cada punto registrado |
+| `news` | Tablón de noticias y anuncios del club |
 
 También activa:
 
@@ -82,6 +83,8 @@ Si el proyecto ya estaba creado, ejecuta también:
 - `supabase/migrations/015_player_cards.sql` para los cromos de jugador
 - `supabase/migrations/016_player_card_framing.sql` para el reencuadre de foto y el nombre de la carta
 - `supabase/migrations/017_tactical_play_training.sql` para vincular pizarras a entrenamientos
+- `supabase/migrations/018_news.sql` para el tablón de noticias
+- `supabase/migrations/019_news_cover_frame.sql` para reencuadrar la portada de las noticias
 
 ### Convertirte en admin a mano
 

@@ -2,6 +2,21 @@ import type { TeamCategory } from "@/lib/categories";
 
 export type UserRole = "player" | "coach" | "admin";
 
+export type ClubNews = {
+  id: string;
+  title: string;
+  body: string;
+  cover_url: string | null;
+  cover_path: string | null;
+  cover_focus_x: number | null;
+  cover_focus_y: number | null;
+  cover_zoom: number | null;
+  published_at: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MatchStatus = "scheduled" | "live" | "finished" | "cancelled";
 
 export type PointType =

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ClipboardList, KeyRound, LogOut, Shield, UserRound } from "lucide-react";
+import { ClipboardList, KeyRound, LogOut, Newspaper, Shield, UserRound } from "lucide-react";
 import { hasCoachAccess } from "@/lib/constants";
 import { logoutAction } from "@/lib/actions/auth";
 import { initials } from "@/lib/utils";
@@ -40,6 +40,12 @@ export function UserMenu({ user }: { user: SessionUser }) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/noticias">
+            <Newspaper className="h-4 w-4" />
+            Noticias
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/perfil">
             <UserRound className="h-4 w-4" />

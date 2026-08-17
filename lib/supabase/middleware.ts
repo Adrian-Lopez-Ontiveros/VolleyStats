@@ -15,10 +15,11 @@ const ADMIN_PREFIXES = [
   "/equipos/nuevo",
   "/jugadores/nuevo",
   "/partidos/nuevo",
+  "/noticias/nuevo",
   "/liga/rival",
 ];
 
-const SPECTATOR_PREFIXES = ["/partidos", "/liga", "/equipos", "/jugadores"];
+const SPECTATOR_PREFIXES = ["/partidos", "/liga", "/equipos", "/jugadores", "/noticias"];
 const SPECTATOR_COOKIE = "fuenla_spectator";
 
 function isPublicPath(pathname: string) {
