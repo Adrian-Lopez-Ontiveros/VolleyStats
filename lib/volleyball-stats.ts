@@ -62,14 +62,6 @@ export function emptyAttackStats(): AttackStats {
   return { kills: 0, errors: 0, continuations: 0, attempts: 0, efficiency: null };
 }
 
-export function emptyServeStats(): ServeStats {
-  return { aces: 0, errors: 0, inPlay: 0, attempts: 0, successRate: null };
-}
-
-export function emptyReceptionStats(): ReceptionStats {
-  return { good: 0, medium: 0, bad: 0, total: 0, goodRate: null };
-}
-
 export function emptyPossessionStats(): PossessionStats {
   return { opportunities: 0, won: 0, rate: null };
 }

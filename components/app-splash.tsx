@@ -7,7 +7,7 @@ const MAX_MS = 3500;
 
 let hideStarted = false;
 
-export function hideAppSplash() {
+function hideAppSplash() {
   if (hideStarted || typeof document === "undefined") return;
   hideStarted = true;
 

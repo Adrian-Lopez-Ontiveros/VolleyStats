@@ -155,8 +155,6 @@ export const MATCH_STATUS_META: Record<
   },
 };
 
-export const FEDERATION_BADGE_CLASS = "border-violet-800 bg-violet-600 text-white";
-
 export function matchStatusMeta(status: string | null | undefined) {
   if (status && status in MATCH_STATUS_META) {
     return MATCH_STATUS_META[status as MatchStatus];

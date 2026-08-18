@@ -167,14 +167,6 @@ export async function syncFederationGroup(
   return report;
 }
 
-export async function syncFederationLeagues(): Promise<
-  FederationSyncReport | { error: string }
-> {
-  const test = await getFmvTestLeague();
-  if ("error" in test) return test;
-  return syncFederationGroup(test.groupId, test.category);
-}
-
 async function upsertFederationTeam(team: FmvTeam, category: TeamCategory) {
   const supabase = await createClient();
   const { data: byFed } = await supabase

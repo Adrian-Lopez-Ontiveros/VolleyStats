@@ -37,14 +37,14 @@ export function filterEventsByPhase<T extends FilterableEvent>(
   });
 }
 
-export const SET_PHASE_OPTIONS: { id: SetPhase; label: string; hint: string }[] = [
-  { id: "all", label: "Todos los sets", hint: "El partido completo" },
-  { id: "early", label: "Primeros sets", hint: "Sets 1 y 2" },
-  { id: "late", label: "Sets finales", hint: "Set 3 en adelante" },
+export const SET_PHASE_OPTIONS: { id: SetPhase; label: string }[] = [
+  { id: "all", label: "Todos los sets" },
+  { id: "early", label: "Primeros sets" },
+  { id: "late", label: "Sets finales" },
 ];
 
-export const POSSESSION_OPTIONS: { id: PossessionPhase; label: string; hint: string }[] = [
-  { id: "all", label: "Todo", hint: "Sacando y recibiendo" },
-  { id: "serving", label: "Al sacar", hint: "Cuando el equipo saca" },
-  { id: "receiving", label: "Al recibir", hint: "Cuando el equipo recibe" },
+export const POSSESSION_OPTIONS: { id: PossessionPhase; label: string }[] = [
+  { id: "all", label: "Todo" },
+  { id: "serving", label: "Al sacar" },
+  { id: "receiving", label: "Al recibir" },
 ];

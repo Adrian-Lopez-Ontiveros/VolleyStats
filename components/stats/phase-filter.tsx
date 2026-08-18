@@ -5,8 +5,6 @@ import {
   POSSESSION_OPTIONS,
   SET_PHASE_OPTIONS,
   type PhaseFilter,
-  type PossessionPhase,
-  type SetPhase,
 } from "@/lib/stat-filters";
 
 export function PhaseFilterBar({
@@ -68,12 +66,3 @@ function ChipRow<T extends string>({
     </div>
   );
 }
-
-export function phaseLabel(filter: PhaseFilter) {
-  const setLabel = SET_PHASE_OPTIONS.find((item) => item.id === filter.sets)?.label;
-  const possLabel = POSSESSION_OPTIONS.find((item) => item.id === filter.possession)?.label;
-  if (filter.sets === "all" && filter.possession === "all") return null;
-  return [setLabel, filter.possession === "all" ? null : possLabel].filter(Boolean).join(" · ");
-}
-
-export type { PhaseFilter, PossessionPhase, SetPhase };

@@ -71,10 +71,6 @@ function pieceId() {
   return `p-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function emptyBoard(): BoardState {
-  return { pieces: [] };
-}
-
 export function defaultBoard(): BoardState {
   const ours: BoardPlayerPiece[] = US_SPOTS.map((spot) => ({
     id: pieceId(),

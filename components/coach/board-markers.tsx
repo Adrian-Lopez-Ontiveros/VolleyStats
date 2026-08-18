@@ -107,7 +107,7 @@ export function BoardPieceVisual({
   return <GearMark kind={piece.kind} selected={selected} compact={compact} />;
 }
 
-export function GearMark({
+function GearMark({
   kind,
   selected = false,
   compact = false,

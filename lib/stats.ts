@@ -444,16 +444,6 @@ export function emptyPointTypeCounts(): PointTypeCounts {
   };
 }
 
-export function countPointTypes(
-  events: { point_type: PointType }[]
-): PointTypeCounts {
-  const counts = emptyPointTypeCounts();
-  for (const event of events) {
-    counts[event.point_type] += 1;
-  }
-  return counts;
-}
-
 export function countChartPointTypes(
   events: { point_type: PointType }[]
 ): PointTypeCounts {
