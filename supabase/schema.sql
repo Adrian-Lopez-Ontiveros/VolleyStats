@@ -1097,7 +1097,7 @@ create table if not exists public.news (
   cover_path text,
   cover_focus_x numeric(5, 2) not null default 50 check (cover_focus_x >= 0 and cover_focus_x <= 100),
   cover_focus_y numeric(5, 2) not null default 50 check (cover_focus_y >= 0 and cover_focus_y <= 100),
-  cover_zoom numeric(4, 2) not null default 1 check (cover_zoom >= 1 and cover_zoom <= 2.5),
+  cover_zoom numeric(4, 2) not null default 1 check (cover_zoom >= 0.4 and cover_zoom <= 2.5),
   published_at timestamptz not null default now(),
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),

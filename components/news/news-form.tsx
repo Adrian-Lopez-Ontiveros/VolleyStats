@@ -9,6 +9,9 @@ import { createNews, updateNews } from "@/lib/actions/news";
 import { MAX_NEWS_COVER_BYTES, NEWS_BUCKET } from "@/lib/constants";
 import {
   DEFAULT_COVER_FRAME,
+  MAX_COVER_ZOOM,
+  MIN_COVER_ZOOM,
+  clampCoverZoom,
   coverFrameFromNews,
   type CoverFrame,
 } from "@/lib/news";
@@ -137,10 +140,10 @@ export function NewsForm({
         {coverUrl ? (
           <div className="space-y-2 rounded-2xl border bg-card p-3">
             <p className="text-xs text-muted-foreground">
-              Arrastra la imagen para mover el recorte. Este recuadro 16:9 es el que se verá en el listado y en la noticia.
+              Arrastra la imagen para moverla. Baja el tamaño para verla más pequeña; súbelo para recortar.
             </p>
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="coverZoom">Zoom</Label>
+              <Label htmlFor="coverZoom">Tamaño</Label>
               <span className="text-sm font-semibold tabular-nums">
                 {Math.round(coverFrame.zoom * 100)}%
               </span>
@@ -148,14 +151,14 @@ export function NewsForm({
             <input
               id="coverZoom"
               type="range"
-              min={1}
-              max={2.5}
+              min={MIN_COVER_ZOOM}
+              max={MAX_COVER_ZOOM}
               step={0.05}
               value={coverFrame.zoom}
               onChange={(event) =>
                 setCoverFrame((current) => ({
                   ...current,
-                  zoom: Number(event.target.value),
+                  zoom: clampCoverZoom(Number(event.target.value)),
                 }))
               }
               className="stat-slider w-full"

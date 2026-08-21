@@ -7,6 +7,8 @@ export type CoverFrame = {
 };
 
 export const DEFAULT_COVER_FRAME: CoverFrame = { x: 50, y: 50, zoom: 1 };
+export const MIN_COVER_ZOOM = 0.4;
+export const MAX_COVER_ZOOM = 2.5;
 
 export function newsExcerpt(body: string, max = 140) {
   const text = body.replace(/\s+/g, " ").trim();
@@ -21,7 +23,7 @@ export function clampCoverFocus(value: number) {
 
 export function clampCoverZoom(value: number) {
   if (!Number.isFinite(value)) return 1;
-  return Math.min(2.5, Math.max(1, Math.round(value * 100) / 100));
+  return Math.min(MAX_COVER_ZOOM, Math.max(MIN_COVER_ZOOM, Math.round(value * 100) / 100));
 }
 
 export function coverFrameFromNews(news?: Pick<ClubNews, "cover_focus_x" | "cover_focus_y" | "cover_zoom"> | null): CoverFrame {
@@ -34,8 +36,9 @@ export function coverFrameFromNews(news?: Pick<ClubNews, "cover_focus_x" | "cove
 
 export function coverImageStyle(frame: CoverFrame) {
   return {
+    objectFit: frame.zoom < 1 ? "contain" : "cover",
     objectPosition: `${frame.x}% ${frame.y}%`,
-    transform: frame.zoom > 1 ? `scale(${frame.zoom})` : undefined,
+    transform: frame.zoom === 1 ? undefined : `scale(${frame.zoom})`,
     transformOrigin: `${frame.x}% ${frame.y}%`,
   } as const;
 }

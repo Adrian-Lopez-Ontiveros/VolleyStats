@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { NEWS_BUCKET } from "@/lib/constants";
-import { clampCoverFocus, clampCoverZoom } from "@/lib/news";
+import { clampCoverFocus, clampCoverZoom, MAX_COVER_ZOOM, MIN_COVER_ZOOM } from "@/lib/news";
 import { createClient } from "@/lib/supabase/server";
 
 const newsSchema = z.object({
@@ -15,7 +15,7 @@ const newsSchema = z.object({
   coverPath: z.string().optional().or(z.literal("")),
   coverFocusX: z.coerce.number().min(0).max(100),
   coverFocusY: z.coerce.number().min(0).max(100),
-  coverZoom: z.coerce.number().min(1).max(2.5),
+  coverZoom: z.coerce.number().min(MIN_COVER_ZOOM).max(MAX_COVER_ZOOM),
   publishedAt: z.string().optional().or(z.literal("")),
 });
 

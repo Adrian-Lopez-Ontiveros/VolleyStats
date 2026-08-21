@@ -42,7 +42,7 @@ export default async function NewsDetailPage({
         <BackButton href="/noticias" />
       </div>
 
-      <article>
+      <article className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
         <div className="overflow-hidden rounded-3xl shadow-card ring-1 ring-black/[0.06]">
           <NewsCover
             url={news.cover_url}
@@ -52,7 +52,7 @@ export default async function NewsDetailPage({
           />
         </div>
 
-        <div className="mt-6 rounded-3xl border bg-card px-5 py-6 shadow-card sm:mt-7 sm:px-7 sm:py-8">
+        <div className="mt-6 rounded-3xl border bg-card px-5 py-6 shadow-card sm:px-7 sm:py-8 lg:mt-0">
           <header>
             <span className="mb-3 block h-1 w-9 rounded-full bg-accent" aria-hidden />
             <p className="flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground">
@@ -75,8 +75,8 @@ export default async function NewsDetailPage({
       </article>
 
       {isAdmin ? (
-        <div className="mt-8 space-y-2 sm:mt-10">
-          <Button asChild variant="outline" className="w-full">
+        <div className="mt-8 space-y-2 sm:mt-10 lg:flex lg:max-w-lg lg:gap-2 lg:space-y-0">
+          <Button asChild variant="outline" className="w-full lg:flex-1">
             <Link href={`/noticias/${id}/editar`}>
               <Pencil className="h-4 w-4" />
               Editar

@@ -68,11 +68,17 @@ export default async function NewsPage() {
           }
         />
       ) : (
-        <div className="space-y-5">
-          <NewsCard news={featured} featured />
-          {rest.map((item) => (
-            <NewsCard key={item.id} news={item} />
-          ))}
+        <div className="mx-auto w-full max-w-5xl">
+          <div className={rest.length > 0 ? "grid gap-5 lg:grid-cols-2" : undefined}>
+            <NewsCard
+              news={featured}
+              featured
+              className={rest.length > 0 ? "lg:col-span-2" : undefined}
+            />
+            {rest.map((item) => (
+              <NewsCard key={item.id} news={item} />
+            ))}
+          </div>
         </div>
       )}
     </>

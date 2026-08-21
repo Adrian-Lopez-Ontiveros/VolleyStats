@@ -56,6 +56,11 @@
   .pt-safe {
     padding-top: max(0.5rem, env(safe-area-inset-top));
   }
+
+  /* App column on phones; full-bleed website shell from lg up */
+  .app-shell {
+    @apply mx-auto w-full max-w-3xl px-4 lg:max-w-none lg:px-8 xl:px-12;
+  }
 }
 
 .player-card-surface {

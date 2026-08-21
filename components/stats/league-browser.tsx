@@ -160,7 +160,7 @@ export function LeagueBrowser({
                     Todavía no hay rivales en {meta.label}.
                   </p>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
                     {rivals.map((team) => (
                       <li key={team.id}>
                         <Link

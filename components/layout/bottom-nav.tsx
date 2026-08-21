@@ -2,15 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDot, ClipboardList, Medal, Newspaper, Shield, Trophy, UserRound } from "lucide-react";
+import { getAppNavItems } from "@/components/layout/nav-items";
 import { cn } from "@/lib/utils";
-
-const baseItems = [
-  { href: "/noticias", label: "Noticias", icon: Newspaper },
-  { href: "/partidos", label: "Partidos", icon: Trophy },
-  { href: "/liga", label: "Liga", icon: Medal },
-  { href: "/equipos", label: "Equipos", icon: CircleDot },
-];
 
 export function BottomNav({
   isAdmin,
@@ -22,20 +15,11 @@ export function BottomNav({
   isGuest?: boolean;
 }) {
   const pathname = usePathname();
-
-  const navItems = isGuest
-    ? baseItems
-    : [
-        ...baseItems,
-        ...(isCoach ? [{ href: "/entrenador", label: "Entrenador", icon: ClipboardList }] : []),
-        { href: "/perfil", label: "Perfil", icon: UserRound },
-        ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
-      ];
-
+  const navItems = getAppNavItems({ isAdmin, isCoach, isGuest });
   const columns = navItems.length;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 shadow-nav backdrop-blur pb-safe">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 shadow-nav backdrop-blur pb-safe lg:hidden">
       <ul
         className={cn(
           "mx-auto grid max-w-3xl",

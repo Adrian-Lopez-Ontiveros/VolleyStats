@@ -280,29 +280,31 @@ export default async function TeamDetailPage({
           {typedPlayers.length === 0 ? (
             <p className="text-sm text-muted-foreground">Este equipo todavía no tiene jugadores.</p>
           ) : (
-            typedPlayers.map((player) => (
-              <Link key={player.id} href={`/jugadores/${player.id}`}>
-                <Card className="mb-3">
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <Avatar>
-                      <AvatarImage src={player.avatar_url ?? undefined} alt={player.full_name} />
-                      <AvatarFallback>{initials(player.full_name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold">
-                        {formatJersey(player.jersey_number)} {player.full_name}
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+              {typedPlayers.map((player) => (
+                <Link key={player.id} href={`/jugadores/${player.id}`} className="block h-full">
+                  <Card className="h-full">
+                    <CardContent className="flex items-center gap-3 p-4">
+                      <Avatar>
+                        <AvatarImage src={player.avatar_url ?? undefined} alt={player.full_name} />
+                        <AvatarFallback>{initials(player.full_name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">
+                          {formatJersey(player.jersey_number)} {player.full_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {player.position ? POSITION_LABELS[player.position] : "Sin posición"}
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold tabular-nums">
+                        {totalPlayerPoints(player)} pts
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {player.position ? POSITION_LABELS[player.position] : "Sin posición"}
-                      </p>
-                    </div>
-                    <p className="text-sm font-bold tabular-nums">
-                      {totalPlayerPoints(player)} pts
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
           )}
         </section>
       </div>

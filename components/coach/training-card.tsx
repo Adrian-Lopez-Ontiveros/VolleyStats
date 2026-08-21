@@ -9,8 +9,8 @@ export function TrainingCard({ training }: { training: TrainingWithTeam }) {
   const fileCount = training.files?.length ?? 0;
 
   return (
-    <Link href={`/entrenador/entrenamientos/${training.id}`}>
-      <Card className="transition-transform active:scale-[0.99]">
+    <Link href={`/entrenador/entrenamientos/${training.id}`} className="block h-full">
+      <Card className="h-full transition-transform active:scale-[0.99]">
         <CardContent className="space-y-2 p-4">
           <p className="text-xs font-medium capitalize text-muted-foreground">
             {format(new Date(training.scheduled_at), "EEE d MMM · HH:mm", { locale: es })}

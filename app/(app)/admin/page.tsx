@@ -55,7 +55,7 @@ export default async function AdminPage() {
       </div>
 
       <h2 className="mb-3 text-lg font-semibold">Usuarios y roles</h2>
-      <div className="space-y-3">
+      <div className="grid gap-3 lg:grid-cols-2">
         {((users ?? []) as Profile[]).map((profile) => (
           <Card key={profile.id}>
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">

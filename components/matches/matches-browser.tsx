@@ -162,7 +162,7 @@ function MatchList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
       {matches.map((match) => (
         <MatchCard key={match.id} match={match} />
       ))}

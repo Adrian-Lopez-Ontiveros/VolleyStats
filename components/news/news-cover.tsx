@@ -89,7 +89,7 @@ export function NewsCover({
           src={url}
           alt={alt}
           draggable={false}
-          className="h-full w-full select-none object-cover"
+          className="h-full w-full select-none"
           style={coverImageStyle(current)}
         />
       ) : (

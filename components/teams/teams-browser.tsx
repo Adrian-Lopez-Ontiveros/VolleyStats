@@ -131,10 +131,10 @@ export function TeamsBrowser({
                 description="Los jugadores de este equipo aparecerán aquí cuando un admin los dé de alta."
               />
             ) : (
-              <div className="space-y-3">
+              <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
                 {typedPlayers.map((player) => (
-                  <Link key={player.id} href={`/jugadores/${player.id}`}>
-                    <Card className="transition-transform active:scale-[0.99]">
+                  <Link key={player.id} href={`/jugadores/${player.id}`} className="block h-full">
+                    <Card className="h-full transition-transform active:scale-[0.99]">
                       <CardContent className="flex items-center gap-3 p-4">
                         <Avatar className="h-12 w-12">
                           <AvatarImage

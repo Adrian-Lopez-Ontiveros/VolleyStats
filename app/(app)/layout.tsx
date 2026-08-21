@@ -11,8 +11,8 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-dvh">
-      <AppHeader user={user} />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-28 pt-5">{children}</main>
+      <AppHeader user={user} isAdmin={isAdmin} isCoach={isCoach} isGuest={isGuest} />
+      <main className="app-shell pb-28 pt-5 lg:pb-10 lg:pt-8">{children}</main>
       <BottomNav isAdmin={isAdmin} isCoach={isCoach} isGuest={isGuest} />
     </div>
   );

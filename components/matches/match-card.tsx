@@ -13,8 +13,8 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
   const status = matchStatusMeta(match.status);
 
   return (
-    <Link href={`/partidos/${match.id}`}>
-      <Card className="transition-transform active:scale-[0.99]">
+    <Link href={`/partidos/${match.id}`} className="block h-full">
+      <Card className="h-full transition-transform active:scale-[0.99]">
         <CardContent className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium capitalize text-muted-foreground">

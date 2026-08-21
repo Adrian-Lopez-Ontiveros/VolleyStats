@@ -24,7 +24,7 @@ export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
   if (ordered.length === 0) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       {[...groups.entries()].map(([monthKey, monthMatches]) => {
         const monthDate = parseISO(`${monthKey}-01`);
         return (
