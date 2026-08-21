@@ -18,14 +18,14 @@ export function NewsCard({
   const dateLabel = format(new Date(news.published_at), "d MMM yyyy", { locale: es });
 
   return (
-    <Link href={`/noticias/${news.id}`} className={cn("block h-full", className)}>
+    <Link href={`/noticias/${news.id}`} className={cn("block h-full min-w-0 w-full max-w-full", className)}>
       <article
         className={cn(
-          "h-full overflow-hidden rounded-3xl border bg-card shadow-card transition-transform active:scale-[0.99]",
+          "h-full min-w-0 overflow-hidden rounded-3xl border bg-card shadow-card transition-transform active:scale-[0.99]",
           featured && "ring-1 ring-accent/30"
         )}
       >
-        <div className="relative">
+        <div className="relative min-w-0 overflow-hidden">
           <NewsCover
             url={news.cover_url}
             frame={coverFrameFromNews(news)}
@@ -38,10 +38,15 @@ export function NewsCard({
           </div>
         </div>
         <div className={cn("space-y-2", featured ? "p-5" : "p-4")}>
-          <h2 className={cn("font-bold leading-tight tracking-tight", featured ? "text-2xl" : "text-lg")}>
+          <h2
+            className={cn(
+              "break-words font-bold leading-tight tracking-tight [overflow-wrap:anywhere]",
+              featured ? "text-2xl" : "text-lg"
+            )}
+          >
             {news.title}
           </h2>
-          <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+          <p className="line-clamp-3 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
             {newsExcerpt(news.body, featured ? 180 : 130)}
           </p>
         </div>

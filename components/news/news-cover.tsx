@@ -73,7 +73,7 @@ export function NewsCover({
     <div
       ref={boxRef}
       className={cn(
-        "relative overflow-hidden bg-primary",
+        "relative min-w-0 w-full overflow-hidden bg-primary",
         canDrag && (dragging ? "cursor-grabbing" : "cursor-grab"),
         className
       )}
@@ -89,7 +89,7 @@ export function NewsCover({
           src={url}
           alt={alt}
           draggable={false}
-          className="h-full w-full select-none"
+          className="h-full w-full max-w-full select-none"
           style={coverImageStyle(current)}
         />
       ) : (

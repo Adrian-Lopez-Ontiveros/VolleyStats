@@ -68,8 +68,8 @@ export default async function NewsPage() {
           }
         />
       ) : (
-        <div className="mx-auto w-full max-w-5xl">
-          <div className={rest.length > 0 ? "grid gap-5 lg:grid-cols-2" : undefined}>
+        <div className="mx-auto w-full min-w-0 max-w-5xl">
+          <div className={rest.length > 0 ? "grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-2" : "min-w-0"}>
             <NewsCard
               news={featured}
               featured

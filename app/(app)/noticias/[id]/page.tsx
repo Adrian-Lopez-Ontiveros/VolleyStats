@@ -42,7 +42,7 @@ export default async function NewsDetailPage({
         <BackButton href="/noticias" />
       </div>
 
-      <article className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+      <article className="min-w-0 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
         <div className="overflow-hidden rounded-3xl shadow-card ring-1 ring-black/[0.06]">
           <NewsCover
             url={news.cover_url}
@@ -61,13 +61,13 @@ export default async function NewsDetailPage({
                 {publishedLabel}
               </time>
             </p>
-            <h1 className="mt-3 text-[1.85rem] font-black leading-[1.15] tracking-tight text-primary sm:mt-4 sm:text-4xl">
+            <h1 className="mt-3 break-words text-[1.85rem] font-black leading-[1.15] tracking-tight text-primary [overflow-wrap:anywhere] sm:mt-4 sm:text-4xl">
               {news.title}
             </h1>
           </header>
 
           <div
-            className="mt-6 whitespace-pre-wrap border-t border-border/80 pt-6 text-[16.5px] leading-[1.85] text-foreground/85 sm:mt-7 sm:pt-7"
+            className="mt-6 whitespace-pre-wrap break-words border-t border-border/80 pt-6 text-[16.5px] leading-[1.85] text-foreground/85 [overflow-wrap:anywhere] sm:mt-7 sm:pt-7"
           >
             {news.body}
           </div>
