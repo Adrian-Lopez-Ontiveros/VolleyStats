@@ -34,17 +34,20 @@ export default async function HomePage() {
       </ul>
 
       <div className="mt-10 grid gap-3">
-        <Button asChild size="lg" variant="accent">
-          <Link href="/registro">Crear cuenta</Link>
-        </Button>
-        <Button asChild size="lg" variant="outline">
-          <Link href="/login">Ya tengo cuenta</Link>
-        </Button>
         <form action={enterAsSpectator}>
-          <Button type="submit" size="lg" variant="secondary" className="w-full">
+          <Button type="submit" size="lg" variant="accent" className="w-full">
             Entrar como espectador
           </Button>
         </form>
+        <Button asChild size="lg" variant="outline">
+          <Link href="/login">Ya tengo cuenta</Link>
+        </Button>
+        <p className="text-center text-sm text-muted-foreground">
+          ¿Eres del club?{" "}
+          <Link href="/registro" className="font-semibold text-accent hover:underline">
+            Crear cuenta
+          </Link>
+        </p>
       </div>
     </main>
   );
@@ -59,7 +62,7 @@ function Feature({
 }) {
   return (
     <li className="flex items-start gap-3 rounded-2xl border bg-card px-4 py-3">
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
         <Icon className="h-4 w-4" />
       </span>
       <span>{text}</span>
