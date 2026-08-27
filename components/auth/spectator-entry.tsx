@@ -13,7 +13,7 @@ export function SpectatorEntry() {
         <span className="h-px flex-1 bg-border" />
       </div>
       <form action={enterAsSpectator}>
-        <Button type="submit" variant="outline" className="w-full">
+        <Button type="submit" variant="accent" className="w-full">
           <Eye className="h-4 w-4" />
           Entrar como espectador
         </Button>
