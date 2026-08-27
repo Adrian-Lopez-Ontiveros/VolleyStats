@@ -120,3 +120,13 @@ export async function requireCoach() {
   if (!hasCoachAccess(session.profile.role)) redirect("/partidos");
   return session;
 }
+
+export async function requireMember() {
+  const session = await getSessionUser();
+  if (session) {
+    if (session.profile.player) return session;
+    return tryLinkPlayer(session);
+  }
+  if (await isSpectatorGuest()) redirect("/partidos");
+  redirect("/login");
+}
