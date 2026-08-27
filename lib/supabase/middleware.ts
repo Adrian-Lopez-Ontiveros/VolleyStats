@@ -42,10 +42,6 @@ function isAdminPath(pathname: string) {
   return false;
 }
 
-function isCoachPath(pathname: string) {
-  return pathname === "/entrenador" || pathname.startsWith("/entrenador/");
-}
-
 function isSpectatorPath(pathname: string) {
   if (pathname.includes("/carta")) return false;
   return SPECTATOR_PREFIXES.some(
@@ -121,19 +117,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && (isAdminPath(pathname) || isCoachPath(pathname))) {
+  if (user && isAdminPath(pathname)) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .maybeSingle();
 
-    const role = profile?.role;
-    const allowed = isAdminPath(pathname)
-      ? role === "admin"
-      : role === "admin" || role === "coach";
-
-    if (!allowed) {
+    if (profile?.role !== "admin") {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/noticias";
       redirectUrl.search = "";
