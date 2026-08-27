@@ -15,27 +15,33 @@ export type AppNavItem = {
   icon: LucideIcon;
 };
 
-const baseItems: AppNavItem[] = [
+const spectatorItems: AppNavItem[] = [
+  { href: "/partidos", label: "Partidos", icon: Trophy },
+  { href: "/liga", label: "Liga", icon: Medal },
+  { href: "/equipos", label: "Equipos", icon: CircleDot },
+  { href: "/noticias", label: "Noticias", icon: Newspaper },
+];
+
+const memberItems: AppNavItem[] = [
   { href: "/noticias", label: "Noticias", icon: Newspaper },
   { href: "/partidos", label: "Partidos", icon: Trophy },
   { href: "/liga", label: "Liga", icon: Medal },
   { href: "/equipos", label: "Equipos", icon: CircleDot },
+  { href: "/entrenador", label: "Entrenamientos", icon: ClipboardList },
 ];
 
 export function getAppNavItems({
   isAdmin,
-  isCoach,
   isGuest,
 }: {
   isAdmin: boolean;
-  isCoach: boolean;
+  isCoach?: boolean;
   isGuest: boolean;
 }): AppNavItem[] {
-  if (isGuest) return baseItems;
+  if (isGuest) return spectatorItems;
 
   return [
-    ...baseItems,
-    ...(isCoach ? [{ href: "/entrenador", label: "Entrenador", icon: ClipboardList }] : []),
+    ...memberItems,
     { href: "/perfil", label: "Perfil", icon: UserRound },
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
