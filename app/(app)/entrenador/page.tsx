@@ -5,15 +5,16 @@ import { TrainingCard } from "@/components/coach/training-card";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { requireCoach } from "@/lib/auth";
-import { TRAINING_LIST_SELECT } from "@/lib/constants";
+import { requireMember } from "@/lib/auth";
+import { TRAINING_LIST_SELECT, hasCoachAccess } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { TrainingWithTeam } from "@/lib/types";
 
-export const metadata: Metadata = { title: "Entrenador" };
+export const metadata: Metadata = { title: "Entrenamientos" };
 
 export default async function CoachTrainingsPage() {
-  await requireCoach();
+  const session = await requireMember();
+  const canEdit = hasCoachAccess(session.profile.role);
   const supabase = await createClient();
   const { data } = await supabase
     .from("trainings")
@@ -26,14 +27,20 @@ export default async function CoachTrainingsPage() {
     <>
       <PageHeader
         title="Entrenamientos"
-        description="Crea sesiones, adjunta vídeos y revisa el material del equipo."
+        description={
+          canEdit
+            ? "Crea sesiones, adjunta vídeos y revisa el material del equipo."
+            : "Consulta las sesiones, vídeos y material del equipo."
+        }
         action={
-          <Button asChild size="sm" variant="accent">
-            <Link href="/entrenador/entrenamientos/nuevo">
-              <Plus className="h-4 w-4" />
-              Nuevo
-            </Link>
-          </Button>
+          canEdit ? (
+            <Button asChild size="sm" variant="accent">
+              <Link href="/entrenador/entrenamientos/nuevo">
+                <Plus className="h-4 w-4" />
+                Nuevo
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -41,11 +48,17 @@ export default async function CoachTrainingsPage() {
         <EmptyState
           icon={ClipboardList}
           title="Aún no hay entrenamientos"
-          description="Crea el primero para guardar ejercicios, notas y vídeos de la sesión."
+          description={
+            canEdit
+              ? "Crea el primero para guardar ejercicios, notas y vídeos de la sesión."
+              : "Cuando el entrenador publique una sesión, la verás aquí."
+          }
           action={
-            <Button asChild variant="accent">
-              <Link href="/entrenador/entrenamientos/nuevo">Crear entrenamiento</Link>
-            </Button>
+            canEdit ? (
+              <Button asChild variant="accent">
+                <Link href="/entrenador/entrenamientos/nuevo">Crear entrenamiento</Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (

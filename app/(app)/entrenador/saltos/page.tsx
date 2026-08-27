@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { JumpAnalyzer } from "@/components/coach/jump-analyzer";
 import { PageHeader } from "@/components/page-header";
-import { requireCoach } from "@/lib/auth";
-import { JUMP_ANALYSIS_SELECT, PLAYER_LINEUP_SELECT } from "@/lib/constants";
+import { requireMember } from "@/lib/auth";
+import { JUMP_ANALYSIS_SELECT, PLAYER_LINEUP_SELECT, hasCoachAccess } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { JumpAnalysisWithRelations, Player, Training } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Salto vertical" };
 
 export default async function JumpsPage() {
-  await requireCoach();
+  const session = await requireMember();
+  const canEdit = hasCoachAccess(session.profile.role);
   const supabase = await createClient();
   const [{ data: players }, { data: trainings }, { data: jumps }] = await Promise.all([
     supabase
@@ -32,12 +33,17 @@ export default async function JumpsPage() {
     <>
       <PageHeader
         title="Salto vertical"
-        description="Sube un vídeo corto, calcula la altura o introdúcela a mano y asóciala al jugador."
+        description={
+          canEdit
+            ? "Sube un vídeo corto, calcula la altura o introdúcela a mano y asóciala al jugador."
+            : "Histórico de saltos del equipo."
+        }
       />
       <JumpAnalyzer
         players={(players ?? []) as Player[]}
         trainings={(trainings ?? []) as Pick<Training, "id" | "name" | "scheduled_at" | "team_id">[]}
         jumps={(jumps ?? []) as JumpAnalysisWithRelations[]}
+        canEdit={canEdit}
       />
     </>
   );

@@ -31,10 +31,12 @@ export function JumpAnalyzer({
   players,
   trainings,
   jumps,
+  canEdit = true,
 }: {
   players: RosterPlayer[];
   trainings: Pick<Training, "id" | "name" | "scheduled_at" | "team_id">[];
   jumps: JumpAnalysisWithRelations[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -223,6 +225,7 @@ export function JumpAnalyzer({
 
   return (
     <div className="space-y-6">
+      {canEdit ? (
       <Card>
         <CardContent className="space-y-4 p-4">
           <div className="space-y-2">
@@ -339,6 +342,7 @@ export function JumpAnalyzer({
           </Button>
         </CardContent>
       </Card>
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Resultados guardados</h2>
@@ -381,21 +385,23 @@ export function JumpAnalyzer({
                       className="w-full rounded-xl bg-black"
                     />
                   ) : null}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="w-full text-destructive"
-                    disabled={deletingId === jump.id}
-                    onClick={() => onDelete(jump.id)}
-                  >
-                    {deletingId === jump.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                    Eliminar
-                  </Button>
+                  {canEdit ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="w-full text-destructive"
+                      disabled={deletingId === jump.id}
+                      onClick={() => onDelete(jump.id)}
+                    >
+                      {deletingId === jump.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                      Eliminar
+                    </Button>
+                  ) : null}
                 </CardContent>
               </Card>
             ))}

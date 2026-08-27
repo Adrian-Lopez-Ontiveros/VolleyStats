@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { BoardPreview } from "@/components/coach/board-preview";
 import { TacticalBoard } from "@/components/coach/tactical-board";
 import { PageHeader } from "@/components/page-header";
-import { requireCoach } from "@/lib/auth";
-import { PLAYER_LINEUP_SELECT, TACTICAL_PLAY_SELECT, TEAM_SELECT } from "@/lib/constants";
+import { Card, CardContent } from "@/components/ui/card";
+import { requireMember } from "@/lib/auth";
+import { PLAYER_LINEUP_SELECT, TACTICAL_PLAY_SELECT, TEAM_SELECT, hasCoachAccess } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { Player, TacticalPlay, Team, Training } from "@/lib/types";
 
@@ -15,7 +17,8 @@ export default async function BoardPlayPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireCoach();
+  const session = await requireMember();
+  const canEdit = hasCoachAccess(session.profile.role);
   const supabase = await createClient();
   const [{ data: play }, { data: plays }, { data: teams }, { data: players }, { data: trainings }] =
     await Promise.all([
@@ -37,6 +40,20 @@ export default async function BoardPlayPage({
     ]);
 
   if (!play) notFound();
+  const typed = play as TacticalPlay;
+
+  if (!canEdit) {
+    return (
+      <>
+        <PageHeader title={typed.name} description={typed.notes?.trim() || "Pizarra del equipo"} />
+        <Card>
+          <CardContent className="p-4">
+            <BoardPreview board={typed.board} uid={typed.id} />
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
 
   return (
     <>
@@ -45,8 +62,8 @@ export default async function BoardPlayPage({
         description="Edita la disposición y vuelve a guardarla cuando quieras."
       />
       <TacticalBoard
-        key={(play as TacticalPlay).id}
-        play={play as TacticalPlay}
+        key={typed.id}
+        play={typed}
         plays={(plays ?? []) as TacticalPlay[]}
         teams={(teams ?? []) as Team[]}
         players={(players ?? []) as Player[]}
