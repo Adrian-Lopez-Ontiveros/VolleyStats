@@ -31,9 +31,11 @@ function isAllowedFile(file: File) {
 export function TrainingFiles({
   trainingId,
   files,
+  canEdit = true,
 }: {
   trainingId: string;
   files: TrainingFile[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -102,31 +104,39 @@ export function TrainingFiles({
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Vídeos y archivos</h2>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-        >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Subir
-        </Button>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept="video/*,image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-          className="hidden"
-          onChange={(event) => onUpload(event.target.files)}
-        />
+        {canEdit ? (
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={uploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Subir
+            </Button>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept="video/*,image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+              className="hidden"
+              onChange={(event) => onUpload(event.target.files)}
+            />
+          </>
+        ) : null}
       </div>
 
       {files.length === 0 ? (
         <EmptyState
           icon={FileVideo}
           title="Sin archivos todavía"
-          description="Sube vídeos de ejercicios, PDFs o cualquier material de la sesión."
+          description={
+            canEdit
+              ? "Sube vídeos de ejercicios, PDFs o cualquier material de la sesión."
+              : "Cuando el entrenador suba material, lo verás aquí."
+          }
         />
       ) : (
         <div className="space-y-3">
@@ -169,21 +179,23 @@ export function TrainingFiles({
                         </span>
                       </span>
                     </a>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="shrink-0 text-destructive"
-                      disabled={deletingId === file.id}
-                      onClick={() => onDelete(file.id)}
-                      aria-label="Eliminar archivo"
-                    >
-                      {deletingId === file.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+                    {canEdit ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="shrink-0 text-destructive"
+                        disabled={deletingId === file.id}
+                        onClick={() => onDelete(file.id)}
+                        aria-label="Eliminar archivo"
+                      >
+                        {deletingId === file.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

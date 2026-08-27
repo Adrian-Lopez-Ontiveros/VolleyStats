@@ -10,7 +10,7 @@ import { APP_NAME } from "@/lib/constants";
 export default async function HomePage() {
   const session = await getSessionUser();
   if (session) redirect("/noticias");
-  if (await isSpectatorGuest()) redirect("/noticias");
+  if (await isSpectatorGuest()) redirect("/partidos");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-5 py-10">
@@ -21,15 +21,15 @@ export default async function HomePage() {
         </p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">{APP_NAME}</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Gestiona equipos, sigue partidos en vivo y acumula estadísticas de cada
-          punto. Una app instalable, lista para el banquillo.
+          Partidos, clasificación y estadísticas del club. Familias y afición
+          entran sin cuenta.
         </p>
       </div>
 
       <ul className="mt-8 space-y-3 text-sm">
         <Feature icon={Trophy} text="Marcador y seguimiento de puntos en tiempo real" />
         <Feature icon={BarChart3} text="Estadísticas automáticas por jugador y partido" />
-        <Feature icon={Shield} text="Roles de jugador, administrador y espectador" />
+        <Feature icon={Shield} text="Familias entran como espectador, sin cuenta" />
         <Feature icon={Smartphone} text="PWA instalable, pensada para usar con el móvil" />
       </ul>
 

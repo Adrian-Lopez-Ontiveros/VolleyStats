@@ -10,12 +10,13 @@ import { TrainingFiles } from "@/components/coach/training-files";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { requireCoach } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 import {
   JUMP_ANALYSIS_SELECT,
   TACTICAL_PLAY_SELECT,
   TRAINING_DETAIL_SELECT,
   TRAINING_FILE_SELECT,
+  hasCoachAccess,
 } from "@/lib/constants";
 import { formatJumpCm } from "@/lib/jump-analysis";
 import { createClient } from "@/lib/supabase/server";
@@ -30,7 +31,8 @@ export default async function TrainingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireCoach();
+  const session = await requireMember();
+  const canEdit = hasCoachAccess(session.profile.role);
   const supabase = await createClient();
   const [{ data: training }, { data: files }, { data: jumps }, playsResult] = await Promise.all([
     supabase.from("trainings").select(TRAINING_DETAIL_SELECT as "*").eq("id", id).maybeSingle(),
@@ -64,12 +66,14 @@ export default async function TrainingDetailPage({
           locale: es,
         })}
         action={
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/entrenador/entrenamientos/${id}/editar`}>
-              <Pencil className="h-4 w-4" />
-              Editar
-            </Link>
-          </Button>
+          canEdit ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/entrenador/entrenamientos/${id}/editar`}>
+                <Pencil className="h-4 w-4" />
+                Editar
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -86,16 +90,20 @@ export default async function TrainingDetailPage({
       <section className="mb-8 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Pizarra del ejercicio</h2>
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/entrenador/pizarra?entrenamiento=${id}`}>
-              <Plus className="h-4 w-4" />
-              Nueva pizarra
-            </Link>
-          </Button>
+          {canEdit ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/entrenador/pizarra?entrenamiento=${id}`}>
+                <Plus className="h-4 w-4" />
+                Nueva pizarra
+              </Link>
+            </Button>
+          ) : null}
         </div>
         {linkedPlays.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Todavía no hay una pizarra vinculada. Crea una para colocar jugadores, conos y aros.
+            {canEdit
+              ? "Todavía no hay una pizarra vinculada. Crea una para colocar jugadores, conos y aros."
+              : "Todavía no hay una pizarra vinculada a esta sesión."}
           </p>
         ) : (
           <div className="space-y-3">
@@ -123,7 +131,7 @@ export default async function TrainingDetailPage({
         )}
       </section>
 
-      <TrainingFiles trainingId={id} files={(files ?? []) as TrainingFile[]} />
+      <TrainingFiles trainingId={id} files={(files ?? []) as TrainingFile[]} canEdit={canEdit} />
 
       {sessionJumps.length > 0 ? (
         <section className="mt-8 space-y-3">
@@ -155,9 +163,11 @@ export default async function TrainingDetailPage({
         </section>
       ) : null}
 
-      <div className="mt-8">
-        <DeleteTrainingButton trainingId={id} />
-      </div>
+      {canEdit ? (
+        <div className="mt-8">
+          <DeleteTrainingButton trainingId={id} />
+        </div>
+      ) : null}
     </>
   );
 }

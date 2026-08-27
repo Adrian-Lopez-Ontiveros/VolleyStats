@@ -1,12 +1,12 @@
 import { CoachNav } from "@/components/coach/coach-nav";
-import { requireCoach } from "@/lib/auth";
+import { requireMember } from "@/lib/auth";
 
 export default async function CoachLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireCoach();
+  await requireMember();
   return (
     <>
       <CoachNav />
