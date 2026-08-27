@@ -49,14 +49,18 @@ export const viewport: Viewport = {
 
 const splashBoot = `
 window.__splashAt = Date.now();
-window.setTimeout(function () {
+window.__splashHidden = false;
+window.__hideSplash = function () {
+  if (window.__splashHidden) return;
+  window.__splashHidden = true;
   var el = document.getElementById("app-splash");
   document.documentElement.classList.add("app-ready");
   if (el) {
     el.classList.add("app-splash-hide");
-    window.setTimeout(function () { if (el && el.parentNode) el.parentNode.removeChild(el); }, 450);
+    window.setTimeout(function () { if (el && el.parentNode) el.parentNode.removeChild(el); }, 400);
   }
-}, 3500);
+};
+window.setTimeout(window.__hideSplash, 900);
 `;
 
 export default function RootLayout({
