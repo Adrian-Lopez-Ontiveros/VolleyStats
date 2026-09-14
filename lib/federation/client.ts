@@ -1,4 +1,5 @@
 import { fmvCrestUrl } from "@/lib/federation/crests";
+import { parseFmvSchedule, type FmvSchedulePrecision } from "@/lib/federation/schedule";
 
 const FMV_API = "https://intranet.fmvoley.com/api";
 
@@ -33,6 +34,7 @@ export type FmvMatch = {
   homeId: string;
   awayId: string;
   scheduledAt: string;
+  schedulePrecision: FmvSchedulePrecision;
   location: string;
   round: string;
   homeSets: number | null;
@@ -268,10 +270,11 @@ export async function fetchFmvMatches(groupId: string): Promise<FmvMatch[]> {
       const round = asRecord(roundItem);
       const roundId = pickString(round, ["id", "idJornada", "jornadaId"]);
       const roundName = formatRoundName(round);
+      const roundFecha = pickString(round, ["fecha"]);
       if (!roundId) return [] as FmvMatch[];
 
       const payload = await fmvGet("competiciones/getPartidosByJornada", { jornadaId: roundId });
-      return asArray(payload).map((item) => normalizeMatch(asRecord(item), roundName));
+      return asArray(payload).map((item) => normalizeMatch(asRecord(item), roundName, roundFecha));
     })
   ).flat();
 
@@ -284,7 +287,10 @@ export async function fetchFmvMatches(groupId: string): Promise<FmvMatch[]> {
     .flatMap((roundItem) => {
       const round = asRecord(roundItem);
       const roundName = formatRoundName(round);
-      return asArray(round.partidos).map((item) => normalizeMatch(asRecord(item), roundName));
+      const roundFecha = pickString(round, ["fecha"]);
+      return asArray(round.partidos).map((item) =>
+        normalizeMatch(asRecord(item), roundName, roundFecha)
+      );
     })
     .filter((item) => item.id && item.homeName && item.awayName);
 }
@@ -359,7 +365,7 @@ function formatRoundName(round: Json) {
   return pickString(round, ["nombre", "name", "fecha"]) || "Jornada";
 }
 
-function normalizeMatch(row: Json, roundName: string): FmvMatch {
+function normalizeMatch(row: Json, roundName: string, roundFecha = ""): FmvMatch {
   const homeName =
     pickString(row, ["equipo_local", "localNombre", "equipoLocal", "local"]) ||
     pickString(asRecord(row.local ?? row.equipoLocal), ["nombre", "name", "equipo"]);
@@ -384,16 +390,22 @@ function normalizeMatch(row: Json, roundName: string): FmvMatch {
     finishedFlag ||
     ((homeSets ?? 0) >= 3 || (awaySets ?? 0) >= 3);
 
+  const schedule = parseFmvSchedule({
+    fecha: pickString(row, ["fecha"]),
+    hora: pickString(row, ["hora"]),
+    fechaHora: pickString(row, ["fecha_hora", "fechaHora", "datetime", "horario"]),
+    diaHora: pickString(row, ["dia_hora", "diaHora"]),
+    roundFecha,
+  });
+
   return {
     id: pickString(row, ["id", "idPartido", "partidoId"]),
     homeName: isByeName(homeName) ? "" : homeName,
     awayName: isByeName(awayName) ? "" : awayName,
     homeId,
     awayId,
-    scheduledAt: parseDate(
-      pickString(row, ["fecha_hora", "fechaHora", "datetime", "horario"]) ||
-        [pickString(row, ["fecha"]), pickString(row, ["hora"])].filter(Boolean).join(" ")
-    ),
+    scheduledAt: schedule.scheduledAt,
+    schedulePrecision: schedule.precision,
     location: sanitizeLocation(
       pickString(row, ["pabellon", "pista", "ubicacion", "lugar", "instalacion", "direccion"])
     ),
@@ -450,22 +462,3 @@ function parseSetScores(row: Json) {
   return [];
 }
 
-function parseDate(value: string) {
-  if (!value) return new Date().toISOString();
-  const iso = Date.parse(value);
-  if (!Number.isNaN(iso)) return new Date(iso).toISOString();
-  const match = value.match(
-    /(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/
-  );
-  if (match) {
-    const [, day, month, year, hour = "18", minute = "00"] = match;
-    return new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hour),
-      Number(minute)
-    ).toISOString();
-  }
-  return new Date().toISOString();
-}
