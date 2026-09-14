@@ -8,7 +8,15 @@ import { requireAdmin } from "@/lib/auth";
 import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
 import { datetimeLocalMadridToIso } from "@/lib/federation/schedule";
 import { createClient } from "@/lib/supabase/server";
-import type { MatchStatus } from "@/lib/types";
+import type { MatchStatus, PointType } from "@/lib/types";
+import {
+  deleteMatch as deleteMatchImpl,
+  setMatchStatus as setMatchStatusImpl,
+  recordPoint as recordPointImpl,
+  undoLastPoint as undoLastPointImpl,
+  addSubstitution as addSubstitutionImpl,
+  deleteSubstitution as deleteSubstitutionImpl,
+} from "@/lib/actions/match-ops";
 
 const matchSchema = z.object({
   homeTeamId: z.string().uuid("Selecciona el equipo local"),
@@ -243,11 +251,38 @@ export async function updateMatch(matchId: string, formData: FormData) {
   redirect(`/partidos/${matchId}`);
 }
 
-export {
-  deleteMatch,
-  setMatchStatus,
-  recordPoint,
-  undoLastPoint,
-  addSubstitution,
-  deleteSubstitution,
-} from "@/lib/actions/match-ops";
+export async function deleteMatch(matchId: string) {
+  return deleteMatchImpl(matchId);
+}
+
+export async function setMatchStatus(
+  matchId: string,
+  status: "scheduled" | "live" | "finished" | "cancelled"
+) {
+  return setMatchStatusImpl(matchId, status);
+}
+
+export async function recordPoint(input: {
+  matchId: string;
+  playerId?: string | null;
+  actingTeamId: string;
+  pointType: PointType;
+  servingTeamId?: string | null;
+  homeRotation?: number | null;
+  awayRotation?: number | null;
+  setNumber?: number | null;
+}) {
+  return recordPointImpl(input);
+}
+
+export async function undoLastPoint(matchId: string) {
+  return undoLastPointImpl(matchId);
+}
+
+export async function addSubstitution(matchId: string, formData: FormData) {
+  return addSubstitutionImpl(matchId, formData);
+}
+
+export async function deleteSubstitution(matchId: string, substitutionId: string) {
+  return deleteSubstitutionImpl(matchId, substitutionId);
+}
