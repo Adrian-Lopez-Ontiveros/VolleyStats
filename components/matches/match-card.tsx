@@ -1,9 +1,8 @@
 import { memo } from "react";
 import Link from "next/link";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { MapPin } from "lucide-react";
 import { matchStatusMeta } from "@/lib/constants";
+import { formatMatchWhen } from "@/lib/federation/schedule";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TeamLogo } from "@/components/teams/team-logo";
@@ -18,8 +17,10 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
         <CardContent className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium capitalize text-muted-foreground">
-              {format(new Date(match.scheduled_at), "EEE d MMM · HH:mm", {
-                locale: es,
+              {formatMatchWhen({
+                scheduledAt: match.scheduled_at,
+                notes: match.notes,
+                isFederation: match.is_federation,
               })}
             </p>
             <div className="flex flex-wrap justify-end gap-1">
