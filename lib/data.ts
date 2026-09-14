@@ -22,7 +22,7 @@ export const getMatchesList = cache(async () => {
   return supabase
     .from("matches")
     .select(MATCH_LIST_SELECT as "*")
-    .order("scheduled_at", { ascending: false });
+    .order("scheduled_at", { ascending: true });
 });
 
 export const getFinishedMatches = cache(async () => {
