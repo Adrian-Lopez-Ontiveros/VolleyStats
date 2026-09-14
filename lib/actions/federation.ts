@@ -29,9 +29,11 @@ export type FederationSyncReport = {
   groupName: string;
   teamsCreated: number;
   teamsLinked: number;
+  teamsRemoved: number;
   matchesCreated: number;
   matchesUpdated: number;
   matchesSkipped: number;
+  matchesRemoved: number;
   errors: string[];
 };
 
@@ -46,9 +48,11 @@ function emptyReport(groupName = ""): FederationSyncReport {
     groupName,
     teamsCreated: 0,
     teamsLinked: 0,
+    teamsRemoved: 0,
     matchesCreated: 0,
     matchesUpdated: 0,
     matchesSkipped: 0,
+    matchesRemoved: 0,
     errors: [],
   };
 }
@@ -140,6 +144,10 @@ export async function syncFederationGroup(
   const report = emptyReport();
 
   try {
+    const cleared = await replaceCategoryFederationData(category);
+    report.teamsRemoved = cleared.teamsRemoved;
+    report.matchesRemoved = cleared.matchesRemoved;
+
     const group = await fetchFmvGroupInfo(groupId);
     report.groups = 1;
     report.groupName = group.path;
@@ -165,6 +173,64 @@ export async function syncFederationGroup(
   revalidatePath("/equipos");
   revalidatePath("/admin");
   return report;
+}
+
+/** Wipe previous federation import for this category, then a new sync can stand alone. */
+async function replaceCategoryFederationData(category: TeamCategory) {
+  const supabase = await createClient();
+  const { data: teams, error: teamsError } = await supabase
+    .from("teams")
+    .select("id, is_club_team, federation_team_id")
+    .eq("category", category);
+
+  if (teamsError) throw new Error(teamsError.message);
+
+  const categoryTeams = teams ?? [];
+  const teamIds = categoryTeams.map((team) => team.id);
+  let matchesRemoved = 0;
+  let teamsRemoved = 0;
+
+  if (teamIds.length > 0) {
+    const { data: matches, error: matchesError } = await supabase
+      .from("matches")
+      .select("id")
+      .eq("is_federation", true)
+      .or(`home_team_id.in.(${teamIds.join(",")}),away_team_id.in.(${teamIds.join(",")})`);
+
+    if (matchesError) throw new Error(matchesError.message);
+
+    for (const match of matches ?? []) {
+      const { count, error: countError } = await supabase
+        .from("match_events")
+        .select("id", { count: "exact", head: true })
+        .eq("match_id", match.id);
+      if (countError) throw new Error(countError.message);
+      if ((count ?? 0) > 0) continue;
+
+      const { error } = await supabase.from("matches").delete().eq("id", match.id);
+      if (error) throw new Error(error.message);
+      matchesRemoved += 1;
+    }
+  }
+
+  const opponents = categoryTeams.filter(
+    (team) => !team.is_club_team && Boolean(team.federation_team_id)
+  );
+
+  for (const team of opponents) {
+    const { count, error: countError } = await supabase
+      .from("matches")
+      .select("id", { count: "exact", head: true })
+      .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`);
+    if (countError) throw new Error(countError.message);
+    if ((count ?? 0) > 0) continue;
+
+    const { error } = await supabase.from("teams").delete().eq("id", team.id);
+    if (error) throw new Error(error.message);
+    teamsRemoved += 1;
+  }
+
+  return { teamsRemoved, matchesRemoved };
 }
 
 async function upsertFederationTeam(team: FmvTeam, category: TeamCategory) {

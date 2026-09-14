@@ -186,10 +186,10 @@ export function FederationSync() {
         <div>
           <p className="text-sm font-semibold">Federación de Madrid</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Elige cualquier competición y grupo de fmvoley.com. Importa calendario y
-            resultados oficiales. No pisa partidos que ya tengan seguimiento en vivo.
-            Si la temporada aún no ha empezado, se importa el calendario y los
-            marcadores se actualizarán en la siguiente sincronización.
+            Elige cualquier competición y grupo de fmvoley.com. Al sincronizar,
+            sustituye la liga federada anterior de esa categoría (rivales y
+            partidos) por la nueva. No borra el equipo del club ni partidos con
+            seguimiento en vivo.
           </p>
         </div>
 
@@ -325,6 +325,8 @@ export function FederationSync() {
           <ul className="space-y-1 text-xs text-muted-foreground">
             {report.groupName ? <li>{report.groupName}</li> : null}
             <li>Grupos leídos: {report.groups}</li>
+            <li>Rivales quitados de la liga anterior: {report.teamsRemoved}</li>
+            <li>Partidos quitados de la liga anterior: {report.matchesRemoved}</li>
             <li>Equipos nuevos: {report.teamsCreated}</li>
             <li>Equipos vinculados: {report.teamsLinked}</li>
             <li>Partidos nuevos: {report.matchesCreated}</li>
