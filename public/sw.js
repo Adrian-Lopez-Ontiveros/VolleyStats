@@ -1,6 +1,34 @@
-const CACHE_NAME = "fuelastats-v6";
+const CACHE_NAME = "fuelastats-v7";
 const OFFLINE_URL = "/offline";
-const PRECACHE = ["/", "/offline", "/noticias", "/partidos", "/liga", "/logo.png"];
+const PRECACHE = ["/", "/offline", "/logo.png"];
+
+function isDynamicRequest(request, url) {
+  if (request.headers.get("RSC") === "1") return true;
+  if (request.headers.get("Next-Router-State-Tree")) return true;
+  if (request.headers.get("Next-Router-Prefetch")) return true;
+  if (url.searchParams.has("_rsc")) return true;
+  if (url.pathname.startsWith("/_next/data/")) return true;
+  if (url.pathname.startsWith("/api/")) return true;
+  // App pages with live data — always network
+  if (
+    url.pathname === "/partidos" ||
+    url.pathname.startsWith("/partidos/") ||
+    url.pathname === "/liga" ||
+    url.pathname === "/noticias" ||
+    url.pathname.startsWith("/noticias/") ||
+    url.pathname === "/entrenador" ||
+    url.pathname.startsWith("/entrenador/") ||
+    url.pathname === "/jugadores" ||
+    url.pathname.startsWith("/jugadores/") ||
+    url.pathname === "/equipos" ||
+    url.pathname.startsWith("/equipos/") ||
+    url.pathname === "/perfil" ||
+    url.pathname.startsWith("/admin")
+  ) {
+    return true;
+  }
+  return false;
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -26,14 +54,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === "navigate") {
+  // Never serve stale app/RSC data from cache
+  if (isDynamicRequest(request, url) || request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
+        .then((response) => response)
         .catch(async () => {
           const cached = await caches.match(request);
           return cached || caches.match(OFFLINE_URL);
@@ -42,6 +67,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Static assets only: cache-first
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetched = fetch(request)

@@ -4,6 +4,8 @@ import { isTeamCategory } from "@/lib/categories";
 import { getMatchesList } from "@/lib/data";
 import type { MatchWithTeams } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function MatchesPage({
   searchParams,
 }: {
