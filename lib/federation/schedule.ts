@@ -225,7 +225,7 @@ function madridParts(iso: string): Required<DayParts> {
 }
 
 /** Convert a Madrid wall-clock time to a UTC ISO string. */
-function madridWallTimeToUtcIso(
+export function madridWallTimeToUtcIso(
   year: number,
   month: number,
   day: number,
@@ -240,4 +240,27 @@ function madridWallTimeToUtcIso(
     utc += wanted - seenAsUtc;
   }
   return new Date(utc).toISOString();
+}
+
+
+/** `datetime-local` value (YYYY-MM-DDTHH:mm) interpreted as Europe/Madrid → UTC ISO. */
+export function datetimeLocalMadridToIso(value: string) {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) {
+    throw new Error("Fecha u hora no válida");
+  }
+  return madridWallTimeToUtcIso(
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5])
+  );
+}
+
+/** UTC ISO → `datetime-local` string in Europe/Madrid. */
+export function isoToDatetimeLocalMadrid(iso: string) {
+  const parts = madridParts(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
 }
