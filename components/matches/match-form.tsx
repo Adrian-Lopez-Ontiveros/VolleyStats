@@ -11,13 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { isoToDatetimeLocalMadrid } from "@/lib/federation/schedule";
 import type { Match, MatchLineupEntry, Player, Team } from "@/lib/types";
 
 function toLocalInput(value?: string) {
   if (!value) return "";
-  const date = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return isoToDatetimeLocalMadrid(value);
 }
 
 export function MatchForm({
