@@ -4,6 +4,10 @@ import Link from "next/link";
 import { format, isSameDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { matchStatusMeta } from "@/lib/constants";
+import {
+  formatMatchWhenShort,
+  hasFmvWeekendSchedule,
+} from "@/lib/federation/schedule";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams } from "@/lib/types";
 import { TeamLogo } from "@/components/teams/team-logo";
@@ -35,14 +39,7 @@ export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
             <div className="space-y-2">
               {groupByDay(monthMatches).map(([day, dayMatches]) => (
                 <div key={day} className="flex gap-3">
-                  <div className="flex w-12 shrink-0 flex-col items-center rounded-2xl bg-secondary py-2">
-                    <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                      {format(parseISO(day), "EEE", { locale: es })}
-                    </span>
-                    <span className="text-lg font-black tabular-nums">
-                      {format(parseISO(day), "d")}
-                    </span>
-                  </div>
+                  <DayBadge day={day} matches={dayMatches} />
                   <div className="min-w-0 flex-1 space-y-2">
                     {dayMatches.map((match) => (
                       <CalendarMatch key={match.id} match={match} />
@@ -54,6 +51,31 @@ export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
           </section>
         );
       })}
+    </div>
+  );
+}
+
+
+function DayBadge({ day, matches }: { day: string; matches: MatchWithTeams[] }) {
+  const weekend = matches.every((match) => hasFmvWeekendSchedule(match.notes));
+  if (weekend) {
+    const start = parseISO(day);
+    const endDay = format(new Date(start.getTime() + 24 * 60 * 60 * 1000), "d");
+    return (
+      <div className="flex w-14 shrink-0 flex-col items-center rounded-2xl bg-secondary py-2">
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Finde</span>
+        <span className="text-sm font-black tabular-nums leading-tight">
+          {format(start, "d")}–{endDay}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex w-12 shrink-0 flex-col items-center rounded-2xl bg-secondary py-2">
+      <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+        {format(parseISO(day), "EEE", { locale: es })}
+      </span>
+      <span className="text-lg font-black tabular-nums">{format(parseISO(day), "d")}</span>
     </div>
   );
 }
@@ -84,7 +106,11 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
     >
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="text-xs font-medium tabular-nums text-muted-foreground">
-          {format(parseISO(match.scheduled_at), "HH:mm")}
+          {formatMatchWhenShort({
+            scheduledAt: match.scheduled_at,
+            notes: match.notes,
+            isFederation: match.is_federation,
+          })}
         </span>
         <span className="flex flex-wrap justify-end gap-1">
           {match.is_federation ? (

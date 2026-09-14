@@ -20,6 +20,7 @@ import {
   type FmvOption,
   type FmvTeam,
 } from "@/lib/federation/client";
+import { federationNotesForSchedule } from "@/lib/federation/schedule";
 import { inferCategoryFromFmv, isClubTeamName } from "@/lib/federation/leagues";
 import { matchScoreFromSets } from "@/lib/match-result";
 import type { Team } from "@/lib/types";
@@ -317,7 +318,7 @@ async function upsertFederationMatch(
 
   const { data: existing } = await supabase
     .from("matches")
-    .select("id, status")
+    .select("id, status, notes")
     .eq("federation_match_id", match.id)
     .maybeSingle();
 
@@ -350,6 +351,7 @@ async function upsertFederationMatch(
         location: match.location || null,
         federation_round: match.round,
         is_federation: true,
+        notes: federationNotesForSchedule(match.schedulePrecision, existing.notes),
         ...scores,
       })
       .eq("id", existing.id);
@@ -365,6 +367,7 @@ async function upsertFederationMatch(
     is_federation: true,
     federation_match_id: match.id,
     federation_round: match.round,
+    notes: federationNotesForSchedule(match.schedulePrecision),
     ...scores,
   });
   if (error) throw new Error(error.message);

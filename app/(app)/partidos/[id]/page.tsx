@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { MapPin } from "lucide-react";
+import { formatMatchWhen, stripFmvScheduleNote } from "@/lib/federation/schedule";
 import { MatchAdminActions } from "@/components/matches/match-admin-actions";
 import { BoxScoreCard } from "@/components/matches/box-score";
 import { BoxScoreReveal } from "@/components/matches/box-score-reveal";
@@ -141,8 +140,10 @@ export default async function MatchDetailPage({
       </div>
       <PageHeader
         title={`${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`}
-        description={format(new Date(typedMatch.scheduled_at), "EEEE d MMMM yyyy · HH:mm", {
-          locale: es,
+        description={formatMatchWhen({
+          scheduledAt: typedMatch.scheduled_at,
+          notes: typedMatch.notes,
+          isFederation: typedMatch.is_federation,
         })}
         action={
           <ExportCsvButton
@@ -168,9 +169,11 @@ export default async function MatchDetailPage({
           </p>
         ) : null}
 
-        {typedMatch.notes ? (
+        {stripFmvScheduleNote(typedMatch.notes) ? (
           <Card>
-            <CardContent className="p-4 text-sm">{typedMatch.notes}</CardContent>
+            <CardContent className="p-4 text-sm">
+              {stripFmvScheduleNote(typedMatch.notes)}
+            </CardContent>
           </Card>
         ) : null}
 
