@@ -10,10 +10,12 @@ import { StatGrid } from "@/components/stats/stat-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ProgressCard } from "@/components/game/progress-card";
 import { requireUser } from "@/lib/auth";
-import { PLAYER_CARD_SELECT, POSITION_LABELS, ROLE_LABELS } from "@/lib/constants";
+import { PLAYER_CARD_SELECT, POSITION_LABELS, ROLE_LABELS, USER_PROGRESS_SELECT } from "@/lib/constants";
+import { rewardLabel } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
-import type { PlayerCard, PointType } from "@/lib/types";
+import type { PlayerCard, PointType, UserProgress } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Mi perfil" };
 
@@ -53,7 +55,7 @@ export default async function ProfilePage() {
     teamMatches = teamResult.count ?? 0;
   }
 
-  const [{ data: notifyPrefs }, cardResult] = await Promise.all([
+  const [{ data: notifyPrefs }, cardResult, progressResult] = await Promise.all([
     supabase.from("profiles").select("notify_match_end").eq("id", user.id).maybeSingle(),
     player?.id
       ? supabase
@@ -62,11 +64,18 @@ export default async function ProfilePage() {
           .eq("player_id", player.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase
+      .from("user_progress")
+      .select(USER_PROGRESS_SELECT as "*")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
   const notifyEnabled = Boolean(
     notifyPrefs && "notify_match_end" in notifyPrefs && notifyPrefs.notify_match_end
   );
   const playerCard = (cardResult.data as PlayerCard | null) ?? null;
+  const progress = (progressResult.data as UserProgress | null) ?? null;
+  const title = rewardLabel(progress?.equipped_title);
 
   return (
     <div className="space-y-6">
@@ -74,10 +83,12 @@ export default async function ProfilePage() {
         userId={user.id}
         name={user.profile.full_name}
         url={user.profile.avatar_url ?? player?.avatar_url}
+        frameId={progress?.equipped_frame}
       />
 
       <div className="text-center">
         <h1 className="text-2xl font-bold">{user.profile.full_name}</h1>
+        {title ? <p className="text-sm font-medium text-orange-700">{title}</p> : null}
         <p className="text-sm text-muted-foreground">{user.email}</p>
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           <Badge
@@ -107,6 +118,15 @@ export default async function ProfilePage() {
           editHref="/perfil/carta"
           title="Mi cromo"
         />
+      ) : null}
+
+      {progress ? (
+        <div className="space-y-2">
+          <ProgressCard progress={progress} />
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/juego">Ver predicciones y recompensas</Link>
+          </Button>
+        </div>
       ) : null}
 
       <Card>

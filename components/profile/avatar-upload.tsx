@@ -5,17 +5,20 @@ import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { updateOwnAvatar } from "@/lib/actions/profile";
-import { initials } from "@/lib/utils";
+import { FRAME_CLASS } from "@/lib/game";
+import { cn, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function AvatarUpload({
   userId,
   name,
   url,
+  frameId,
 }: {
   userId: string;
   name: string;
   url?: string | null;
+  frameId?: string | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState(url ?? "");
@@ -63,10 +66,12 @@ export function AvatarUpload({
         className="relative"
         disabled={uploading}
       >
-        <Avatar className="h-24 w-24 ring-4 ring-secondary">
-          <AvatarImage src={preview || undefined} alt={name} />
-          <AvatarFallback className="text-2xl">{initials(name)}</AvatarFallback>
-        </Avatar>
+        <div className={cn("h-24 w-24 rounded-full", frameId ? FRAME_CLASS[frameId] : "ring-4 ring-secondary")}>
+          <Avatar className="h-full w-full">
+            <AvatarImage src={preview || undefined} alt={name} />
+            <AvatarFallback className="text-2xl">{initials(name)}</AvatarFallback>
+          </Avatar>
+        </div>
         <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground shadow">
           {uploading ? (
             <Loader2 className="h-4 w-4 animate-spin" />

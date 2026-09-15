@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
+import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { notifyMatchFinished } from "@/lib/actions/notifications";
 import { requireAdmin } from "@/lib/auth";
 import { currentOnCourtIds } from "@/lib/lineup";
@@ -45,6 +46,7 @@ function revalidateMatchStats(input: {
     revalidatePath("/liga");
     revalidatePath("/jugadores");
     revalidatePath("/perfil");
+    revalidatePath("/juego");
     if (input.playerId) revalidatePath(`/jugadores/${input.playerId}`);
     if (input.homeTeamId) revalidatePath(`/equipos/${input.homeTeamId}`);
     if (input.awayTeamId) revalidatePath(`/equipos/${input.awayTeamId}`);
@@ -94,6 +96,9 @@ async function persistComputedMatch(
     .eq("id", matchId);
 
   if (updateError) throw new Error(updateError.message);
+  if (nextStatus === "finished" || nextStatus === "cancelled") {
+    await resolvePredictionsForMatch(matchId);
+  }
   return nextStatus;
 }
 
@@ -191,6 +196,9 @@ export async function setMatchStatus(
   );
   if (status === "finished") {
     await notifyMatchFinished(matchId);
+  }
+  if (status === "finished" || status === "cancelled") {
+    await resolvePredictionsForMatch(matchId);
   }
 
   revalidatePath(`/partidos/${matchId}`);

@@ -198,6 +198,12 @@ export const PLAYER_LINEUP_SELECT =
 export const PROFILE_SESSION_SELECT =
   "id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(id, name, short_name, logo_url, city, category, is_club_team, federation_team_id)" as const;
 
+export const USER_PROGRESS_SELECT =
+  "user_id, xp, level, current_streak, longest_streak, last_checkin_on, equipped_title, equipped_frame, created_at, updated_at" as const;
+
+export const MATCH_PREDICTION_SELECT =
+  "id, user_id, match_id, predicted_winner_id, created_at, updated_at, resolved_at, is_correct, xp_awarded" as const;
+
 export const TRAINING_LIST_SELECT =
   "id, name, scheduled_at, team_id, notes, created_by, created_at, updated_at, team:teams(id, name, short_name, category), files:training_files(id)" as const;
 

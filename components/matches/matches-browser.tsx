@@ -18,11 +18,13 @@ import type { MatchWithTeams } from "@/lib/types";
 export function MatchesBrowser({
   matches,
   isAdmin,
+  isGuest = false,
   initialCategory,
   loadError,
 }: {
   matches: MatchWithTeams[];
   isAdmin: boolean;
+  isGuest?: boolean;
   initialCategory: TeamCategory | "all";
   loadError?: string;
 }) {
@@ -83,6 +85,19 @@ export function MatchesBrowser({
           ) : null
         }
       />
+
+      {!isGuest ? (
+        <Link
+          href="/juego"
+          className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm"
+        >
+          <span>
+            <span className="font-semibold text-orange-800">Predice la jornada.</span>{" "}
+            <span className="text-orange-900/80">Elige ganador y suma XP si aciertas.</span>
+          </span>
+          <span className="shrink-0 font-bold text-orange-700">Jugar →</span>
+        </Link>
+      ) : null}
 
       <CategoryNav
         basePath="/partidos"

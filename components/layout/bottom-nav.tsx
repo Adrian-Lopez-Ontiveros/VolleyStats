@@ -23,7 +23,9 @@ export function BottomNav({
       <ul
         className={cn(
           "mx-auto grid max-w-3xl",
-          columns >= 7
+          columns >= 8
+            ? "grid-cols-8"
+            : columns >= 7
             ? "grid-cols-7"
             : columns >= 6
               ? "grid-cols-6"

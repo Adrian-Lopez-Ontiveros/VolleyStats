@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Flame } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { DesktopNav } from "@/components/layout/desktop-nav";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -11,11 +12,13 @@ export function AppHeader({
   isAdmin,
   isCoach = false,
   isGuest = false,
+  streak = 0,
 }: {
   user: SessionUser | null;
   isAdmin: boolean;
   isCoach?: boolean;
   isGuest?: boolean;
+  streak?: number;
 }) {
   return (
     <header className="sticky top-0 z-30 border-b bg-background/90 pt-safe backdrop-blur">
@@ -30,7 +33,16 @@ export function AppHeader({
           </div>
         </Link>
         <DesktopNav isAdmin={isAdmin} isCoach={isCoach} isGuest={isGuest} />
-        <div className="ml-auto shrink-0 lg:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
+          {user ? (
+            <Link
+              href="/juego"
+              className="mr-1 hidden items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700 sm:flex"
+            >
+              <Flame className="h-3.5 w-3.5" />
+              {streak}
+            </Link>
+          ) : null}
           {user ? (
             <UserMenu user={user} />
           ) : (

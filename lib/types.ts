@@ -123,6 +123,70 @@ export type ProfileWithRelations = Profile & {
   player: Player | null;
 };
 
+export type UserProgress = {
+  user_id: string;
+  xp: number;
+  level: number;
+  current_streak: number;
+  longest_streak: number;
+  last_checkin_on: string | null;
+  equipped_title: string | null;
+  equipped_frame: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserReward = {
+  user_id: string;
+  reward_id: string;
+  unlocked_at: string;
+};
+
+export type MatchPrediction = {
+  id: string;
+  user_id: string;
+  match_id: string;
+  predicted_winner_id: string;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+  is_correct: boolean | null;
+  xp_awarded: number;
+};
+
+export type CheckinResult = {
+  claimed: boolean;
+  already: boolean;
+  xp_gained: number;
+  xp: number;
+  level: number;
+  streak: number;
+  longest: number;
+  leveled_up: boolean;
+  unlocked: string[];
+  equipped_title: string | null;
+  equipped_frame: string | null;
+};
+
+export type JornadaBoard = {
+  key: string;
+  label: string;
+  matches: MatchWithTeams[];
+  open: boolean;
+};
+
+export type GameLeaderRow = {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  xp: number;
+  level: number;
+  streak: number;
+  title: string | null;
+  frame: string | null;
+  hits: number;
+};
+
 export type SetScore = {
   home: number;
   away: number;

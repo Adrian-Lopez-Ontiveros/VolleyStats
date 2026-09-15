@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
+import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { requireAdmin } from "@/lib/auth";
 import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
 import { datetimeLocalMadridToIso } from "@/lib/federation/schedule";
@@ -245,6 +246,9 @@ export async function updateMatch(matchId: string, formData: FormData) {
       ? "Actualizó datos, resultado o alineación"
       : "Actualizó datos o alineación"
   );
+  if ((scores.update as { status?: string } | undefined)?.status === "finished") {
+    await resolvePredictionsForMatch(matchId);
+  }
   revalidatePath("/partidos");
   revalidatePath("/liga");
   revalidatePath(`/partidos/${matchId}`);

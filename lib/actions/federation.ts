@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { requireAdmin } from "@/lib/auth";
 import { TEAM_CATEGORIES, type TeamCategory } from "@/lib/categories";
 import { createClient } from "@/lib/supabase/server";
@@ -356,6 +357,9 @@ async function upsertFederationMatch(
       })
       .eq("id", existing.id);
     if (error) throw new Error(error.message);
+    if ((scores as { status?: string }).status === "finished") {
+      await resolvePredictionsForMatch(existing.id);
+    }
     return "matchesUpdated";
   }
 
