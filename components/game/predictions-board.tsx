@@ -6,7 +6,6 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { saveMatchPrediction } from "@/lib/actions/game";
 import { formatMatchWhen } from "@/lib/federation/schedule";
-import { PREDICTION_HIT_XP } from "@/lib/game";
 import { cn } from "@/lib/utils";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { Badge } from "@/components/ui/badge";
@@ -160,9 +159,9 @@ function PredictionMatch({
           <p className="text-center text-xs text-muted-foreground">
             Resultado {match.home_sets}–{match.away_sets}
             {prediction?.is_correct
-              ? ` · Acertaste · +${prediction.xp_awarded || PREDICTION_HIT_XP} XP`
+              ? " · Acertaste · +1 punto"
               : prediction
-                ? " · Esta no la clavaste"
+                ? " · Fallaste · 0 puntos"
                 : " · No pronosticaste"}
           </p>
         ) : match.status === "live" ? (

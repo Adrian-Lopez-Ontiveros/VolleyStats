@@ -54,8 +54,9 @@ export default async function PredictionsPage() {
           <div>
             <h2 className="text-lg font-semibold">Jornada más próxima</h2>
             <p className="text-sm text-muted-foreground">
-              Elige el ganador de cada partido del club. Cada acierto da {PREDICTION_HIT_XP} XP. Si
-              clavas toda la jornada (mínimo 2 partidos) sumas {JORNADA_PERFECT_XP} XP extra.
+              Elige el ganador de cada partido del club. En la clasificación, un acierto vale 1
+              punto y un fallo 0. Además sumas {PREDICTION_HIT_XP} XP al nivel
+              {` `}({JORNADA_PERFECT_XP} extra si clavas toda la jornada).
             </p>
           </div>
           <PredictionsBoard
@@ -77,7 +78,12 @@ export default async function PredictionsPage() {
         ) : null}
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Clasificación</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Clasificación</h2>
+            <p className="text-sm text-muted-foreground">
+              Independiente del nivel y la XP. Acierto = 1 punto. Fallo = 0.
+            </p>
+          </div>
           <GameLeaderboard rows={data.leaderboard} userId={data.userId} />
         </section>
 

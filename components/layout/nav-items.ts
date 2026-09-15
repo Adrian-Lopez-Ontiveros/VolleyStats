@@ -1,6 +1,5 @@
 import {
   CircleDot,
-  ClipboardList,
   Medal,
   Target,
   Newspaper,
@@ -29,7 +28,6 @@ const memberItems: AppNavItem[] = [
   { href: "/predicciones", label: "Predicciones", icon: Target },
   { href: "/liga", label: "Liga", icon: Medal },
   { href: "/equipos", label: "Equipos", icon: CircleDot },
-  { href: "/entrenador", label: "Entrenamientos", icon: ClipboardList },
 ];
 
 export function getAppNavItems({

@@ -181,12 +181,10 @@ export type GameLeaderRow = {
   userId: string;
   name: string;
   avatarUrl: string | null;
-  xp: number;
-  level: number;
-  streak: number;
   title: string | null;
   frame: string | null;
-  hits: number;
+  points: number;
+  played: number;
 };
 
 export type SetScore = {

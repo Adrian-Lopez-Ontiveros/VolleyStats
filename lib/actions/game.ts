@@ -208,14 +208,18 @@ export async function loadGamePageData() {
     ...lastClosed,
   ];
 
-  const hitByUser = new Map<string, number>();
+  const scoreByUser = new Map<string, { points: number; played: number }>();
   const { data: allPreds } = await supabase
     .from("match_predictions")
     .select("user_id, is_correct")
-    .eq("is_correct", true);
+    .not("is_correct", "is", null);
   for (const row of allPreds ?? []) {
-    const id = (row as { user_id: string }).user_id;
-    hitByUser.set(id, (hitByUser.get(id) ?? 0) + 1);
+    const pred = row as { user_id: string; is_correct: boolean | null };
+    if (pred.is_correct == null) continue;
+    const current = scoreByUser.get(pred.user_id) ?? { points: 0, played: 0 };
+    current.played += 1;
+    if (pred.is_correct) current.points += 1;
+    scoreByUser.set(pred.user_id, current);
   }
 
   const profileById = new Map(
@@ -225,30 +229,30 @@ export async function loadGamePageData() {
     ])
   );
 
-  const leaderboard: GameLeaderRow[] = ((board ?? []) as {
-    user_id: string;
-    xp: number;
-    level: number;
-    current_streak: number;
-    equipped_title: string | null;
-    equipped_frame: string | null;
-  }[])
-    .map((row) => {
-      const profile = profileById.get(row.user_id);
+  const cosmetics = new Map(
+    ((board ?? []) as {
+      user_id: string;
+      equipped_title: string | null;
+      equipped_frame: string | null;
+    }[]).map((row) => [row.user_id, row])
+  );
+
+  const leaderboard: GameLeaderRow[] = [...scoreByUser.entries()]
+    .map(([userId, score]) => {
+      const profile = profileById.get(userId);
+      const look = cosmetics.get(userId);
       return {
-        userId: row.user_id,
+        userId,
         name: profile?.full_name || "Jugador",
         avatarUrl: profile?.avatar_url ?? null,
-        xp: row.xp,
-        level: row.level,
-        streak: row.current_streak,
-        title: row.equipped_title,
-        frame: row.equipped_frame,
-        hits: hitByUser.get(row.user_id) ?? 0,
+        title: look?.equipped_title ?? null,
+        frame: look?.equipped_frame ?? null,
+        points: score.points,
+        played: score.played,
       };
     })
-    .sort((a, b) => b.xp - a.xp || b.hits - a.hits)
-    .slice(0, 12);
+    .sort((a, b) => b.points - a.points || b.played - a.played)
+    .slice(0, 20);
 
   const community = new Map<string, { home: number; away: number }>();
   const { data: communityRows } = await supabase
