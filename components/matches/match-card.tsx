@@ -48,7 +48,7 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
               className={cn(
                 "min-w-[4.5rem] rounded-xl px-3 py-2 text-center",
                 isFriendlyMatch(match)
-                  ? "bg-orange-500 text-white"
+                  ? "bg-orange-100 text-orange-950"
                   : "bg-primary text-primary-foreground"
               )}
             >
@@ -56,7 +56,12 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
                 {match.home_sets} – {match.away_sets}
               </p>
               {match.status === "live" ? (
-                <p className="mt-1 text-[10px] uppercase tracking-wide text-orange-300">
+                <p
+                  className={cn(
+                    "mt-1 text-[10px] uppercase tracking-wide",
+                    isFriendlyMatch(match) ? "text-orange-700" : "text-orange-300"
+                  )}
+                >
                   {match.home_points}-{match.away_points}
                 </p>
               ) : null}
