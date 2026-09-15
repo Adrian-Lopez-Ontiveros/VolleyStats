@@ -81,7 +81,14 @@ function PredictionMatch({
   const desiredRef = useRef(serverId);
   const savedRef = useRef(serverId);
   const savingRef = useRef(false);
-  const total = split.home + split.away;
+  const liveSplit = applyOwnVote(
+    split,
+    match.home_team_id,
+    match.away_team_id,
+    serverId,
+    selectedId
+  );
+  const total = liveSplit.home + liveSplit.away;
   const winnerId =
     match.status === "finished" && match.home_sets !== match.away_sets
       ? match.home_sets > match.away_sets
@@ -183,7 +190,7 @@ function PredictionMatch({
                     ? "miss"
                     : null
             }
-            percent={total ? Math.round((split.home / total) * 100) : null}
+            percent={total ? Math.round((liveSplit.home / total) * 100) : null}
             onPick={() => pick(match.home_team_id)}
           />
           <TeamPick
@@ -203,7 +210,7 @@ function PredictionMatch({
                     ? "miss"
                     : null
             }
-            percent={total ? Math.round((split.away / total) * 100) : null}
+            percent={total ? Math.round((liveSplit.away / total) * 100) : null}
             onPick={() => pick(match.away_team_id)}
           />
         </div>
@@ -229,6 +236,22 @@ function PredictionMatch({
       </CardContent>
     </Card>
   );
+}
+
+function applyOwnVote(
+  split: { home: number; away: number },
+  homeId: string,
+  awayId: string,
+  countedId: string | null,
+  selectedId: string | null
+) {
+  if (countedId === selectedId) return split;
+  const next = { home: split.home, away: split.away };
+  if (countedId === homeId) next.home = Math.max(0, next.home - 1);
+  if (countedId === awayId) next.away = Math.max(0, next.away - 1);
+  if (selectedId === homeId) next.home += 1;
+  if (selectedId === awayId) next.away += 1;
+  return next;
 }
 
 function TeamPick({
