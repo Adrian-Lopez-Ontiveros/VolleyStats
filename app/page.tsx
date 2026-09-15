@@ -30,7 +30,10 @@ export default async function HomePage() {
         <Feature icon={Trophy} text="Marcador y seguimiento de puntos en tiempo real" />
         <Feature icon={BarChart3} text="Estadísticas automáticas por jugador y partido" />
         <Feature icon={Shield} text="Familias entran como espectador, sin cuenta" />
-        <Feature icon={Smartphone} text="PWA instalable, pensada para usar con el móvil" />
+        <Feature
+          icon={Smartphone}
+          text="Instálala en el móvil: en Android, menú ⋮ → Instalar app. En iPhone, Compartir → Añadir a pantalla de inicio."
+        />
       </ul>
 
       <div className="mt-10 grid gap-3">

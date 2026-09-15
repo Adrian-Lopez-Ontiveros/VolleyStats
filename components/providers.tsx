@@ -2,6 +2,7 @@
 
 import { Toaster } from "@/components/ui/sonner";
 import { OfflineBanner } from "@/components/offline-banner";
+import { PwaInstallPrompt } from "@/components/pwa-install";
 import { PwaRegister } from "@/components/pwa-register";
 import { SplashDismiss } from "@/components/app-splash";
 
@@ -13,6 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       {children}
       <Toaster />
       <PwaRegister />
+      <PwaInstallPrompt />
     </>
   );
 }
