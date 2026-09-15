@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { saveMatchPrediction } from "@/lib/actions/game";
@@ -71,9 +70,9 @@ function PredictionMatch({
   split: { home: number; away: number };
   canPredict: boolean;
 }) {
-  const router = useRouter();
-  const [pending, setPending] = useState<string | null>(null);
   const locked = match.status !== "scheduled" || !canPredict;
+  const [selectedId, setSelectedId] = useState(prediction?.predicted_winner_id ?? null);
+  const seq = useRef(0);
   const total = split.home + split.away;
   const winnerId =
     match.status === "finished" && match.home_sets !== match.away_sets
@@ -82,15 +81,20 @@ function PredictionMatch({
         : match.away_team_id
       : null;
 
+  useEffect(() => {
+    setSelectedId(prediction?.predicted_winner_id ?? null);
+  }, [prediction?.predicted_winner_id]);
+
   async function pick(teamId: string) {
-    if (locked) return;
-    setPending(teamId);
+    if (locked || teamId === selectedId) return;
+    const previous = selectedId;
+    const n = ++seq.current;
+    setSelectedId(teamId);
     const result = await saveMatchPrediction(match.id, teamId);
-    setPending(null);
-    if (result.error) toast.error(result.error);
-    else {
-      toast.success("Predicción guardada");
-      router.refresh();
+    if (n !== seq.current) return;
+    if (result.error) {
+      setSelectedId(previous);
+      toast.error(result.error);
     }
   }
 
@@ -113,19 +117,18 @@ function PredictionMatch({
         <div className="grid grid-cols-2 gap-2">
           <TeamPick
             team={match.home_team}
-            selected={prediction?.predicted_winner_id === match.home_team_id}
+            selected={selectedId === match.home_team_id}
             locked={locked}
-            pending={pending === match.home_team_id}
             result={
               winnerId == null
                 ? null
                 : winnerId === match.home_team_id
-                  ? prediction?.predicted_winner_id === match.home_team_id
+                  ? selectedId === match.home_team_id
                     ? "hit"
-                    : prediction
+                    : selectedId
                       ? "miss"
                       : "won"
-                  : prediction?.predicted_winner_id === match.home_team_id
+                  : selectedId === match.home_team_id
                     ? "miss"
                     : null
             }
@@ -134,19 +137,18 @@ function PredictionMatch({
           />
           <TeamPick
             team={match.away_team}
-            selected={prediction?.predicted_winner_id === match.away_team_id}
+            selected={selectedId === match.away_team_id}
             locked={locked}
-            pending={pending === match.away_team_id}
             result={
               winnerId == null
                 ? null
                 : winnerId === match.away_team_id
-                  ? prediction?.predicted_winner_id === match.away_team_id
+                  ? selectedId === match.away_team_id
                     ? "hit"
-                    : prediction
+                    : selectedId
                       ? "miss"
                       : "won"
-                  : prediction?.predicted_winner_id === match.away_team_id
+                  : selectedId === match.away_team_id
                     ? "miss"
                     : null
             }
@@ -182,7 +184,6 @@ function TeamPick({
   team,
   selected,
   locked,
-  pending,
   result,
   percent,
   onPick,
@@ -190,7 +191,6 @@ function TeamPick({
   team: MatchWithTeams["home_team"];
   selected: boolean;
   locked: boolean;
-  pending: boolean;
   result: "hit" | "miss" | "won" | null;
   percent: number | null;
   onPick: () => void;
@@ -199,15 +199,15 @@ function TeamPick({
     <button
       type="button"
       onClick={onPick}
-      disabled={locked || pending}
+      disabled={locked}
       className={cn(
-        "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-center transition",
+        "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-center transition-colors",
         selected && !result && "border-orange-500 bg-orange-50",
         result === "hit" && "border-emerald-600 bg-emerald-50",
         result === "miss" && "border-rose-400 bg-rose-50",
         result === "won" && "border-emerald-300 bg-emerald-50/60",
         !selected && !result && "bg-background hover:border-orange-300",
-        (locked || pending) && "cursor-default"
+        locked && "cursor-default"
       )}
     >
       <TeamLogo

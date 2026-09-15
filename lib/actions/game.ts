@@ -63,15 +63,6 @@ export async function claimDailyCheckin(): Promise<CheckinResult | null> {
 export async function saveMatchPrediction(matchId: string, winnerId: string) {
   await requireUser();
   const supabase = await createClient();
-  const { data: matches } = await supabase
-    .from("matches")
-    .select(MATCH_LIST_SELECT as "*");
-  const clubMatches = ((matches ?? []) as MatchWithTeams[]).filter(involvesClubTeam);
-  const target = clubMatches.find((match) => match.id === matchId);
-  const nearestKey = nearestJornadaKey(clubMatches);
-  if (!target || !nearestKey || jornadaKeyFromIso(target.scheduled_at) !== nearestKey) {
-    return { error: "Solo puedes predecir la jornada más próxima" };
-  }
   const { error } = await supabase.rpc("game_save_prediction", {
     p_match_id: matchId,
     p_winner_id: winnerId,
@@ -80,7 +71,6 @@ export async function saveMatchPrediction(matchId: string, winnerId: string) {
     return { error: error.message.replace(/^.*:\s*/, "") || "No se pudo guardar la predicción" };
   }
   revalidatePath("/predicciones");
-  revalidatePath("/partidos");
   return { success: true };
 }
 
