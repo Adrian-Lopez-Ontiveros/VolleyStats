@@ -200,7 +200,7 @@ export async function enterAsSpectator() {
     maxAge: 60 * 60 * 24 * 180,
   });
   revalidatePath("/", "layout");
-  redirect("/partidos");
+  redirect("/noticias");
 }
 
 export async function logoutAction() {

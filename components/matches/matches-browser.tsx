@@ -12,6 +12,7 @@ import { QueryError } from "@/components/query-error";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TeamCategory } from "@/lib/categories";
+import { involvesClubTeam } from "@/lib/federation/leagues";
 import type { MatchWithTeams } from "@/lib/types";
 
 export function MatchesBrowser({
@@ -29,7 +30,7 @@ export function MatchesBrowser({
   const filtered = useMemo(
     () =>
       categoria === "all"
-        ? matches
+        ? matches.filter(involvesClubTeam)
         : matches.filter(
             (match) =>
               match.home_team.category === categoria || match.away_team.category === categoria
@@ -70,7 +71,7 @@ export function MatchesBrowser({
     <>
       <PageHeader
         title="Partidos"
-        description="Lista o calendario de la temporada. Filtra por categoría arriba."
+        description="Partidos de CV Fuenlabrada. En Todos solo aparecen los del club; en cada liga ves todo el calendario."
         action={
           isAdmin ? (
             <Button asChild variant="accent" size="sm">

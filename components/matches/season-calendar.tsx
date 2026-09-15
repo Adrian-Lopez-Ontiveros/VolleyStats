@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { format, isSameDay, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { matchStatusMeta } from "@/lib/constants";
 import {
   formatMatchWhenShort,
   hasFmvWeekendSchedule,
+  madridCalendarKey,
+  madridMonthKey,
 } from "@/lib/federation/schedule";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams } from "@/lib/types";
@@ -19,7 +21,7 @@ export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
   );
 
   for (const match of ordered) {
-    const key = format(parseISO(match.scheduled_at), "yyyy-MM");
+    const key = madridMonthKey(match.scheduled_at);
     const list = groups.get(key) ?? [];
     list.push(match);
     groups.set(key, list);
@@ -83,7 +85,7 @@ function DayBadge({ day, matches }: { day: string; matches: MatchWithTeams[] }) 
 function groupByDay(matches: MatchWithTeams[]) {
   const map = new Map<string, MatchWithTeams[]>();
   for (const match of matches) {
-    const key = format(parseISO(match.scheduled_at), "yyyy-MM-dd");
+    const key = madridCalendarKey(match.scheduled_at);
     const list = map.get(key) ?? [];
     list.push(match);
     map.set(key, list);
@@ -93,7 +95,7 @@ function groupByDay(matches: MatchWithTeams[]) {
 
 function CalendarMatch({ match }: { match: MatchWithTeams }) {
   const status = matchStatusMeta(match.status);
-  const today = isSameDay(parseISO(match.scheduled_at), new Date());
+  const today = madridCalendarKey(match.scheduled_at) === madridCalendarKey(new Date().toISOString());
 
   return (
     <Link

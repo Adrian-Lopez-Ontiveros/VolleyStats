@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
 import { getCategoryMeta } from "@/lib/categories";
-import { MATCH_TEAM_SERIES_SELECT, PLAYER_ROSTER_SELECT, POSITION_LABELS, TEAM_SELECT } from "@/lib/constants";
+import { MATCH_WITH_TEAMS_SELECT, PLAYER_ROSTER_SELECT, POSITION_LABELS, TEAM_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildPlayerMatchSeries,
@@ -34,6 +34,7 @@ import {
   rotationStatsAcrossMatches,
   serveStatsFromEvents,
 } from "@/lib/volleyball-stats";
+import { MatchCard } from "@/components/matches/match-card";
 import { formatJersey, initials } from "@/lib/utils";
 import { totalPlayerPoints } from "@/lib/volleyball";
 import type { MatchWithTeams, Player, PointType, Team } from "@/lib/types";
@@ -64,9 +65,8 @@ export default async function TeamDetailPage({
         .order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase
         .from("matches")
-        .select(MATCH_TEAM_SERIES_SELECT as "*")
+        .select(MATCH_WITH_TEAMS_SELECT as "*")
         .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
-        .eq("status", "finished")
         .order("scheduled_at", { ascending: true }),
     ]);
 
@@ -78,9 +78,20 @@ export default async function TeamDetailPage({
 
   const typedPlayers = (players ?? []) as Player[];
   const typedMatches = (matches ?? []) as MatchWithTeams[];
+  const finishedMatches = typedMatches.filter((match) => match.status === "finished");
+  const upcomingMatches = typedMatches
+    .filter((match) => match.status === "scheduled" || match.status === "live")
+    .sort((a, b) => {
+      if (a.status === "live" && b.status !== "live") return -1;
+      if (b.status === "live" && a.status !== "live") return 1;
+      return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+    });
+  const pastMatches = typedMatches
+    .filter((match) => match.status === "finished" || match.status === "cancelled")
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
   const playerIds = typedPlayers.map((player) => player.id);
 
-  const matchIds = typedMatches.map((item) => item.id);
+  const matchIds = finishedMatches.map((item) => item.id);
   const [{ data: events }, { data: teamMatchEvents }] = await Promise.all([
     playerIds.length > 0
       ? supabase
@@ -125,7 +136,7 @@ export default async function TeamDetailPage({
   }
 
   const ranked = rankPlayers(typedPlayers, seriesByPlayer, eventsByPlayer);
-  const teamSeries = buildTeamMatchSeries(id, typedMatches);
+  const teamSeries = buildTeamMatchSeries(id, finishedMatches);
   const teamTotals = summarizeTeamSeries(teamSeries);
   const typedTeamEvents = (teamMatchEvents ?? []) as {
     match_id: string;
@@ -142,8 +153,8 @@ export default async function TeamDetailPage({
   const teamAttack = attackStatsFromEvents(teamActingEvents);
   const teamServe = serveStatsFromEvents(teamActingEvents);
   const teamReception = receptionStatsFromEvents(teamActingEvents);
-  const teamPossession = possessionStatsForTeam(typedMatches, typedTeamEvents, id);
-  const teamRotations = rotationStatsAcrossMatches(typedMatches, typedTeamEvents, id);
+  const teamPossession = possessionStatsForTeam(finishedMatches, typedTeamEvents, id);
+  const teamRotations = rotationStatsAcrossMatches(finishedMatches, typedTeamEvents, id);
 
   return (
     <>
@@ -234,6 +245,32 @@ export default async function TeamDetailPage({
             { label: "Dif. puntos", value: formatSigned(teamTotals.pointDiff) },
           ]}
         />
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Próximos partidos</h2>
+          {upcomingMatches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay partidos programados.</p>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+              {upcomingMatches.map((match) => (
+                <MatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Resultados</h2>
+          {pastMatches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aún no hay partidos finalizados.</p>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+              {pastMatches.map((match) => (
+                <MatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Métricas de juego</h2>

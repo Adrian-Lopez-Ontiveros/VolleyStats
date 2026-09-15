@@ -1,6 +1,5 @@
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { APP_NAME } from "@/lib/constants";
+import { formatMatchWhen } from "@/lib/federation/schedule";
 import { formatJersey } from "@/lib/utils";
 import {
   formatAttackEfficiency,
@@ -17,8 +16,10 @@ export function BoxScoreCard({
   captureId?: string;
 }) {
   const { match } = data;
-  const dateLabel = format(new Date(match.scheduled_at), "d MMM yyyy · HH:mm", {
-    locale: es,
+  const dateLabel = formatMatchWhen({
+    scheduledAt: match.scheduled_at,
+    notes: match.notes,
+    isFederation: match.is_federation,
   });
 
   return (

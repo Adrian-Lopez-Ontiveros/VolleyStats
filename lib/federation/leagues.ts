@@ -41,13 +41,20 @@ export function matchFederationLeague(text: string): TeamCategory | null {
   return null;
 }
 
+export function involvesClubTeam(match: {
+  home_team?: { is_club_team?: boolean } | null;
+  away_team?: { is_club_team?: boolean } | null;
+}) {
+  return Boolean(match.home_team?.is_club_team || match.away_team?.is_club_team);
+}
+
 export function canTrackLiveMatch(match: {
   is_federation?: boolean;
   home_team?: { is_club_team?: boolean } | null;
   away_team?: { is_club_team?: boolean } | null;
 }) {
   if (!match.is_federation) return true;
-  return Boolean(match.home_team?.is_club_team || match.away_team?.is_club_team);
+  return involvesClubTeam(match);
 }
 
 export function isClubTeamName(name: string) {

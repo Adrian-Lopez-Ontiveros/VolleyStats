@@ -147,10 +147,30 @@ function monthShort(day: DayParts) {
   return format(new Date(Date.UTC(day.year, day.month - 1, day.day, 12)), "MMM", { locale: es });
 }
 
+/** Madrid wall-clock `yyyy-MM` for grouping, independent of the runtime timezone. */
+export function madridMonthKey(iso: string) {
+  const parts = madridParts(iso);
+  return `${parts.year}-${pad2(parts.month)}`;
+}
+
+/** Madrid wall-clock `yyyy-MM-dd` for grouping, independent of the runtime timezone. */
+export function madridCalendarKey(iso: string) {
+  const parts = madridParts(iso);
+  return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`;
+}
+
+/**
+ * Format Madrid wall-clock parts with date-fns.
+ * Uses a local Date so `format()` prints 19:00 both on a UTC server and in a CEST browser.
+ */
 function formatInMadrid(iso: string, pattern: string) {
   const parts = madridParts(iso);
-  const localAsUtc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute));
-  return format(localAsUtc, pattern, { locale: es });
+  const asLocal = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+  return format(asLocal, pattern, { locale: es });
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
 }
 
 type DayParts = { year: number; month: number; day: number; hour?: number; minute?: number };
@@ -261,6 +281,5 @@ export function datetimeLocalMadridToIso(value: string) {
 /** UTC ISO → `datetime-local` string in Europe/Madrid. */
 export function isoToDatetimeLocalMadrid(iso: string) {
   const parts = madridParts(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
+  return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}T${pad2(parts.hour)}:${pad2(parts.minute)}`;
 }

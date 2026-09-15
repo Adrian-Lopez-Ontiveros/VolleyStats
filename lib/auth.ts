@@ -127,6 +127,6 @@ export async function requireMember() {
     if (session.profile.player) return session;
     return tryLinkPlayer(session);
   }
-  if (await isSpectatorGuest()) redirect("/partidos");
+  if (await isSpectatorGuest()) redirect("/noticias");
   redirect("/login");
 }
