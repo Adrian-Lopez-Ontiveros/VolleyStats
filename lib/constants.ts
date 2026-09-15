@@ -163,7 +163,7 @@ export function matchStatusMeta(status: string | null | undefined) {
 }
 
 export const TEAM_SELECT =
-  "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id, created_at, updated_at" as const;
+  "id, name, short_name, logo_url, city, category, is_club_team, is_one_off, federation_team_id, created_at, updated_at" as const;
 
 export const TEAM_SUMMARY_SELECT =
   "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id" as const;

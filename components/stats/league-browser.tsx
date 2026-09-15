@@ -35,7 +35,7 @@ export function LeagueBrowser({
   const typedTeams = useMemo(
     () =>
       teams
-        .filter((team) => team.category === activeCategory)
+        .filter((team) => team.category === activeCategory && !team.is_one_off)
         .sort(
           (a, b) =>
             Number(b.is_club_team) - Number(a.is_club_team) || a.name.localeCompare(b.name, "es")
@@ -43,7 +43,10 @@ export function LeagueBrowser({
     [teams, activeCategory]
   );
   const unassigned = useMemo(
-    () => (isAdmin ? teams.filter((team) => !team.category && !team.is_club_team) : []),
+    () =>
+      isAdmin
+        ? teams.filter((team) => !team.category && !team.is_club_team && !team.is_one_off)
+        : [],
     [teams, isAdmin]
   );
   const rows = useMemo(() => {

@@ -23,7 +23,7 @@ export default async function NewMatchPage() {
     <>
       <PageHeader
         title="Nuevo partido"
-        description="Local, visitante, resultado por sets si ya se jugó y alineación del club."
+        description="Elige equipos de la liga o escribe un rival puntual que no quieras dar de alta."
       />
       <MatchForm teams={(teams ?? []) as Team[]} players={(players ?? []) as Player[]} />
     </>

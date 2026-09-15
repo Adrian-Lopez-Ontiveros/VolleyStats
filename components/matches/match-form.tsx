@@ -14,9 +14,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { isoToDatetimeLocalMadrid } from "@/lib/federation/schedule";
 import type { Match, MatchLineupEntry, Player, Team } from "@/lib/types";
 
+const CUSTOM_TEAM = "__custom__";
+
 function toLocalInput(value?: string) {
   if (!value) return "";
   return isoToDatetimeLocalMadrid(value);
+}
+
+function isOneOff(team: Team) {
+  return Boolean(team.is_one_off);
 }
 
 export function MatchForm({
@@ -42,14 +48,19 @@ export function MatchForm({
   const leagueTeams = hasCategories
     ? teams.filter((team) => team.category === category)
     : teams;
-  const clubTeam = leagueTeams.find((team) => team.is_club_team) ?? null;
+  const listedTeams = leagueTeams.filter((team) => !isOneOff(team));
+  const oneOffTeams = leagueTeams.filter(isOneOff);
+  const clubTeam = listedTeams.find((team) => team.is_club_team) ?? null;
   const [homeTeamId, setHomeTeamId] = useState(
     homeTeam?.category === category ? (match?.home_team_id ?? clubTeam?.id ?? "") : ""
   );
   const [awayTeamId, setAwayTeamId] = useState(() => {
     const away = teams.find((team) => team.id === match?.away_team_id);
-    return away?.category === category ? (match?.away_team_id ?? "") : "";
+    if (away?.category === category) return match?.away_team_id ?? "";
+    return match ? "" : CUSTOM_TEAM;
   });
+  const [homeTeamName, setHomeTeamName] = useState("");
+  const [awayTeamName, setAwayTeamName] = useState("");
   const clubInMatch = Boolean(
     clubTeam && (clubTeam.id === homeTeamId || clubTeam.id === awayTeamId)
   );
@@ -57,8 +68,16 @@ export function MatchForm({
     () => players.filter((player) => player.team_id === clubTeam?.id),
     [players, clubTeam?.id]
   );
-  const homeLabel = leagueTeams.find((team) => team.id === homeTeamId)?.short_name || "Local";
-  const awayLabel = leagueTeams.find((team) => team.id === awayTeamId)?.short_name || "Visitante";
+  const homeLabel =
+    homeTeamId === CUSTOM_TEAM
+      ? homeTeamName.trim() || "Local"
+      : listedTeams.concat(oneOffTeams).find((team) => team.id === homeTeamId)?.short_name ||
+        "Local";
+  const awayLabel =
+    awayTeamId === CUSTOM_TEAM
+      ? awayTeamName.trim() || "Visitante"
+      : listedTeams.concat(oneOffTeams).find((team) => team.id === awayTeamId)?.short_name ||
+        "Visitante";
   const lockTeams = Boolean(match && match.status !== "scheduled");
 
   async function onSubmit(formData: FormData) {
@@ -76,13 +95,17 @@ export function MatchForm({
         <Label htmlFor="category">Liga</Label>
         <select
           id="category"
+          name="category"
           value={category}
           disabled={lockTeams}
           onChange={(event) => {
             const next = parseCategory(event.target.value);
             setCategory(next);
-            setHomeTeamId("");
-            setAwayTeamId("");
+            const nextClub = teams.find((team) => team.is_club_team && team.category === next);
+            setHomeTeamId(nextClub?.id ?? CUSTOM_TEAM);
+            setAwayTeamId(CUSTOM_TEAM);
+            setHomeTeamName("");
+            setAwayTeamName("");
           }}
           className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm"
         >
@@ -92,58 +115,40 @@ export function MatchForm({
             </option>
           ))}
         </select>
+        {lockTeams ? <input type="hidden" name="category" value={category} /> : null}
       </div>
-      {hasCategories && leagueTeams.length < 2 ? (
+      {hasCategories && !clubTeam ? (
         <p className="rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
-          Añade el equipo del club y al menos un rival de esta liga antes de crear el partido.
+          No hay equipo del club en esta liga. Puedes escribir los dos nombres para un amistoso.
         </p>
-      ) : null}
-      <div className="space-y-2">
-        <Label htmlFor="homeTeamId">Equipo local</Label>
-        <select
-          key={`${category}-home`}
-          id="homeTeamId"
-          name="homeTeamId"
-          required
-          value={homeTeamId}
-          disabled={lockTeams}
-          onChange={(event) => setHomeTeamId(event.target.value)}
-          className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm"
-        >
-          <option value="" disabled>
-            Selecciona equipo local
-          </option>
-          {leagueTeams.map((team) => (
-            <option key={team.id} value={team.id}>
-              {team.is_club_team ? `${team.name} (club)` : team.name}
-            </option>
-          ))}
-        </select>
-        {lockTeams ? <input type="hidden" name="homeTeamId" value={homeTeamId} /> : null}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="awayTeamId">Equipo visitante</Label>
-        <select
-          key={`${category}-away`}
-          id="awayTeamId"
-          name="awayTeamId"
-          required
-          value={awayTeamId}
-          disabled={lockTeams}
-          onChange={(event) => setAwayTeamId(event.target.value)}
-          className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm"
-        >
-          <option value="" disabled>
-            Selecciona equipo visitante
-          </option>
-          {leagueTeams.map((team) => (
-            <option key={team.id} value={team.id}>
-              {team.is_club_team ? `${team.name} (club)` : team.name}
-            </option>
-          ))}
-        </select>
-        {lockTeams ? <input type="hidden" name="awayTeamId" value={awayTeamId} /> : null}
-      </div>
+      ) : (
+        <p className="rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
+          Si el rival no está en la liga, elige «Escribir nombre» y ponlo aquí. No se añade a la
+          clasificación.
+        </p>
+      )}
+      <TeamSideField
+        side="home"
+        label="Equipo local"
+        teamId={homeTeamId}
+        teamName={homeTeamName}
+        listedTeams={listedTeams}
+        oneOffTeams={oneOffTeams}
+        lockTeams={lockTeams}
+        onTeamIdChange={setHomeTeamId}
+        onTeamNameChange={setHomeTeamName}
+      />
+      <TeamSideField
+        side="away"
+        label="Equipo visitante"
+        teamId={awayTeamId}
+        teamName={awayTeamName}
+        listedTeams={listedTeams}
+        oneOffTeams={oneOffTeams}
+        lockTeams={lockTeams}
+        onTeamIdChange={setAwayTeamId}
+        onTeamNameChange={setAwayTeamName}
+      />
       <div className="space-y-2">
         <Label htmlFor="scheduledAt">Fecha y hora</Label>
         <Input
@@ -207,5 +212,78 @@ export function MatchForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+function TeamSideField({
+  side,
+  label,
+  teamId,
+  teamName,
+  listedTeams,
+  oneOffTeams,
+  lockTeams,
+  onTeamIdChange,
+  onTeamNameChange,
+}: {
+  side: "home" | "away";
+  label: string;
+  teamId: string;
+  teamName: string;
+  listedTeams: Team[];
+  oneOffTeams: Team[];
+  lockTeams: boolean;
+  onTeamIdChange: (value: string) => void;
+  onTeamNameChange: (value: string) => void;
+}) {
+  const custom = teamId === CUSTOM_TEAM;
+  const idName = side === "home" ? "homeTeamId" : "awayTeamId";
+  const nameName = side === "home" ? "homeTeamName" : "awayTeamName";
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={idName}>{label}</Label>
+      <select
+        key={`${side}-select`}
+        id={idName}
+        name={idName}
+        required
+        value={teamId}
+        disabled={lockTeams}
+        onChange={(event) => onTeamIdChange(event.target.value)}
+        className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm"
+      >
+        <option value="" disabled>
+          Selecciona equipo
+        </option>
+        {listedTeams.map((team) => (
+          <option key={team.id} value={team.id}>
+            {team.is_club_team ? `${team.name} (club)` : team.name}
+          </option>
+        ))}
+        {oneOffTeams.length > 0 ? (
+          <optgroup label="Usados en amistosos">
+            {oneOffTeams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </optgroup>
+        ) : null}
+        <option value={CUSTOM_TEAM}>Escribir nombre…</option>
+      </select>
+      {lockTeams ? <input type="hidden" name={idName} value={teamId} /> : null}
+      {custom ? (
+        <Input
+          id={nameName}
+          name={nameName}
+          value={teamName}
+          onChange={(event) => onTeamNameChange(event.target.value)}
+          placeholder="Nombre del equipo"
+          required
+          disabled={lockTeams}
+        />
+      ) : null}
+    </div>
   );
 }

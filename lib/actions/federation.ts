@@ -264,6 +264,7 @@ async function upsertFederationTeam(team: FmvTeam, category: TeamCategory) {
     .from("teams")
     .select("id, federation_team_id, logo_url, is_club_team")
     .eq("category", category)
+    .eq("is_one_off", false)
     .ilike("name", team.name)
     .maybeSingle();
   if (sameName) {
@@ -392,6 +393,7 @@ async function findTeam(federationId: string, name: string, category: TeamCatego
     .from("teams")
     .select("id")
     .eq("category", category)
+    .eq("is_one_off", false)
     .ilike("name", name)
     .maybeSingle();
   return (data as Pick<Team, "id"> | null) ?? null;

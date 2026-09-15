@@ -50,6 +50,7 @@ export type Team = {
   city: string | null;
   category: TeamCategory | null;
   is_club_team: boolean;
+  is_one_off?: boolean;
   federation_team_id?: string | null;
   created_at: string;
   updated_at: string;

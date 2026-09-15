@@ -60,6 +60,7 @@ create table if not exists public.teams (
   city text,
   category text,
   is_club_team boolean not null default false,
+  is_one_off boolean not null default false,
   federation_team_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -818,6 +819,7 @@ alter table public.match_events replica identity full;
 -- ---------- Columnas de liga (por si el esquema se re-ejecuta sobre una BD antigua) ----------
 alter table public.teams add column if not exists category text;
 alter table public.teams add column if not exists is_club_team boolean not null default false;
+alter table public.teams add column if not exists is_one_off boolean not null default false;
 
 -- ---------- Equipos del club (solo en instalaciones vacÃ­as) ----------
 insert into public.teams (name, short_name, city, category, is_club_team)
@@ -1157,7 +1159,7 @@ on storage.objects for delete
 to authenticated
 using (bucket_id = 'news' and public.is_admin());
 
--- Racha, XP, niveles, recompensas y predicciones (migración 022)
+-- Racha, XP, niveles, recompensas y predicciones (migraciï¿½n 022)
 
 -- Racha diaria, XP, niveles, recompensas y predicciones de jornada.
 
@@ -1797,7 +1799,7 @@ grant execute on function public.game_resolve_match_predictions(uuid) to authent
 grant execute on function public.game_resolve_pending() to authenticated;
 grant execute on function public.game_equip_reward(text) to authenticated;
 
--- Solo jornada más próxima (migración 023)
+-- Solo jornada mï¿½s prï¿½xima (migraciï¿½n 023)
 
 -- Solo se puede predecir la jornada mÃ¡s prÃ³xima (la del siguiente partido del club).
 

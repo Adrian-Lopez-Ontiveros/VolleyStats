@@ -6,9 +6,11 @@ import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
 import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { requireAdmin } from "@/lib/auth";
+import { parseCategory, type TeamCategory } from "@/lib/categories";
 import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
 import { datetimeLocalMadridToIso } from "@/lib/federation/schedule";
 import { createClient } from "@/lib/supabase/server";
+import { normalizePersonName } from "@/lib/utils";
 import type { MatchStatus, PointType } from "@/lib/types";
 import {
   deleteMatch as deleteMatchImpl,
@@ -19,13 +21,85 @@ import {
   deleteSubstitution as deleteSubstitutionImpl,
 } from "@/lib/actions/match-ops";
 
+const CUSTOM_TEAM = "__custom__";
+
 const matchSchema = z.object({
-  homeTeamId: z.string().uuid("Selecciona el equipo local"),
-  awayTeamId: z.string().uuid("Selecciona el equipo visitante"),
+  category: z.string().optional().or(z.literal("")),
+  homeTeamId: z.string().optional().or(z.literal("")),
+  awayTeamId: z.string().optional().or(z.literal("")),
+  homeTeamName: z.string().optional().or(z.literal("")),
+  awayTeamName: z.string().optional().or(z.literal("")),
   scheduledAt: z.string().min(1, "La fecha es obligatoria"),
   location: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
 });
+
+function shortNameFromTeam(name: string) {
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return words
+      .map((word) => word[0] ?? "")
+      .join("")
+      .slice(0, 8)
+      .toUpperCase();
+  }
+  return name.slice(0, 8);
+}
+
+async function resolveMatchTeam(
+  rawId: string | undefined,
+  rawName: string | undefined,
+  category: TeamCategory,
+  label: string
+): Promise<{ id: string } | { error: string }> {
+  const id = (rawId ?? "").trim();
+  const name = (rawName ?? "").trim();
+  const supabase = await createClient();
+
+  if (id && id !== CUSTOM_TEAM) {
+    const { data, error } = await supabase.from("teams").select("id").eq("id", id).maybeSingle();
+    if (error) return { error: error.message };
+    if (!data) return { error: `No se encontró el equipo ${label.toLowerCase()}` };
+    return { id: data.id };
+  }
+
+  if (name.length < 2) {
+    return { error: `Escribe el nombre del equipo ${label.toLowerCase()}` };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("teams")
+    .select("id, name, category")
+    .eq("category", category);
+  if (existingError) return { error: existingError.message };
+
+  const needle = normalizePersonName(name);
+  const match = (existing ?? []).find((team) => normalizePersonName(team.name) === needle);
+  if (match) return { id: match.id };
+
+  const { data: created, error: createError } = await supabase
+    .from("teams")
+    .insert({
+      name,
+      short_name: shortNameFromTeam(name),
+      category,
+      is_club_team: false,
+      is_one_off: true,
+    })
+    .select("id")
+    .single();
+
+  if (createError) {
+    if (/is_one_off/i.test(createError.message)) {
+      return {
+        error:
+          "Falta ejecutar la migración supabase/migrations/024_one_off_teams.sql para rivales puntuales.",
+      };
+    }
+    return { error: createError.message };
+  }
+  return { id: created.id };
+}
 
 async function saveClubLineup(
   matchId: string,
@@ -102,8 +176,11 @@ async function applyManualScores(
 export async function createMatch(formData: FormData) {
   const session = await requireAdmin();
   const parsed = matchSchema.safeParse({
-    homeTeamId: formData.get("homeTeamId"),
-    awayTeamId: formData.get("awayTeamId"),
+    category: formData.get("category") ?? "",
+    homeTeamId: formData.get("homeTeamId") ?? "",
+    awayTeamId: formData.get("awayTeamId") ?? "",
+    homeTeamName: formData.get("homeTeamName") ?? "",
+    awayTeamName: formData.get("awayTeamName") ?? "",
     scheduledAt: formData.get("scheduledAt"),
     location: formData.get("location") ?? "",
     notes: formData.get("notes") ?? "",
@@ -113,31 +190,35 @@ export async function createMatch(formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "Datos no válidos" };
   }
 
-  if (parsed.data.homeTeamId === parsed.data.awayTeamId) {
+  const category = parseCategory(parsed.data.category);
+  const home = await resolveMatchTeam(
+    parsed.data.homeTeamId,
+    parsed.data.homeTeamName,
+    category,
+    "local"
+  );
+  if ("error" in home) return home;
+  const away = await resolveMatchTeam(
+    parsed.data.awayTeamId,
+    parsed.data.awayTeamName,
+    category,
+    "visitante"
+  );
+  if ("error" in away) return away;
+
+  if (home.id === away.id) {
     return { error: "El equipo local y el visitante deben ser distintos" };
   }
 
   const supabase = await createClient();
-  const { data: sides } = await supabase
-    .from("teams")
-    .select("id, category")
-    .in("id", [parsed.data.homeTeamId, parsed.data.awayTeamId]);
-
-  if ((sides ?? []).length === 2) {
-    const [home, away] = sides ?? [];
-    if (home.category && away.category && home.category !== away.category) {
-      return { error: "Local y visitante deben pertenecer a la misma liga." };
-    }
-  }
-
   const scores = await applyManualScores(formData, "scheduled", false);
   if (scores.error) return { error: scores.error };
 
   const { data, error } = await supabase
     .from("matches")
     .insert({
-      home_team_id: parsed.data.homeTeamId,
-      away_team_id: parsed.data.awayTeamId,
+      home_team_id: home.id,
+      away_team_id: away.id,
       scheduled_at: datetimeLocalMadridToIso(parsed.data.scheduledAt),
       location: parsed.data.location?.trim() || null,
       notes: parsed.data.notes?.trim() || null,
@@ -151,8 +232,8 @@ export async function createMatch(formData: FormData) {
 
   const lineup = await saveClubLineup(
     data.id,
-    parsed.data.homeTeamId,
-    parsed.data.awayTeamId,
+    home.id,
+    away.id,
     formData
   );
   if (lineup.error) return { error: lineup.error };
@@ -166,8 +247,11 @@ export async function createMatch(formData: FormData) {
 export async function updateMatch(matchId: string, formData: FormData) {
   await requireAdmin();
   const parsed = matchSchema.safeParse({
-    homeTeamId: formData.get("homeTeamId"),
-    awayTeamId: formData.get("awayTeamId"),
+    category: formData.get("category") ?? "",
+    homeTeamId: formData.get("homeTeamId") ?? "",
+    awayTeamId: formData.get("awayTeamId") ?? "",
+    homeTeamName: formData.get("homeTeamName") ?? "",
+    awayTeamName: formData.get("awayTeamName") ?? "",
     scheduledAt: formData.get("scheduledAt"),
     location: formData.get("location") ?? "",
     notes: formData.get("notes") ?? "",
@@ -177,23 +261,27 @@ export async function updateMatch(matchId: string, formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "Datos no válidos" };
   }
 
-  if (parsed.data.homeTeamId === parsed.data.awayTeamId) {
+  const category = parseCategory(parsed.data.category);
+  const home = await resolveMatchTeam(
+    parsed.data.homeTeamId,
+    parsed.data.homeTeamName,
+    category,
+    "local"
+  );
+  if ("error" in home) return home;
+  const away = await resolveMatchTeam(
+    parsed.data.awayTeamId,
+    parsed.data.awayTeamName,
+    category,
+    "visitante"
+  );
+  if ("error" in away) return away;
+
+  if (home.id === away.id) {
     return { error: "El equipo local y el visitante deben ser distintos" };
   }
 
   const supabase = await createClient();
-  const { data: sides } = await supabase
-    .from("teams")
-    .select("id, category")
-    .in("id", [parsed.data.homeTeamId, parsed.data.awayTeamId]);
-
-  if ((sides ?? []).length === 2) {
-    const [home, away] = sides ?? [];
-    if (home.category && away.category && home.category !== away.category) {
-      return { error: "Local y visitante deben pertenecer a la misma liga." };
-    }
-  }
-
   const { data: current } = await supabase
     .from("matches")
     .select("id, status, home_team_id, away_team_id")
@@ -217,10 +305,8 @@ export async function updateMatch(matchId: string, formData: FormData) {
   );
   if (scores.error) return { error: scores.error };
 
-  const nextHome =
-    current.status === "scheduled" ? parsed.data.homeTeamId : current.home_team_id;
-  const nextAway =
-    current.status === "scheduled" ? parsed.data.awayTeamId : current.away_team_id;
+  const nextHome = current.status === "scheduled" ? home.id : current.home_team_id;
+  const nextAway = current.status === "scheduled" ? away.id : current.away_team_id;
 
   const { error } = await supabase
     .from("matches")
