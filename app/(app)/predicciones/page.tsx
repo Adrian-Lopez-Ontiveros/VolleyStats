@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import { Target } from "lucide-react";
 import { GameLeaderboard } from "@/components/game/leaderboard";
 import { PredictionsBoard } from "@/components/game/predictions-board";
-import { ProgressCard } from "@/components/game/progress-card";
-import { RewardsGrid } from "@/components/game/rewards-grid";
+import { RewardsDisclosure } from "@/components/game/rewards-grid";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { loadGamePageData } from "@/lib/actions/game";
-import { JORNADA_PERFECT_XP, PREDICTION_HIT_XP } from "@/lib/game";
 import type { MatchPrediction } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Predicciones" };
@@ -39,7 +37,7 @@ export default async function PredictionsPage() {
     <>
       <PageHeader
         title="Predicciones"
-        description="Solo la jornada más próxima. Elige ganador antes de que empiece el partido, entra cada día para la racha y sube de nivel."
+        description="Elige el ganador de la jornada más próxima. Un acierto vale 1 punto, un fallo 0."
         leading={
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
             <Target className="h-5 w-5" />
@@ -48,17 +46,8 @@ export default async function PredictionsPage() {
       />
 
       <div className="space-y-8">
-        <ProgressCard progress={data.progress} />
-
         <section className="space-y-3">
-          <div>
-            <h2 className="text-lg font-semibold">Jornada más próxima</h2>
-            <p className="text-sm text-muted-foreground">
-              Elige el ganador de cada partido del club. En la clasificación, un acierto vale 1
-              punto y un fallo 0. Además sumas {PREDICTION_HIT_XP} XP al nivel
-              {` `}({JORNADA_PERFECT_XP} extra si clavas toda la jornada).
-            </p>
-          </div>
+          <h2 className="text-lg font-semibold">Jornada más próxima</h2>
           <PredictionsBoard
             jornadas={data.jornadas.filter((item) => item.canPredict || item.open)}
             predictions={predictionMap}
@@ -78,24 +67,11 @@ export default async function PredictionsPage() {
         ) : null}
 
         <section className="space-y-3">
-          <div>
-            <h2 className="text-lg font-semibold">Clasificación</h2>
-            <p className="text-sm text-muted-foreground">
-              Independiente del nivel y la XP. Acierto = 1 punto. Fallo = 0.
-            </p>
-          </div>
+          <h2 className="text-lg font-semibold">Clasificación</h2>
           <GameLeaderboard rows={data.leaderboard} userId={data.userId} />
         </section>
 
-        <section className="space-y-3">
-          <div>
-            <h2 className="text-lg font-semibold">Recompensas</h2>
-            <p className="text-sm text-muted-foreground">
-              Títulos y marcos se desbloquean con nivel, racha y aciertos. Equípalos en tu perfil.
-            </p>
-          </div>
-          <RewardsGrid unlockedIds={unlocked} progress={data.progress} />
-        </section>
+        <RewardsDisclosure unlockedIds={unlocked} progress={data.progress} />
       </div>
     </>
   );

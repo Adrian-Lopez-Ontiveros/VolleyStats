@@ -10,6 +10,30 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { UserProgress } from "@/lib/types";
 
+export function RewardsDisclosure({
+  unlockedIds,
+  progress,
+}: {
+  unlockedIds: string[];
+  progress: UserProgress;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="space-y-3">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? "Ocultar recompensas" : "Ver recompensas"}
+      </Button>
+      {open ? <RewardsGrid unlockedIds={unlockedIds} progress={progress} /> : null}
+    </section>
+  );
+}
+
 export function RewardsGrid({
   unlockedIds,
   progress,
