@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Newspaper, Plus } from "lucide-react";
+import { Newspaper, Plus, Target } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { NewsCard } from "@/components/news/news-card";
 import { PageHeader } from "@/components/page-header";
@@ -14,7 +14,7 @@ import type { ClubNews } from "@/lib/types";
 export const metadata: Metadata = { title: "Noticias" };
 
 export default async function NewsPage() {
-  const { isAdmin } = await requireViewer();
+  const { isAdmin, isGuest } = await requireViewer();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("news")
@@ -49,6 +49,26 @@ export default async function NewsPage() {
           ) : null
         }
       />
+
+      <Link
+        href="/predicciones"
+        className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
+            <Target className="h-4 w-4" />
+          </span>
+          <span>
+            <span className="font-semibold text-orange-800">Predice la jornada.</span>{" "}
+            <span className="text-orange-900/80">
+              {isGuest ? "Entra con cuenta para elegir ganador." : "Elige ganador y suma puntos."}
+            </span>
+          </span>
+        </span>
+        <span className="shrink-0 font-bold text-orange-700">
+          {isGuest ? "Entrar →" : "Predecir →"}
+        </span>
+      </Link>
 
       {items.length === 0 ? (
         <EmptyState

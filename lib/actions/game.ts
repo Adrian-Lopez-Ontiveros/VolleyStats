@@ -150,7 +150,9 @@ export async function loadGamePageData() {
     return { ok: false as const, error: matchesError.message };
   }
 
-  const clubMatches = ((matches ?? []) as MatchWithTeams[]).filter(involvesClubTeam);
+  const clubMatches = ((matches ?? []) as MatchWithTeams[]).filter(
+    (match) => involvesClubTeam(match) && match.is_federation
+  );
   const mine = (predictions ?? []) as MatchPrediction[];
   const byMatch = new Map(mine.map((row) => [row.match_id, row]));
 

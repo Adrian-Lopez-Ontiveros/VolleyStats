@@ -70,7 +70,7 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
         return;
       }
       setOn(next);
-      toast.success(next ? "Avisos de resultado activados" : "Avisos desactivados");
+      toast.success(next ? "Avisos activados: partido de mañana y resultado" : "Avisos desactivados");
     } catch {
       toast.error("No se pudo actualizar la preferencia.");
     } finally {
@@ -80,10 +80,10 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="rounded-2xl border bg-card p-4">
-      <p className="text-sm font-semibold">Notificaciones de resultado</p>
+      <p className="text-sm font-semibold">Notificaciones</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Te avisamos cuando termine un partido de tu equipo. Funciona también si tienes la
-        app instalada.
+        El día antes del próximo partido te avisamos con la hora y el lugar. Al acabar, el
+        resultado. Instala la app para recibirlas con el móvil bloqueado.
       </p>
       <Button
         type="button"

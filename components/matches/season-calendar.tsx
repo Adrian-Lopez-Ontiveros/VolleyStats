@@ -12,6 +12,7 @@ import {
 } from "@/lib/federation/schedule";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams } from "@/lib/types";
+import { MatchKindBadge, isFriendlyMatch } from "@/components/matches/match-kind";
 import { TeamLogo } from "@/components/teams/team-logo";
 
 export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
@@ -101,9 +102,12 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
     <Link
       href={`/partidos/${match.id}`}
       className={cn(
-        "block rounded-2xl border bg-card px-3 py-2.5",
+        "block rounded-2xl border px-3 py-2.5",
+        isFriendlyMatch(match)
+          ? "border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50"
+          : "border-violet-200/80 bg-card",
         match.status === "live" && "border-orange-300",
-        today && match.status === "scheduled" && "border-sky-300"
+        today && match.status === "scheduled" && !isFriendlyMatch(match) && "border-sky-300"
       )}
     >
       <div className="mb-1 flex items-center justify-between gap-2">
@@ -115,11 +119,7 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
           })}
         </span>
         <span className="flex flex-wrap justify-end gap-1">
-          {match.is_federation ? (
-            <span className="rounded-full border border-violet-800 bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-              Oficial FMV
-            </span>
-          ) : null}
+          <MatchKindBadge match={match} />
           <span
             className={cn(
               "rounded-full border px-2 py-0.5 text-[10px] font-semibold text-white",

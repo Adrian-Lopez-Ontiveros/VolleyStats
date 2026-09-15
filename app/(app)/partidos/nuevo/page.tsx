@@ -23,7 +23,7 @@ export default async function NewMatchPage() {
     <>
       <PageHeader
         title="Nuevo partido"
-        description="Elige equipos de la liga o escribe un rival puntual que no quieras dar de alta."
+        description="Se guarda como amistoso: no cuenta en la liga FMV. Puedes escribir un rival que no esté en la clasificación."
       />
       <MatchForm teams={(teams ?? []) as Team[]} players={(players ?? []) as Player[]} />
     </>

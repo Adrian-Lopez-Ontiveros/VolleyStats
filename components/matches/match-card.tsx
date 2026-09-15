@@ -5,7 +5,9 @@ import { matchStatusMeta } from "@/lib/constants";
 import { formatMatchWhen } from "@/lib/federation/schedule";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { MatchKindBadge, cnMatchCard, isFriendlyMatch } from "@/components/matches/match-kind";
 import { TeamLogo } from "@/components/teams/team-logo";
+import { cn } from "@/lib/utils";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
 export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTeams }) {
@@ -13,7 +15,7 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
 
   return (
     <Link href={`/partidos/${match.id}`} className="block h-full">
-      <Card className="h-full transition-transform active:scale-[0.99]">
+      <Card className={cnMatchCard(match)}>
         <CardContent className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium capitalize text-muted-foreground">
@@ -24,11 +26,7 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
               })}
             </p>
             <div className="flex flex-wrap justify-end gap-1">
-              {match.is_federation ? (
-                <Badge className="border-violet-800 bg-violet-600 text-white">Oficial FMV</Badge>
-              ) : (
-                <Badge className="border-slate-300 bg-slate-100 text-slate-800">Propio</Badge>
-              )}
+              <MatchKindBadge match={match} />
               <Badge
                 className={
                   match.status === "live"
@@ -46,7 +44,14 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
           </div>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <TeamSide team={match.home_team} align="right" caption="Local" />
-            <div className="min-w-[4.5rem] rounded-xl bg-primary px-3 py-2 text-center text-primary-foreground">
+            <div
+              className={cn(
+                "min-w-[4.5rem] rounded-xl px-3 py-2 text-center",
+                isFriendlyMatch(match)
+                  ? "bg-orange-500 text-white"
+                  : "bg-primary text-primary-foreground"
+              )}
+            >
               <p className="text-xl font-bold tabular-nums leading-none">
                 {match.home_sets} – {match.away_sets}
               </p>

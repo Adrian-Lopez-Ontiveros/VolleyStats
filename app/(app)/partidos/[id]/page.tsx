@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MapPin } from "lucide-react";
+import { MatchKindBadge } from "@/components/matches/match-kind";
 import { formatMatchWhen, stripFmvScheduleNote } from "@/lib/federation/schedule";
 import { MatchAdminActions } from "@/components/matches/match-admin-actions";
 import { BoxScoreCard } from "@/components/matches/box-score";
@@ -154,12 +155,8 @@ export default async function MatchDetailPage({
       />
       <div className="space-y-4">
         <Scoreboard match={typedMatch} />
-        <p className="text-center text-xs text-muted-foreground">
-          {typedMatch.is_federation
-            ? typedMatch.federation_round
-              ? `Partido oficial FMV · ${typedMatch.federation_round}`
-              : "Partido oficial de la Federación de Madrid"
-            : "Partido de seguimiento propio"}
+        <p className="flex justify-center">
+          <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
         </p>
 
         {typedMatch.location ? (

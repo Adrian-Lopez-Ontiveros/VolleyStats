@@ -49,7 +49,13 @@ export type PlayerMatchSample = {
 
 export type MatchStandingInput = Pick<
   Match,
-  "home_team_id" | "away_team_id" | "status" | "home_sets" | "away_sets" | "set_scores"
+  | "home_team_id"
+  | "away_team_id"
+  | "status"
+  | "home_sets"
+  | "away_sets"
+  | "set_scores"
+  | "is_federation"
 >;
 
 export function normalizeSetScores(value: unknown): SetScore[] {

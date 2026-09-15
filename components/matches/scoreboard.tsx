@@ -1,16 +1,24 @@
 import { memo } from "react";
 import { matchStatusMeta } from "@/lib/constants";
+import { isFriendlyMatch } from "@/components/matches/match-kind";
 import { Badge } from "@/components/ui/badge";
 import { TeamLogo } from "@/components/teams/team-logo";
+import { cn } from "@/lib/utils";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
 export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWithTeams }) {
   const status = matchStatusMeta(match.status);
+  const friendly = isFriendlyMatch(match);
   return (
-    <section className="overflow-hidden rounded-3xl bg-primary text-primary-foreground shadow-card">
+    <section
+      className={cn(
+        "overflow-hidden rounded-3xl shadow-card",
+        friendly ? "bg-orange-600 text-white" : "bg-primary text-primary-foreground"
+      )}
+    >
       <div className="flex items-center justify-between px-4 pt-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-300">
-          Set {match.current_set}
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-200">
+          {friendly ? `Amistoso · Set ${match.current_set}` : `Set ${match.current_set}`}
         </p>
         <Badge className={status.className}>{status.label}</Badge>
       </div>

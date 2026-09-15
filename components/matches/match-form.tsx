@@ -123,8 +123,8 @@ export function MatchForm({
         </p>
       ) : (
         <p className="rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
-          Si el rival no está en la liga, elige «Escribir nombre» y ponlo aquí. No se añade a la
-          clasificación.
+          Los partidos que creas aquí son amistosos: no cuentan en la liga FMV. Si el rival no
+          está en la clasificación, elige «Escribir nombre».
         </p>
       )}
       <TeamSideField

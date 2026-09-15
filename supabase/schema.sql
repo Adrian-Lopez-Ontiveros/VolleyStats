@@ -112,6 +112,7 @@ create table if not exists public.matches (
   notes text,
   created_by uuid references public.profiles (id) on delete set null,
   is_federation boolean not null default false,
+  reminder_sent_at timestamptz,
   federation_match_id text,
   federation_round text,
   created_at timestamptz not null default now(),
@@ -1876,3 +1877,10 @@ $$;
 
 grant execute on function public.game_nearest_jornada_key() to authenticated;
 grant execute on function public.game_save_prediction(uuid, uuid) to authenticated;
+
+-- Avisos el dia anterior (migracion 025)
+
+-- Marca de aviso enviado el día anterior al partido.
+
+alter table public.matches
+  add column if not exists reminder_sent_at timestamptz;

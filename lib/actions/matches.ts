@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
 import { resolvePredictionsForMatch } from "@/lib/actions/game";
+import { sendDueMatchReminders } from "@/lib/actions/notifications";
 import { requireAdmin } from "@/lib/auth";
 import { parseCategory, type TeamCategory } from "@/lib/categories";
 import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
@@ -223,6 +224,7 @@ export async function createMatch(formData: FormData) {
       location: parsed.data.location?.trim() || null,
       notes: parsed.data.notes?.trim() || null,
       created_by: session.id,
+      is_federation: false,
       ...scores.update,
     })
     .select("id")
@@ -238,7 +240,8 @@ export async function createMatch(formData: FormData) {
   );
   if (lineup.error) return { error: lineup.error };
 
-  await logMatchActivity(data.id, "Creó el partido", "Partido dado de alta");
+  await logMatchActivity(data.id, "Creó el partido", "Amistoso dado de alta");
+  await sendDueMatchReminders();
   revalidatePath("/partidos");
   revalidatePath("/liga");
   redirect(`/partidos/${data.id}`);

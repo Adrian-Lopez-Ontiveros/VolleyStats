@@ -52,7 +52,10 @@ export function LeagueBrowser({
   const rows = useMemo(() => {
     const teamIds = new Set(typedTeams.map((team) => team.id));
     const leagueMatches = matches.filter(
-      (match) => teamIds.has(match.home_team_id) && teamIds.has(match.away_team_id)
+      (match) =>
+        Boolean(match.is_federation) &&
+        teamIds.has(match.home_team_id) &&
+        teamIds.has(match.away_team_id)
     );
     return computeStandings(typedTeams, leagueMatches);
   }, [typedTeams, matches]);

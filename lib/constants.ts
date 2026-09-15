@@ -175,7 +175,7 @@ export const MATCH_WITH_TEAMS_SELECT =
   `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, created_at, is_federation, federation_match_id, federation_round, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
 
 export const MATCH_STANDING_SELECT =
-  "home_team_id, away_team_id, status, home_sets, away_sets, set_scores" as const;
+  "home_team_id, away_team_id, status, home_sets, away_sets, set_scores, is_federation" as const;
 
 export const MATCH_TEAM_SERIES_SELECT =
   `id, home_team_id, away_team_id, scheduled_at, status, home_sets, away_sets, set_scores, home_team:teams!matches_home_team_id_fkey(name, short_name), away_team:teams!matches_away_team_id_fkey(name, short_name)` as const;
