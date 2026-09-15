@@ -55,7 +55,7 @@ export default async function ProfilePage() {
     teamMatches = teamResult.count ?? 0;
   }
 
-  const [{ data: notifyPrefs }, cardResult, progressResult] = await Promise.all([
+  const [{ data: notifyPrefs }, cardResult, progressResult, predsResult] = await Promise.all([
     supabase.from("profiles").select("notify_match_end").eq("id", user.id).maybeSingle(),
     player?.id
       ? supabase
@@ -69,6 +69,11 @@ export default async function ProfilePage() {
       .select(USER_PROGRESS_SELECT as "*")
       .eq("user_id", user.id)
       .maybeSingle(),
+    supabase
+      .from("match_predictions")
+      .select("is_correct")
+      .eq("user_id", user.id)
+      .not("is_correct", "is", null),
   ]);
   const notifyEnabled = Boolean(
     notifyPrefs && "notify_match_end" in notifyPrefs && notifyPrefs.notify_match_end
@@ -76,6 +81,10 @@ export default async function ProfilePage() {
   const playerCard = (cardResult.data as PlayerCard | null) ?? null;
   const progress = (progressResult.data as UserProgress | null) ?? null;
   const title = rewardLabel(progress?.equipped_title);
+  const resolvedPreds = (predsResult.data ?? []) as { is_correct: boolean | null }[];
+  const predPlayed = resolvedPreds.length;
+  const predHits = resolvedPreds.filter((row) => row.is_correct).length;
+  const predRate = predPlayed > 0 ? Math.round((predHits / predPlayed) * 100) : null;
 
   return (
     <div className="space-y-6">
@@ -123,6 +132,21 @@ export default async function ProfilePage() {
       {progress ? (
         <div className="space-y-2">
           <ProgressCard progress={progress} />
+          <Card>
+            <CardContent className="flex items-center justify-between gap-3 p-4">
+              <div>
+                <p className="text-sm font-semibold">Aciertos en predicciones</p>
+                <p className="text-xs text-muted-foreground">
+                  {predPlayed > 0
+                    ? `${predHits} de ${predPlayed} ${predPlayed === 1 ? "pronóstico" : "pronósticos"}`
+                    : "Todavía no hay pronósticos resueltos"}
+                </p>
+              </div>
+              <p className="text-2xl font-black tabular-nums text-orange-700">
+                {predRate == null ? "—" : `${predRate}%`}
+              </p>
+            </CardContent>
+          </Card>
           <Button asChild variant="outline" className="w-full">
             <Link href="/predicciones">Ver predicciones y recompensas</Link>
           </Button>
