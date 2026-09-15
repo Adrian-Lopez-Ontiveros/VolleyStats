@@ -25,7 +25,7 @@ export function PredictionsBoard({
   if (jornadas.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Cuando haya partidos del club, podrás predecir el ganador de cada uno.
+        Cuando haya una jornada próxima del club, podrás predecir el ganador de cada partido.
       </p>
     );
   }
@@ -36,8 +36,10 @@ export function PredictionsBoard({
         <section key={jornada.key} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">{jornada.label}</h3>
-            {jornada.open ? (
+            {jornada.canPredict ? (
               <Badge className="border-sky-800 bg-sky-600 text-white">Abierta</Badge>
+            ) : jornada.open ? (
+              <Badge className="border-orange-800 bg-orange-500 text-white">En juego</Badge>
             ) : (
               <Badge variant="secondary">Cerrada</Badge>
             )}
@@ -49,6 +51,7 @@ export function PredictionsBoard({
                 match={match}
                 prediction={predictions[match.id] ?? null}
                 split={community[match.id] ?? { home: 0, away: 0 }}
+                canPredict={jornada.canPredict}
               />
             ))}
           </div>
@@ -62,14 +65,16 @@ function PredictionMatch({
   match,
   prediction,
   split,
+  canPredict,
 }: {
   match: MatchWithTeams;
   prediction: MatchPrediction | null;
   split: { home: number; away: number };
+  canPredict: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
-  const locked = match.status !== "scheduled";
+  const locked = match.status !== "scheduled" || !canPredict;
   const total = split.home + split.away;
   const winnerId =
     match.status === "finished" && match.home_sets !== match.away_sets
@@ -162,8 +167,12 @@ function PredictionMatch({
           </p>
         ) : match.status === "live" ? (
           <p className="text-center text-xs font-medium text-orange-700">En juego · predicción cerrada</p>
-        ) : (
+        ) : canPredict ? (
           <p className="text-center text-xs text-muted-foreground">Toca el equipo que crees que gana</p>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground">
+            Solo se predice la jornada más próxima
+          </p>
         )}
       </CardContent>
     </Card>

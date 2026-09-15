@@ -46,7 +46,7 @@ function revalidateMatchStats(input: {
     revalidatePath("/liga");
     revalidatePath("/jugadores");
     revalidatePath("/perfil");
-    revalidatePath("/juego");
+    revalidatePath("/predicciones");
     if (input.playerId) revalidatePath(`/jugadores/${input.playerId}`);
     if (input.homeTeamId) revalidatePath(`/equipos/${input.homeTeamId}`);
     if (input.awayTeamId) revalidatePath(`/equipos/${input.awayTeamId}`);

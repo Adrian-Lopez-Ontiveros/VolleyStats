@@ -124,7 +124,7 @@ export default async function ProfilePage() {
         <div className="space-y-2">
           <ProgressCard progress={progress} />
           <Button asChild variant="outline" className="w-full">
-            <Link href="/juego">Ver predicciones y recompensas</Link>
+            <Link href="/predicciones">Ver predicciones y recompensas</Link>
           </Button>
         </div>
       ) : null}

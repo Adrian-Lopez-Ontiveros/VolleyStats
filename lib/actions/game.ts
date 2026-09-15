@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { MATCH_LIST_SELECT, USER_PROGRESS_SELECT } from "@/lib/constants";
 import { involvesClubTeam } from "@/lib/federation/leagues";
-import { jornadaKeyFromIso, jornadaRangeLabel } from "@/lib/game";
+import { jornadaKeyFromIso, jornadaRangeLabel, nearestJornadaKey } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CheckinResult,
@@ -54,7 +54,7 @@ export async function claimDailyCheckin(): Promise<CheckinResult | null> {
   const result = asCheckinResult(data);
   if (!result) return null;
   if (result.claimed) {
-    revalidatePath("/juego");
+    revalidatePath("/predicciones");
     revalidatePath("/perfil");
   }
   return result;
@@ -63,6 +63,15 @@ export async function claimDailyCheckin(): Promise<CheckinResult | null> {
 export async function saveMatchPrediction(matchId: string, winnerId: string) {
   await requireUser();
   const supabase = await createClient();
+  const { data: matches } = await supabase
+    .from("matches")
+    .select(MATCH_LIST_SELECT as "*");
+  const clubMatches = ((matches ?? []) as MatchWithTeams[]).filter(involvesClubTeam);
+  const target = clubMatches.find((match) => match.id === matchId);
+  const nearestKey = nearestJornadaKey(clubMatches);
+  if (!target || !nearestKey || jornadaKeyFromIso(target.scheduled_at) !== nearestKey) {
+    return { error: "Solo puedes predecir la jornada más próxima" };
+  }
   const { error } = await supabase.rpc("game_save_prediction", {
     p_match_id: matchId,
     p_winner_id: winnerId,
@@ -70,7 +79,7 @@ export async function saveMatchPrediction(matchId: string, winnerId: string) {
   if (error) {
     return { error: error.message.replace(/^.*:\s*/, "") || "No se pudo guardar la predicción" };
   }
-  revalidatePath("/juego");
+  revalidatePath("/predicciones");
   revalidatePath("/partidos");
   return { success: true };
 }
@@ -82,7 +91,7 @@ export async function equipReward(rewardId: string) {
   if (error) {
     return { error: error.message.replace(/^.*:\s*/, "") || "No se pudo equipar" };
   }
-  revalidatePath("/juego");
+  revalidatePath("/predicciones");
   revalidatePath("/perfil");
   return { success: true };
 }
@@ -95,7 +104,7 @@ export async function resolvePredictionsForMatch(matchId: string) {
   if (error && !isMissingGameSchema(error.message)) {
     return { error: error.message };
   }
-  revalidatePath("/juego");
+  revalidatePath("/predicciones");
   return { success: true };
 }
 
@@ -164,22 +173,40 @@ export async function loadGamePageData() {
     groups.set(key, list);
   }
 
-  const jornadas: JornadaBoard[] = [...groups.entries()]
-    .map(([key, list]) => ({
+  const allJornadas: JornadaBoard[] = [...groups.entries()].map(([key, list]) => {
+    const open = list.some((match) => match.status === "scheduled" || match.status === "live");
+    return {
       key,
       label: jornadaRangeLabel(list.map((match) => match.scheduled_at)),
       matches: list,
-      open: list.some((match) => match.status === "scheduled"),
-    }))
+      open,
+      canPredict: false,
+    };
+  });
+
+  const nearestKey = nearestJornadaKey(clubMatches);
+  const nearest = allJornadas.find((item) => item.key === nearestKey) ?? null;
+  const lastClosed = allJornadas
+    .filter((item) => item.key !== nearestKey && !item.open)
     .sort((a, b) => {
       const aTime = new Date(a.matches[0]?.scheduled_at ?? 0).getTime();
       const bTime = new Date(b.matches[0]?.scheduled_at ?? 0).getTime();
       return bTime - aTime;
-    });
+    })
+    .slice(0, 1)
+    .map((item) => ({ ...item, canPredict: false, open: false }));
 
-  const open = jornadas.filter((item) => item.open);
-  const closed = jornadas.filter((item) => !item.open);
-  const ordered = [...open.reverse(), ...closed];
+  const ordered: JornadaBoard[] = [
+    ...(nearest
+      ? [
+          {
+            ...nearest,
+            canPredict: nearest.matches.some((match) => match.status === "scheduled"),
+          },
+        ]
+      : []),
+    ...lastClosed,
+  ];
 
   const hitByUser = new Map<string, number>();
   const { data: allPreds } = await supabase

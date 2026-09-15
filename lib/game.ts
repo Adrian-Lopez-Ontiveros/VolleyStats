@@ -228,6 +228,17 @@ export function jornadaKeyFromIso(scheduledAt: string) {
   return `${isoYear}-W${String(week).padStart(2, "0")}`;
 }
 
+export function nearestJornadaKey(
+  matches: { scheduled_at: string; status: string }[]
+) {
+  const upcoming = matches
+    .filter((match) => match.status === "scheduled" || match.status === "live")
+    .sort(
+      (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+    );
+  return upcoming[0] ? jornadaKeyFromIso(upcoming[0].scheduled_at) : null;
+}
+
 export function jornadaRangeLabel(scheduledAts: string[]) {
   if (scheduledAts.length === 0) return "Jornada";
   const days = scheduledAts

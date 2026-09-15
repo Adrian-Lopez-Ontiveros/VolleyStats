@@ -1,8 +1,8 @@
 import {
   CircleDot,
   ClipboardList,
-  Flame,
   Medal,
+  Target,
   Newspaper,
   Shield,
   Trophy,
@@ -26,7 +26,7 @@ const spectatorItems: AppNavItem[] = [
 const memberItems: AppNavItem[] = [
   { href: "/noticias", label: "Noticias", icon: Newspaper },
   { href: "/partidos", label: "Partidos", icon: Trophy },
-  { href: "/juego", label: "Juego", icon: Flame },
+  { href: "/predicciones", label: "Predicciones", icon: Target },
   { href: "/liga", label: "Liga", icon: Medal },
   { href: "/equipos", label: "Equipos", icon: CircleDot },
   { href: "/entrenador", label: "Entrenamientos", icon: ClipboardList },

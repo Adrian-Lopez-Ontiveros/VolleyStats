@@ -173,6 +173,7 @@ export type JornadaBoard = {
   label: string;
   matches: MatchWithTeams[];
   open: boolean;
+  canPredict: boolean;
 };
 
 export type GameLeaderRow = {

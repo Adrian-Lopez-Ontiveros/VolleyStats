@@ -88,14 +88,14 @@ export function MatchesBrowser({
 
       {!isGuest ? (
         <Link
-          href="/juego"
+          href="/predicciones"
           className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm"
         >
           <span>
             <span className="font-semibold text-orange-800">Predice la jornada.</span>{" "}
             <span className="text-orange-900/80">Elige ganador y suma XP si aciertas.</span>
           </span>
-          <span className="shrink-0 font-bold text-orange-700">Jugar →</span>
+          <span className="shrink-0 font-bold text-orange-700">Predecir →</span>
         </Link>
       ) : null}
 

@@ -36,7 +36,7 @@ export function AppHeader({
         <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
           {user ? (
             <Link
-              href="/juego"
+              href="/predicciones"
               className="mr-1 hidden items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700 sm:flex"
             >
               <Flame className="h-3.5 w-3.5" />
