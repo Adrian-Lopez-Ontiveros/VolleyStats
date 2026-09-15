@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { saveMatchPrediction } from "@/lib/actions/game";
 import { formatMatchWhen } from "@/lib/federation/schedule";
+import {
+  clearPredictionDraft,
+  getPredictionDraft,
+  setPredictionDraft,
+} from "@/lib/prediction-drafts";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { Badge } from "@/components/ui/badge";
@@ -71,8 +76,11 @@ function PredictionMatch({
   canPredict: boolean;
 }) {
   const locked = match.status !== "scheduled" || !canPredict;
-  const [selectedId, setSelectedId] = useState(prediction?.predicted_winner_id ?? null);
-  const seq = useRef(0);
+  const serverId = prediction?.predicted_winner_id ?? null;
+  const [selectedId, setSelectedId] = useState(serverId);
+  const desiredRef = useRef(serverId);
+  const savedRef = useRef(serverId);
+  const savingRef = useRef(false);
   const total = split.home + split.away;
   const winnerId =
     match.status === "finished" && match.home_sets !== match.away_sets
@@ -81,21 +89,64 @@ function PredictionMatch({
         : match.away_team_id
       : null;
 
-  useEffect(() => {
-    setSelectedId(prediction?.predicted_winner_id ?? null);
-  }, [prediction?.predicted_winner_id]);
+  async function flush() {
+    if (locked || savingRef.current) return;
+    const next = desiredRef.current;
+    if (!next || next === savedRef.current) return;
 
-  async function pick(teamId: string) {
-    if (locked || teamId === selectedId) return;
-    const previous = selectedId;
-    const n = ++seq.current;
-    setSelectedId(teamId);
-    const result = await saveMatchPrediction(match.id, teamId);
-    if (n !== seq.current) return;
-    if (result.error) {
-      setSelectedId(previous);
-      toast.error(result.error);
+    savingRef.current = true;
+    const supabase = createClient();
+    const { error } = await supabase.rpc("game_save_prediction", {
+      p_match_id: match.id,
+      p_winner_id: next,
+    });
+    savingRef.current = false;
+
+    if (error) {
+      if (desiredRef.current === next) {
+        desiredRef.current = savedRef.current;
+        setSelectedId(savedRef.current);
+        clearPredictionDraft(match.id, next);
+        toast.error(error.message.replace(/^.*:\s*/, "") || "No se pudo guardar la predicción");
+      }
+      return;
     }
+
+    savedRef.current = next;
+    if (desiredRef.current === next) {
+      clearPredictionDraft(match.id, next);
+    } else {
+      void flush();
+    }
+  }
+
+  useEffect(() => {
+    if (locked) {
+      savedRef.current = serverId;
+      desiredRef.current = serverId;
+      setSelectedId(serverId);
+      return;
+    }
+    const draft = getPredictionDraft(match.id);
+    if (draft) {
+      desiredRef.current = draft;
+      setSelectedId(draft);
+      void flush();
+      return;
+    }
+    savedRef.current = serverId;
+    desiredRef.current = serverId;
+    setSelectedId(serverId);
+    // hydrate from local draft; do not let a stale server payload overwrite a newer pick
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.id, locked]);
+
+  function pick(teamId: string) {
+    if (locked || teamId === selectedId) return;
+    desiredRef.current = teamId;
+    setSelectedId(teamId);
+    setPredictionDraft(match.id, teamId);
+    void flush();
   }
 
   return (

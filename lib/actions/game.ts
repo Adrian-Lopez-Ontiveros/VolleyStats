@@ -70,7 +70,6 @@ export async function saveMatchPrediction(matchId: string, winnerId: string) {
   if (error) {
     return { error: error.message.replace(/^.*:\s*/, "") || "No se pudo guardar la predicción" };
   }
-  revalidatePath("/predicciones");
   return { success: true };
 }
 
