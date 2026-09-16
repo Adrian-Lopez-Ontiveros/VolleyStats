@@ -20,7 +20,10 @@ import {
   undoLastPoint as undoLastPointImpl,
   addSubstitution as addSubstitutionImpl,
   deleteSubstitution as deleteSubstitutionImpl,
+  setMatchLibero as setMatchLiberoImpl,
+  activateMatchLibero as activateMatchLiberoImpl,
 } from "@/lib/actions/match-ops";
+import type { LiberoKind } from "@/lib/types";
 
 const CUSTOM_TEAM = "__custom__";
 
@@ -110,7 +113,12 @@ async function saveClubLineup(
 ) {
   const parsed = parseLineupFromForm(formData);
   if (parsed.error) return { error: parsed.error };
-  if (!parsed.teamId && parsed.starterIds.length === 0 && !parsed.liberoId) {
+  if (
+    !parsed.teamId &&
+    parsed.starterIds.length === 0 &&
+    !parsed.receptionLiberoId &&
+    !parsed.defenseLiberoId
+  ) {
     return { success: true };
   }
   if (!parsed.teamId) return { success: true };
@@ -119,7 +127,10 @@ async function saveClubLineup(
   }
 
   const supabase = await createClient();
-  const playerIds = [...new Set([...parsed.starterIds, parsed.liberoId].filter(Boolean))] as string[];
+  const liberoIds = [parsed.receptionLiberoId, parsed.defenseLiberoId].filter(
+    (playerId): playerId is string => Boolean(playerId)
+  );
+  const playerIds = [...new Set([...parsed.starterIds, ...liberoIds])];
   if (playerIds.length > 0) {
     const { data: roster } = await supabase
       .from("players")
@@ -144,19 +155,36 @@ async function saveClubLineup(
     Object.entries(parsed.starterPositions).map(([position, playerId]) => [playerId, Number(position)])
   );
 
-  const rows = playerIds.map((playerId) => ({
-    match_id: matchId,
-    team_id: parsed.teamId,
-    player_id: playerId,
-    is_starter: parsed.starterIds.includes(playerId),
-    is_libero: parsed.liberoId === playerId,
-    court_position: positionByPlayer.get(playerId) ?? null,
-  }));
+  const activeLiberoId = parsed.receptionLiberoId ?? parsed.defenseLiberoId;
+  const rows = playerIds.map((playerId) => {
+    const isReception = parsed.receptionLiberoId === playerId;
+    const isDefense = parsed.defenseLiberoId === playerId;
+    const isLibero = isReception || isDefense;
+    return {
+      match_id: matchId,
+      team_id: parsed.teamId,
+      player_id: playerId,
+      is_starter: parsed.starterIds.includes(playerId) && !isLibero,
+      is_libero: isLibero,
+      is_reception_libero: isReception,
+      is_defense_libero: isDefense,
+      is_active_libero: isLibero && playerId === activeLiberoId,
+      court_position: isLibero ? null : positionByPlayer.get(playerId) ?? null,
+    };
+  });
 
   if (rows.length === 0) return { success: true };
 
   const { error: insertError } = await supabase.from("match_lineups").insert(rows);
-  if (insertError) return { error: insertError.message };
+  if (insertError) {
+    if (/is_reception_libero|is_defense_libero|is_active_libero|idx_match_lineups_one_libero/i.test(insertError.message)) {
+      return {
+        error:
+          "Falta ejecutar la migración supabase/migrations/026_dual_liberos.sql para los dos líberos.",
+      };
+    }
+    return { error: insertError.message };
+  }
   return { success: true };
 }
 
@@ -378,4 +406,17 @@ export async function addSubstitution(matchId: string, formData: FormData) {
 
 export async function deleteSubstitution(matchId: string, substitutionId: string) {
   return deleteSubstitutionImpl(matchId, substitutionId);
+}
+
+export async function setMatchLibero(
+  matchId: string,
+  teamId: string,
+  kind: LiberoKind,
+  playerId: string | null
+) {
+  return setMatchLiberoImpl(matchId, teamId, kind, playerId);
+}
+
+export async function activateMatchLibero(matchId: string, teamId: string, kind: LiberoKind) {
+  return activateMatchLiberoImpl(matchId, teamId, kind);
 }

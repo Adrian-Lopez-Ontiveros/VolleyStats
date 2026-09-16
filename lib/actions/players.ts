@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PlayerPosition } from "@/lib/types";
 import { normalizeStoredPersonName } from "@/lib/utils";
@@ -124,6 +124,75 @@ export async function updatePlayer(playerId: string, formData: FormData) {
   revalidatePath("/equipos");
   if (parsed.data.teamId) revalidatePath(`/equipos/${parsed.data.teamId}`);
   redirect(`/jugadores/${playerId}`);
+}
+
+export async function setPlayerJersey(
+  playerId: string,
+  jerseyNumber: number | null
+): Promise<
+  | { error: string }
+  | { success: true; xpGained: number; leveledUp: boolean; level: number | null }
+> {
+  const session = await requireUser();
+  const isAdmin = session.profile.role === "admin";
+  const ownPlayerId = session.profile.player?.id ?? null;
+  if (!isAdmin && ownPlayerId !== playerId) {
+    return { error: "Solo puedes editar tu dorsal." };
+  }
+
+  if (
+    jerseyNumber !== null &&
+    (!Number.isInteger(jerseyNumber) || jerseyNumber < 0 || jerseyNumber > 99)
+  ) {
+    return { error: "El dorsal debe estar entre 0 y 99." };
+  }
+
+  const supabase = await createClient();
+  const { data: player, error: playerError } = await supabase
+    .from("players")
+    .select("id, user_id, team_id")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  if (playerError) return { error: playerError.message };
+  if (!player) return { error: "Jugador no encontrado" };
+
+  const { error } = await supabase
+    .from("players")
+    .update({ jersey_number: jerseyNumber })
+    .eq("id", playerId);
+
+  if (error) {
+    if (/protect_player_updates|jersey_number/i.test(error.message) && !isAdmin) {
+      return {
+        error:
+          "No se pudo guardar el dorsal. Ejecuta la migración supabase/migrations/027_jersey_xp.sql.",
+      };
+    }
+    return { error: error.message };
+  }
+
+  let xpGained = 0;
+  let leveledUp = false;
+  let level: number | null = null;
+  if (ownPlayerId === playerId && jerseyNumber !== null) {
+    const { data, error: xpError } = await supabase.rpc("game_claim_jersey_xp");
+    if (!xpError && data && typeof data === "object") {
+      const row = data as Record<string, unknown>;
+      xpGained = Number(row.xp_gained ?? 0);
+      leveledUp = Boolean(row.leveled_up);
+      const parsedLevel = Number(row.level);
+      level = Number.isFinite(parsedLevel) ? parsedLevel : null;
+    }
+  }
+
+  revalidatePath("/equipos");
+  revalidatePath("/jugadores");
+  revalidatePath(`/jugadores/${playerId}`);
+  revalidatePath("/perfil");
+  if (player.team_id) revalidatePath(`/equipos/${player.team_id}`);
+
+  return { success: true, xpGained, leveledUp, level };
 }
 
 export async function deletePlayer(playerId: string) {

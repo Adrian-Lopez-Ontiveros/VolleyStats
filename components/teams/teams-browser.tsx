@@ -7,27 +7,27 @@ import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
+import { PlayerRosterCard } from "@/components/teams/player-roster-card";
 import { TeamLogo } from "@/components/teams/team-logo";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { POSITION_LABELS } from "@/lib/constants";
 import { getCategoryMeta, parseCategory, type TeamCategory } from "@/lib/categories";
-import { formatJersey, initials } from "@/lib/utils";
-import { totalPlayerPoints } from "@/lib/volleyball";
 import type { Player, Team } from "@/lib/types";
 
 export function TeamsBrowser({
   teams,
   players,
   isAdmin,
+  currentPlayerId = null,
   initialCategory,
   loadError,
 }: {
   teams: Team[];
   players: Player[];
   isAdmin: boolean;
+  currentPlayerId?: string | null;
   initialCategory: TeamCategory;
   loadError?: string;
 }) {
@@ -133,39 +133,21 @@ export function TeamsBrowser({
             ) : (
               <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
                 {typedPlayers.map((player) => (
-                  <Link key={player.id} href={`/jugadores/${player.id}`} className="block h-full">
-                    <Card className="h-full transition-transform active:scale-[0.99]">
-                      <CardContent className="flex items-center gap-3 p-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage
-                            src={player.avatar_url ?? undefined}
-                            alt={player.full_name}
-                          />
-                          <AvatarFallback>{initials(player.full_name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold">
-                            {formatJersey(player.jersey_number)} {player.full_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {isAdmin
-                              ? player.user_id
-                                ? "Cuenta vinculada"
-                                : "Pendiente de registro"
-                              : player.position
-                                ? POSITION_LABELS[player.position]
-                                : "Jugador"}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold tabular-nums">
-                            {totalPlayerPoints(player)}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">puntos</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                  <PlayerRosterCard
+                    key={player.id}
+                    player={player}
+                    href={`/jugadores/${player.id}`}
+                    canEditJersey={isAdmin || currentPlayerId === player.id}
+                    subtitle={
+                      isAdmin
+                        ? player.user_id
+                          ? "Cuenta vinculada"
+                          : "Pendiente de registro"
+                        : player.position
+                          ? POSITION_LABELS[player.position]
+                          : "Jugador"
+                    }
+                  />
                 ))}
               </div>
             )}

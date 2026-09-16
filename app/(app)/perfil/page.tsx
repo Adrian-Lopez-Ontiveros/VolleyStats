@@ -165,7 +165,7 @@ export default async function ProfilePage() {
             value={player?.position ? POSITION_LABELS[player.position] : "—"}
           />
           <p className="pt-2 text-xs text-muted-foreground">
-            Puedes cambiar tu foto y editar tu cromo. El resto de datos lo edita un administrador.
+            Puedes cambiar tu foto, tu cromo y tu dorsal desde Equipos. El resto de datos lo edita un administrador.
           </p>
         </CardContent>
       </Card>

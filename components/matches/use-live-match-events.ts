@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MATCH_EVENT_SELECT, MATCH_SUB_SELECT } from "@/lib/constants";
+import { MATCH_EVENT_SELECT, MATCH_LINEUP_SELECT, MATCH_SUB_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
-import type { MatchEvent, MatchEventWithPlayer, MatchSubstitution, Player } from "@/lib/types";
+import type { MatchEvent, MatchEventWithPlayer, MatchLineupEntry, MatchSubstitution, Player } from "@/lib/types";
 
 function isLocalId(id: string) {
   return id.startsWith("local-") || id.startsWith("offline-");
@@ -61,22 +61,25 @@ export function useLiveMatchEvents({
   matchId,
   initialEvents,
   initialSubstitutions,
+  initialLineup = [],
   players,
 }: {
   matchId: string;
   initialEvents: MatchEventWithPlayer[];
   initialSubstitutions: MatchSubstitution[];
+  initialLineup?: MatchLineupEntry[];
   players: Player[];
 }) {
   const [events, setEvents] = useState(initialEvents);
   const [substitutions, setSubstitutions] = useState(initialSubstitutions);
+  const [lineup, setLineup] = useState(initialLineup);
   const playersById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
   const playersRef = useRef(playersById);
   playersRef.current = playersById;
 
   const pullEvents = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: eventRows }, { data: subRows }] = await Promise.all([
+    const [{ data: eventRows }, { data: subRows }, { data: lineupRows }] = await Promise.all([
       supabase
         .from("match_events")
         .select(MATCH_EVENT_SELECT as "*")
@@ -87,6 +90,10 @@ export function useLiveMatchEvents({
         .select(MATCH_SUB_SELECT as "*")
         .eq("match_id", matchId)
         .order("created_at", { ascending: true }),
+      supabase
+        .from("match_lineups")
+        .select(MATCH_LINEUP_SELECT as "*")
+        .eq("match_id", matchId),
     ]);
 
     if (eventRows) {
@@ -98,11 +105,15 @@ export function useLiveMatchEvents({
     if (subRows) {
       setSubstitutions(subRows as MatchSubstitution[]);
     }
+    if (lineupRows) {
+      setLineup(lineupRows as MatchLineupEntry[]);
+    }
   }, [matchId]);
 
   useEffect(() => {
     setEvents(initialEvents);
     setSubstitutions(initialSubstitutions);
+    setLineup(initialLineup);
   }, [matchId]);
 
   useEffect(() => {
@@ -212,6 +223,7 @@ export function useLiveMatchEvents({
   return {
     events,
     substitutions,
+    lineup,
     addOptimistic,
     confirmOptimistic,
     removeOptimistic,

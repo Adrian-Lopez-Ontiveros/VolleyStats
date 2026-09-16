@@ -7,15 +7,19 @@ import { logMatchActivity } from "@/lib/actions/activity";
 import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { notifyMatchFinished } from "@/lib/actions/notifications";
 import { requireAdmin } from "@/lib/auth";
+import { applySlotSubstitutions, designatedLiberos, startingCourtByPosition } from "@/lib/court";
 import { currentOnCourtIds } from "@/lib/lineup";
 import { createClient } from "@/lib/supabase/server";
 import { computeMatchState, resolveScoringTeam, statFromPointType } from "@/lib/volleyball";
-import type { MatchLineupEntry, MatchSubstitution, PointType } from "@/lib/types";
+import type { LiberoKind, MatchLineupEntry, MatchSubstitution, PointType } from "@/lib/types";
+
+const LINEUP_COURT_SELECT =
+  "id, match_id, team_id, player_id, is_starter, is_libero, is_reception_libero, is_defense_libero, is_active_libero, court_position" as const;
 
 async function loadCourtState(matchId: string, teamId: string) {
   const supabase = await createClient();
   const [{ data: lineup }, { data: substitutions }] = await Promise.all([
-    supabase.from("match_lineups").select("player_id, is_starter, is_libero, team_id").eq("match_id", matchId),
+    supabase.from("match_lineups").select(LINEUP_COURT_SELECT).eq("match_id", matchId),
     supabase
       .from("match_substitutions")
       .select("player_out_id, player_in_id, team_id")
@@ -24,10 +28,44 @@ async function loadCourtState(matchId: string, teamId: string) {
   ]);
 
   return currentOnCourtIds(
-    (lineup ?? []) as Pick<MatchLineupEntry, "player_id" | "is_starter" | "is_libero" | "team_id">[],
+    (lineup ?? []) as MatchLineupEntry[],
     (substitutions ?? []) as Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
     teamId
   );
+}
+
+function missingLiberoSchema(message?: string) {
+  return Boolean(
+    message &&
+      /is_reception_libero|is_defense_libero|is_active_libero|idx_match_lineups_one_libero/i.test(message)
+  );
+}
+
+function liberoSchemaError(message?: string) {
+  if (missingLiberoSchema(message)) {
+    return "Falta ejecutar la migración supabase/migrations/026_dual_liberos.sql para los dos líberos.";
+  }
+  return message ?? "No se pudo actualizar el líbero.";
+}
+
+function courtSlotIds(
+  lineup: MatchLineupEntry[],
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
+  teamId: string
+) {
+  return new Set(
+    applySlotSubstitutions(startingCourtByPosition(lineup, teamId), substitutions, teamId).values()
+  );
+}
+
+async function loadTeamSubs(matchId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("match_substitutions")
+    .select("player_out_id, player_in_id, team_id")
+    .eq("match_id", matchId)
+    .order("created_at", { ascending: true });
+  return (data ?? []) as Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[];
 }
 
 function revalidateMatchStats(input: {
@@ -475,6 +513,255 @@ export async function deleteSubstitution(matchId: string, substitutionId: string
   if (error) return { error: error.message };
 
   await logMatchActivity(matchId, "Sustitución", "Eliminó un cambio");
+  revalidatePath(`/partidos/${matchId}`);
+  revalidatePath(`/partidos/${matchId}/seguimiento`);
+  return { success: true };
+}
+
+async function persistTeamLiberos(
+  matchId: string,
+  teamId: string,
+  receptionId: string | null,
+  defenseId: string | null,
+  activeKind: LiberoKind | null
+): Promise<{ error: string } | { success: true }> {
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("match_lineups")
+    .select(LINEUP_COURT_SELECT)
+    .eq("match_id", matchId)
+    .eq("team_id", teamId);
+
+  if (error) return { error: liberoSchemaError(error.message) };
+
+  const lineup = (rows ?? []) as MatchLineupEntry[];
+  const liberoIds = [...new Set([receptionId, defenseId].filter((id): id is string => Boolean(id)))];
+  const activeId =
+    activeKind === "defense" ? defenseId : activeKind === "reception" ? receptionId : receptionId ?? defenseId;
+
+  const { error: clearError } = await supabase
+    .from("match_lineups")
+    .update({
+      is_reception_libero: false,
+      is_defense_libero: false,
+      is_active_libero: false,
+      is_libero: false,
+    })
+    .eq("match_id", matchId)
+    .eq("team_id", teamId);
+
+  if (clearError) return { error: liberoSchemaError(clearError.message) };
+
+  const stale = lineup.filter(
+    (entry) => !entry.is_starter && !liberoIds.includes(entry.player_id)
+  );
+  if (stale.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("match_lineups")
+      .delete()
+      .in(
+        "id",
+        stale.map((entry) => entry.id)
+      );
+    if (deleteError) return { error: deleteError.message };
+  }
+
+  for (const playerId of liberoIds) {
+    const existing = lineup.find((entry) => entry.player_id === playerId);
+    const payload = {
+      is_libero: true,
+      is_reception_libero: receptionId === playerId,
+      is_defense_libero: defenseId === playerId,
+      is_active_libero: activeId === playerId,
+      court_position: null,
+      is_starter: false,
+    };
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("match_lineups")
+        .update(payload)
+        .eq("id", existing.id);
+      if (updateError) return { error: liberoSchemaError(updateError.message) };
+    } else {
+      const { error: insertError } = await supabase.from("match_lineups").insert({
+        match_id: matchId,
+        team_id: teamId,
+        player_id: playerId,
+        ...payload,
+      });
+      if (insertError) return { error: liberoSchemaError(insertError.message) };
+    }
+  }
+
+  return { success: true as const };
+}
+
+export async function setMatchLibero(
+  matchId: string,
+  teamId: string,
+  kind: LiberoKind,
+  playerId: string | null
+) {
+  const session = await requireAdmin();
+  const supabase = await createClient();
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id, home_team_id, away_team_id, status")
+    .eq("id", matchId)
+    .maybeSingle();
+
+  if (!match) return { error: "Partido no encontrado" };
+  if (match.status === "cancelled") {
+    return { error: "No se puede cambiar el líbero en un partido cancelado." };
+  }
+  if (teamId !== match.home_team_id && teamId !== match.away_team_id) {
+    return { error: "Ese equipo no juega este partido." };
+  }
+
+  if (playerId) {
+    const { data: player } = await supabase
+      .from("players")
+      .select("id, team_id")
+      .eq("id", playerId)
+      .maybeSingle();
+    if (!player || player.team_id !== teamId) {
+      return { error: "El líbero tiene que ser de este equipo." };
+    }
+  }
+
+  const { data: rows, error } = await supabase
+    .from("match_lineups")
+    .select(LINEUP_COURT_SELECT)
+    .eq("match_id", matchId)
+    .eq("team_id", teamId);
+  if (error) return { error: liberoSchemaError(error.message) };
+
+  const lineup = (rows ?? []) as MatchLineupEntry[];
+  const current = designatedLiberos(lineup, teamId);
+  const slots = courtSlotIds(lineup, await loadTeamSubs(matchId), teamId);
+  if (playerId) {
+    const alreadyLibero = playerId === current.receptionId || playerId === current.defenseId;
+    const starter = lineup.find(
+      (entry) => entry.player_id === playerId && entry.is_starter && !entry.is_libero
+    );
+    if (starter || (slots.has(playerId) && !alreadyLibero)) {
+      return { error: "Ese jugador ya está en una de las 6 posiciones. Sácalo de la pista primero." };
+    }
+  }
+
+  const receptionId = kind === "reception" ? playerId : current.receptionId;
+  const defenseId = kind === "defense" ? playerId : current.defenseId;
+  let activeKind = current.activeKind;
+  if (kind === activeKind && !playerId) {
+    activeKind = kind === "reception" ? (defenseId ? "defense" : null) : receptionId ? "reception" : null;
+  } else if (!activeKind) {
+    activeKind = receptionId ? "reception" : defenseId ? "defense" : null;
+  }
+
+  const previousActive = current.activeId;
+  const nextActive =
+    activeKind === "defense" ? defenseId : activeKind === "reception" ? receptionId : receptionId ?? defenseId;
+
+  const saved = await persistTeamLiberos(matchId, teamId, receptionId, defenseId, activeKind);
+  if ("error" in saved) return saved;
+
+  if (
+    previousActive &&
+    nextActive &&
+    previousActive !== nextActive &&
+    slots.has(previousActive) &&
+    !slots.has(nextActive)
+  ) {
+    await supabase.from("match_substitutions").insert({
+      match_id: matchId,
+      team_id: teamId,
+      player_out_id: previousActive,
+      player_in_id: nextActive,
+      created_by: session.id,
+    });
+  }
+
+  await logMatchActivity(
+    matchId,
+    "Líbero",
+    kind === "reception" ? "Actualizó el líbero de recepción" : "Actualizó el líbero de defensa"
+  );
+  revalidatePath(`/partidos/${matchId}`);
+  revalidatePath(`/partidos/${matchId}/seguimiento`);
+  return { success: true };
+}
+
+export async function activateMatchLibero(matchId: string, teamId: string, kind: LiberoKind) {
+  const session = await requireAdmin();
+  const supabase = await createClient();
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id, home_team_id, away_team_id, status, current_set, home_points, away_points")
+    .eq("id", matchId)
+    .maybeSingle();
+
+  if (!match) return { error: "Partido no encontrado" };
+  if (match.status === "cancelled" || match.status === "finished") {
+    return { error: "No se puede cambiar el líbero en este partido." };
+  }
+  if (teamId !== match.home_team_id && teamId !== match.away_team_id) {
+    return { error: "Ese equipo no juega este partido." };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("match_lineups")
+    .select(LINEUP_COURT_SELECT)
+    .eq("match_id", matchId)
+    .eq("team_id", teamId);
+  if (error) return { error: liberoSchemaError(error.message) };
+
+  const lineup = (rows ?? []) as MatchLineupEntry[];
+  const current = designatedLiberos(lineup, teamId);
+  const nextId = kind === "defense" ? current.defenseId : current.receptionId;
+  if (!nextId) {
+    return {
+      error:
+        kind === "defense"
+          ? "Todavía no hay líbero de defensa."
+          : "Todavía no hay líbero de recepción.",
+    };
+  }
+  if (current.activeId === nextId) return { success: true };
+
+  const slots = courtSlotIds(lineup, await loadTeamSubs(matchId), teamId);
+  const saved = await persistTeamLiberos(
+    matchId,
+    teamId,
+    current.receptionId,
+    current.defenseId,
+    kind
+  );
+  if ("error" in saved) return saved;
+
+  if (
+    current.activeId &&
+    current.activeId !== nextId &&
+    slots.has(current.activeId) &&
+    !slots.has(nextId)
+  ) {
+    const { error: subError } = await supabase.from("match_substitutions").insert({
+      match_id: matchId,
+      team_id: teamId,
+      player_out_id: current.activeId,
+      player_in_id: nextId,
+      set_number: match.current_set,
+      occurred_at: `${match.home_points}-${match.away_points}`,
+      created_by: session.id,
+    });
+    if (subError) return { error: subError.message };
+  }
+
+  await logMatchActivity(
+    matchId,
+    "Líbero",
+    kind === "reception" ? "Pasó al líbero de recepción" : "Pasó al líbero de defensa"
+  );
   revalidatePath(`/partidos/${matchId}`);
   revalidatePath(`/partidos/${matchId}/seguimiento`);
   return { success: true };

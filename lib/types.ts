@@ -219,6 +219,8 @@ export type MatchWithTeams = Match & {
   away_team: Team;
 };
 
+export type LiberoKind = "reception" | "defense";
+
 export type MatchLineupEntry = {
   id: string;
   match_id: string;
@@ -226,6 +228,9 @@ export type MatchLineupEntry = {
   player_id: string;
   is_starter: boolean;
   is_libero: boolean;
+  is_reception_libero?: boolean;
+  is_defense_libero?: boolean;
+  is_active_libero?: boolean;
   court_position?: number | null;
   created_at: string;
   player?: Pick<Player, "id" | "full_name" | "jersey_number" | "position" | "avatar_url"> | null;

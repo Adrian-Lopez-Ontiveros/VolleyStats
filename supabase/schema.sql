@@ -142,6 +142,9 @@ create table if not exists public.match_lineups (
   player_id uuid not null references public.players (id) on delete cascade,
   is_starter boolean not null default false,
   is_libero boolean not null default false,
+  is_reception_libero boolean not null default false,
+  is_defense_libero boolean not null default false,
+  is_active_libero boolean not null default false,
   court_position int check (court_position is null or (court_position >= 1 and court_position <= 6)),
   created_at timestamptz not null default now(),
   constraint match_lineups_unique_player unique (match_id, player_id)
@@ -177,14 +180,52 @@ create index if not exists idx_match_events_serving on public.match_events (matc
 create index if not exists idx_match_events_rotations
   on public.match_events (match_id, home_rotation, away_rotation);
 create index if not exists idx_match_lineups_match on public.match_lineups (match_id);
-create unique index if not exists idx_match_lineups_one_libero
+create unique index if not exists idx_match_lineups_one_reception_libero
   on public.match_lineups (match_id, team_id)
-  where is_libero;
+  where is_reception_libero;
+create unique index if not exists idx_match_lineups_one_defense_libero
+  on public.match_lineups (match_id, team_id)
+  where is_defense_libero;
+create unique index if not exists idx_match_lineups_one_active_libero
+  on public.match_lineups (match_id, team_id)
+  where is_active_libero;
 create unique index if not exists idx_match_lineups_unique_court_position
   on public.match_lineups (match_id, team_id, court_position)
   where court_position is not null;
 create index if not exists idx_match_substitutions_match
   on public.match_substitutions (match_id, created_at);
+
+create or replace function public.sync_match_lineup_libero()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.is_libero
+     and not coalesce(new.is_reception_libero, false)
+     and not coalesce(new.is_defense_libero, false) then
+    new.is_reception_libero := true;
+    new.is_defense_libero := true;
+    if not coalesce(new.is_active_libero, false) then
+      new.is_active_libero := true;
+    end if;
+  end if;
+
+  new.is_libero := coalesce(new.is_reception_libero, false)
+    or coalesce(new.is_defense_libero, false);
+
+  if not new.is_libero then
+    new.is_active_libero := false;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_sync_match_lineup_libero on public.match_lineups;
+create trigger trg_sync_match_lineup_libero
+before insert or update on public.match_lineups
+for each row execute function public.sync_match_lineup_libero();
 
 -- ---------- updated_at ----------
 create or replace function public.set_updated_at()
@@ -712,7 +753,9 @@ begin
   end if;
   new.team_id := old.team_id;
   new.full_name := old.full_name;
-  new.jersey_number := old.jersey_number;
+  if old.user_id is distinct from auth.uid() then
+    new.jersey_number := old.jersey_number;
+  end if;
   new.position := old.position;
   new.attack_points := old.attack_points;
   new.block_points := old.block_points;
@@ -1877,6 +1920,48 @@ $$;
 
 grant execute on function public.game_nearest_jornada_key() to authenticated;
 grant execute on function public.game_save_prediction(uuid, uuid) to authenticated;
+
+create or replace function public.game_claim_jersey_xp()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  already int;
+  result jsonb;
+begin
+  if uid is null then
+    raise exception 'No autenticado';
+  end if;
+
+  select count(*) into already
+  from public.xp_events
+  where user_id = uid
+    and reason = 'jersey';
+
+  if already > 0 then
+    return jsonb_build_object(
+      'claimed', false,
+      'xp_gained', 0
+    );
+  end if;
+
+  result := public.game_add_xp(uid, 20, 'jersey', '{}'::jsonb);
+
+  return jsonb_build_object(
+    'claimed', true,
+    'xp_gained', 20,
+    'xp', result->'xp',
+    'level', result->'level',
+    'leveled_up', result->'leveled_up',
+    'unlocked', coalesce(result->'unlocked', '[]'::jsonb)
+  );
+end;
+$$;
+
+grant execute on function public.game_claim_jersey_xp() to authenticated;
 
 -- Avisos el dia anterior (migracion 025)
 

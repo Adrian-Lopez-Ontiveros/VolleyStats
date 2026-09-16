@@ -1,4 +1,4 @@
-import type { MatchLineupEntry, MatchSubstitution, Player } from "@/lib/types";
+import type { LiberoKind, MatchLineupEntry, MatchSubstitution, Player } from "@/lib/types";
 import { isRotation } from "@/lib/volleyball-stats";
 
 export const COURT_POSITIONS = [1, 2, 3, 4, 5, 6] as const;
@@ -55,13 +55,74 @@ function teamEntries<T extends { team_id: string }>(items: T[], teamId?: string)
   return teamId ? items.filter((item) => item.team_id === teamId) : items;
 }
 
+export type LineupLiberoFlags = Pick<
+  MatchLineupEntry,
+  "is_libero" | "is_reception_libero" | "is_defense_libero" | "is_active_libero"
+>;
+
+export function isReceptionLibero(entry: LineupLiberoFlags) {
+  if (entry.is_reception_libero) return true;
+  if (entry.is_defense_libero) return false;
+  return Boolean(entry.is_libero);
+}
+
+export function isDefenseLibero(entry: LineupLiberoFlags) {
+  if (entry.is_defense_libero) return true;
+  if (entry.is_reception_libero) return false;
+  return Boolean(entry.is_libero);
+}
+
+export function isDesignatedLibero(entry: LineupLiberoFlags) {
+  return isReceptionLibero(entry) || isDefenseLibero(entry);
+}
+
+export function designatedLiberos<T extends { player_id: string; team_id: string } & LineupLiberoFlags>(
+  lineup: T[],
+  teamId?: string
+) {
+  const team = teamEntries(lineup, teamId);
+  const reception = team.find(isReceptionLibero) ?? null;
+  const defense = team.find(isDefenseLibero) ?? null;
+  const activeEntry =
+    team.find((entry) => entry.is_active_libero) ?? reception ?? defense ?? team.find((entry) => entry.is_libero) ?? null;
+  const activeId = activeEntry?.player_id ?? null;
+  const activeKind: LiberoKind | null = !activeId
+    ? null
+    : reception?.player_id === activeId
+      ? "reception"
+      : defense?.player_id === activeId
+        ? "defense"
+        : "reception";
+
+  return {
+    receptionId: reception?.player_id ?? null,
+    defenseId: defense?.player_id ?? null,
+    activeId,
+    activeKind,
+  };
+}
+
+export const LIBERO_KIND_LABEL: Record<LiberoKind, string> = {
+  reception: "Recepción",
+  defense: "Defensa",
+};
+
 export function startingCourtByPosition(
-  lineup: Pick<MatchLineupEntry, "player_id" | "is_starter" | "is_libero" | "court_position" | "team_id">[],
+  lineup: Pick<
+    MatchLineupEntry,
+    | "player_id"
+    | "is_starter"
+    | "is_libero"
+    | "is_reception_libero"
+    | "is_defense_libero"
+    | "court_position"
+    | "team_id"
+  >[],
   teamId?: string
 ) {
   const byStart = new Map<CourtPosition, string>();
   for (const entry of teamEntries(lineup, teamId)) {
-    if (!entry.is_starter || entry.is_libero || !isCourtPosition(entry.court_position)) continue;
+    if (!entry.is_starter || isDesignatedLibero(entry) || !isCourtPosition(entry.court_position)) continue;
     byStart.set(entry.court_position, entry.player_id);
   }
   return byStart;
@@ -85,7 +146,16 @@ export function applySlotSubstitutions(
 }
 
 export function currentCourtSlots(
-  lineup: Pick<MatchLineupEntry, "player_id" | "is_starter" | "is_libero" | "court_position" | "team_id">[],
+  lineup: Pick<
+    MatchLineupEntry,
+    | "player_id"
+    | "is_starter"
+    | "is_libero"
+    | "is_reception_libero"
+    | "is_defense_libero"
+    | "court_position"
+    | "team_id"
+  >[],
   substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
   roster: CourtOccupant[],
   rotation: number | null | undefined,
@@ -106,20 +176,45 @@ export function currentCourtSlots(
 }
 
 export function currentLiberoPlayer(
-  lineup: Pick<MatchLineupEntry, "player_id" | "is_libero" | "team_id">[],
+  lineup: Pick<MatchLineupEntry, "player_id" | "is_libero" | "is_reception_libero" | "is_defense_libero" | "is_active_libero" | "team_id">[],
   substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
   roster: CourtOccupant[],
   teamId?: string
 ): CourtOccupant | null {
-  const entry = teamEntries(lineup, teamId).find((item) => item.is_libero);
-  if (!entry) return null;
+  const { activeId } = designatedLiberos(lineup, teamId);
+  if (!activeId) return null;
 
-  let playerId = entry.player_id;
+  let playerId = activeId;
   for (const sub of teamEntries(substitutions, teamId)) {
     if (sub.player_out_id === playerId) playerId = sub.player_in_id;
   }
 
   return roster.find((player) => player.id === playerId) ?? null;
+}
+
+export function currentLiberoPlayers(
+  lineup: Pick<MatchLineupEntry, "player_id" | "is_libero" | "is_reception_libero" | "is_defense_libero" | "is_active_libero" | "team_id">[],
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
+  roster: CourtOccupant[],
+  teamId?: string
+) {
+  const { receptionId, defenseId, activeKind } = designatedLiberos(lineup, teamId);
+  const byId = new Map(roster.map((player) => [player.id, player]));
+
+  function follow(playerId: string | null) {
+    if (!playerId) return null;
+    let current = playerId;
+    for (const sub of teamEntries(substitutions, teamId)) {
+      if (sub.player_out_id === current) current = sub.player_in_id;
+    }
+    return byId.get(current) ?? byId.get(playerId) ?? null;
+  }
+
+  return {
+    reception: follow(receptionId),
+    defense: follow(defenseId),
+    activeKind,
+  };
 }
 
 export function liberoOffCourt(libero: CourtOccupant | null, slots: CourtSlots) {

@@ -8,30 +8,32 @@ import { POSITION_LABELS } from "@/lib/constants";
 import {
   COURT_POSITIONS,
   COURT_POSITION_META,
+  LIBERO_KIND_LABEL,
+  designatedLiberos,
   isCourtPosition,
   type CourtPosition,
   type CourtSlots,
 } from "@/lib/court";
 import { cn, formatJersey } from "@/lib/utils";
-import type { MatchLineupEntry, Player } from "@/lib/types";
+import type { LiberoKind, MatchLineupEntry, Player } from "@/lib/types";
 
 function emptySlots(): Record<CourtPosition, string> {
   return { 1: "", 2: "", 3: "", 4: "", 5: "", 6: "" };
 }
 
-function initialSlots(lineup: MatchLineupEntry[], liberoId: string) {
+function initialSlots(lineup: MatchLineupEntry[], liberoIds: Set<string>) {
   const slots = emptySlots();
   const placed = new Set<string>();
 
   for (const entry of lineup) {
-    if (!entry.is_starter || entry.player_id === liberoId) continue;
+    if (!entry.is_starter || liberoIds.has(entry.player_id)) continue;
     if (!isCourtPosition(entry.court_position) || slots[entry.court_position]) continue;
     slots[entry.court_position] = entry.player_id;
     placed.add(entry.player_id);
   }
 
   const unplaced = lineup
-    .filter((entry) => entry.is_starter && entry.player_id !== liberoId && !placed.has(entry.player_id))
+    .filter((entry) => entry.is_starter && !liberoIds.has(entry.player_id) && !placed.has(entry.player_id))
     .map((entry) => entry.player_id);
   const free = COURT_POSITIONS.filter((position) => !slots[position]);
   unplaced.forEach((playerId, index) => {
@@ -40,6 +42,14 @@ function initialSlots(lineup: MatchLineupEntry[], liberoId: string) {
   });
 
   return slots;
+}
+
+function initialLiberos(lineup: MatchLineupEntry[]) {
+  const designated = designatedLiberos(lineup);
+  return {
+    reception: designated.receptionId ?? "",
+    defense: designated.defenseId ?? "",
+  };
 }
 
 export function LineupPicker({
@@ -53,13 +63,13 @@ export function LineupPicker({
   players: Player[];
   lineup?: MatchLineupEntry[];
 }) {
-  const [liberoId, setLiberoId] = useState(
-    lineup.find((entry) => entry.is_libero)?.player_id ?? ""
-  );
+  const initial = initialLiberos(lineup);
+  const [receptionId, setReceptionId] = useState(initial.reception);
+  const [defenseId, setDefenseId] = useState(initial.defense);
   const [slots, setSlots] = useState<Record<CourtPosition, string>>(() =>
-    initialSlots(lineup, lineup.find((entry) => entry.is_libero)?.player_id ?? "")
+    initialSlots(lineup, new Set([initial.reception, initial.defense].filter(Boolean)))
   );
-  const [activeSlot, setActiveSlot] = useState<CourtPosition | "libero" | null>(null);
+  const [activeSlot, setActiveSlot] = useState<CourtPosition | LiberoKind | null>(null);
 
   const playersById = useMemo(
     () => new Map(players.map((player) => [player.id, player])),
@@ -76,22 +86,29 @@ export function LineupPicker({
   }, [playersById, slots]);
   const placedIds = useMemo(() => {
     const ids = new Set(COURT_POSITIONS.map((position) => slots[position]).filter(Boolean));
-    if (liberoId) ids.add(liberoId);
+    if (receptionId) ids.add(receptionId);
+    if (defenseId) ids.add(defenseId);
     return ids;
-  }, [slots, liberoId]);
+  }, [slots, receptionId, defenseId]);
+  const sameLibero = Boolean(receptionId && receptionId === defenseId);
+
+  function setLibero(kind: LiberoKind, playerId: string) {
+    setSlots((current) => {
+      const next = { ...current };
+      for (const position of COURT_POSITIONS) {
+        if (next[position] === playerId) next[position] = "";
+      }
+      return next;
+    });
+    if (kind === "reception") setReceptionId(playerId);
+    else setDefenseId(playerId);
+  }
 
   function assignPlayer(playerId: string) {
     if (!activeSlot) return;
 
-    if (activeSlot === "libero") {
-      setSlots((current) => {
-        const next = { ...current };
-        for (const position of COURT_POSITIONS) {
-          if (next[position] === playerId) next[position] = "";
-        }
-        return next;
-      });
-      setLiberoId(playerId);
+    if (activeSlot === "reception" || activeSlot === "defense") {
+      setLibero(activeSlot, playerId);
       setActiveSlot(null);
       return;
     }
@@ -106,23 +123,27 @@ export function LineupPicker({
       }
       return next;
     });
-    if (liberoId === playerId) setLiberoId("");
+    if (receptionId === playerId) setReceptionId("");
+    if (defenseId === playerId) setDefenseId("");
     setActiveSlot(null);
   }
 
   function clearActive() {
     if (!activeSlot) return;
-    if (activeSlot === "libero") setLiberoId("");
+    if (activeSlot === "reception") setReceptionId("");
+    else if (activeSlot === "defense") setDefenseId("");
     else setSlots((current) => ({ ...current, [activeSlot]: "" }));
     setActiveSlot(null);
   }
 
-  const sheetTitle =
-    activeSlot === "libero"
-      ? "Líbero"
-      : activeSlot
-        ? `Posición ${activeSlot} · ${COURT_POSITION_META[activeSlot].label}`
-        : "Jugador";
+  const isLiberoSlot = activeSlot === "reception" || activeSlot === "defense";
+  const sheetTitle = isLiberoSlot
+    ? `Líbero de ${LIBERO_KIND_LABEL[activeSlot].toLowerCase()}`
+    : activeSlot
+      ? `Posición ${activeSlot} · ${COURT_POSITION_META[activeSlot].label}`
+      : "Jugador";
+  const currentLiberoId =
+    activeSlot === "reception" ? receptionId : activeSlot === "defense" ? defenseId : "";
 
   return (
     <div className="space-y-3">
@@ -132,13 +153,14 @@ export function LineupPicker({
           <input key={position} type="hidden" name={`starterPos${position}`} value={slots[position]} />
         ) : null
       )}
-      {liberoId ? <input type="hidden" name="liberoId" value={liberoId} /> : null}
+      {receptionId ? <input type="hidden" name="receptionLiberoId" value={receptionId} /> : null}
+      {defenseId ? <input type="hidden" name="defenseLiberoId" value={defenseId} /> : null}
 
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Alineación titular</p>
           <p className="text-xs text-muted-foreground">
-            {teamName}. Toca una posición del campo para colocar el dorsal.
+            {teamName}. Toca una posición del campo o un líbero para colocar el dorsal.
           </p>
         </div>
         <Badge variant={starterCount === 6 ? "accent" : "secondary"}>{starterCount}/6</Badge>
@@ -152,14 +174,20 @@ export function LineupPicker({
         <>
           <VolleyballCourt
             slots={courtSlots}
-            libero={playersById.get(liberoId) ?? null}
+            liberos={{
+              reception: playersById.get(receptionId) ?? null,
+              defense: playersById.get(defenseId) ?? null,
+              activeKind: receptionId ? "reception" : defenseId ? "defense" : null,
+            }}
             interactive
             onSlotClick={(position) => setActiveSlot(position)}
-            onLiberoClick={() => setActiveSlot("libero")}
+            onLiberoClick={(kind) => setActiveSlot(kind)}
           />
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            6 en pista: 1 saque, 2-3-4 delantera, 5-6 zaguera. El líbero queda fuera. En el
-            seguimiento el campo rota al ganar el saque.
+            6 en pista: 1 saque, 2-3-4 delantera, 5-6 zaguera. Elige líbero de recepción y de
+            defensa: puede ser el mismo o uno distinto. En el seguimiento se puede cambiar a
+            mitad de partido.
+            {sameLibero ? " Ahora mismo es el mismo para ambos." : ""}
           </p>
 
           {players.filter((player) => !placedIds.has(player.id)).length > 0 ? (
@@ -189,13 +217,13 @@ export function LineupPicker({
           <SheetHeader>
             <SheetTitle>{sheetTitle}</SheetTitle>
             <SheetDescription>
-              {activeSlot === "libero"
-                ? "El líbero no cuenta como una de las 6 posiciones de rotación."
+              {isLiberoSlot
+                ? "Puedes repetir el mismo líbero en recepción y defensa, o elegir uno distinto para cada rol."
                 : "El dorsal se verá en esa casilla. Si ya estaba en otra, se intercambian."}
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-4">
-            {(activeSlot === "libero" ? liberoId : activeSlot && slots[activeSlot]) ? (
+            {(isLiberoSlot ? currentLiberoId : activeSlot && slots[activeSlot]) ? (
               <button
                 type="button"
                 onClick={clearActive}
@@ -206,10 +234,15 @@ export function LineupPicker({
             ) : null}
             {players.map((player) => {
               const onCourtAt = COURT_POSITIONS.find((position) => slots[position] === player.id);
-              const isLibero = liberoId === player.id;
+              const reception = receptionId === player.id;
+              const defense = defenseId === player.id;
               const selected =
-                (activeSlot === "libero" && isLibero) ||
-                (activeSlot !== "libero" && activeSlot !== null && slots[activeSlot] === player.id);
+                (activeSlot === "reception" && reception) ||
+                (activeSlot === "defense" && defense) ||
+                (activeSlot !== "reception" &&
+                  activeSlot !== "defense" &&
+                  activeSlot !== null &&
+                  slots[activeSlot] === player.id);
               return (
                 <button
                   key={player.id}
@@ -235,8 +268,12 @@ export function LineupPicker({
                   </span>
                   {onCourtAt ? (
                     <Badge variant={selected ? "secondary" : "outline"}>P{onCourtAt}</Badge>
-                  ) : isLibero ? (
-                    <Badge variant={selected ? "secondary" : "accent"}>Líbero</Badge>
+                  ) : reception && defense ? (
+                    <Badge variant={selected ? "secondary" : "accent"}>Ambos</Badge>
+                  ) : reception ? (
+                    <Badge variant={selected ? "secondary" : "accent"}>Recepción</Badge>
+                  ) : defense ? (
+                    <Badge variant={selected ? "secondary" : "accent"}>Defensa</Badge>
                   ) : null}
                 </button>
               );

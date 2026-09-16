@@ -87,34 +87,43 @@ export function parseLineupFromForm(formData: FormData): {
   teamId: string | null;
   starterIds: string[];
   starterPositions: Partial<Record<number, string>>;
+  receptionLiberoId: string | null;
+  defenseLiberoId: string | null;
   liberoId: string | null;
   error?: string;
 } {
   const teamId = String(formData.get("clubTeamId") ?? "").trim() || null;
-  const liberoId = String(formData.get("liberoId") ?? "").trim() || null;
+  const legacyLiberoId = String(formData.get("liberoId") ?? "").trim() || null;
+  const receptionLiberoId =
+    String(formData.get("receptionLiberoId") ?? "").trim() || legacyLiberoId;
+  const defenseLiberoId =
+    String(formData.get("defenseLiberoId") ?? "").trim() || legacyLiberoId;
+  const liberoIds = new Set(
+    [receptionLiberoId, defenseLiberoId].filter((playerId): playerId is string => Boolean(playerId))
+  );
   const starterPositions: Partial<Record<number, string>> = {};
   const seenPlayers = new Set<string>();
+
+  function fail(error: string) {
+    return {
+      teamId,
+      starterIds: [] as string[],
+      starterPositions,
+      receptionLiberoId,
+      defenseLiberoId,
+      liberoId: receptionLiberoId ?? defenseLiberoId,
+      error,
+    };
+  }
 
   for (let position = 1; position <= 6; position += 1) {
     const playerId = String(formData.get(`starterPos${position}`) ?? "").trim();
     if (!playerId) continue;
     if (seenPlayers.has(playerId)) {
-      return {
-        teamId,
-        starterIds: [],
-        starterPositions,
-        liberoId,
-        error: "Un jugador no puede ocupar dos posiciones a la vez.",
-      };
+      return fail("Un jugador no puede ocupar dos posiciones a la vez.");
     }
-    if (liberoId && playerId === liberoId) {
-      return {
-        teamId,
-        starterIds: [],
-        starterPositions,
-        liberoId,
-        error: "El líbero no ocupa una de las 6 posiciones de pista.",
-      };
+    if (liberoIds.has(playerId)) {
+      return fail("El líbero no ocupa una de las 6 posiciones de pista.");
     }
     seenPlayers.add(playerId);
     starterPositions[position] = playerId;
@@ -124,16 +133,24 @@ export function parseLineupFromForm(formData: FormData): {
   if (starterIds.length === 0) {
     const legacyIds = [...new Set(formData.getAll("starterId").map(String).filter(Boolean))];
     if (legacyIds.length > 6) {
-      return {
-        teamId,
-        starterIds: legacyIds,
-        starterPositions,
-        liberoId,
-        error: "La alineación titular admite como máximo 6 jugadores.",
-      };
+      return fail("La alineación titular admite como máximo 6 jugadores.");
     }
-    return { teamId, starterIds: legacyIds, starterPositions, liberoId };
+    return {
+      teamId,
+      starterIds: legacyIds,
+      starterPositions,
+      receptionLiberoId,
+      defenseLiberoId,
+      liberoId: receptionLiberoId ?? defenseLiberoId,
+    };
   }
 
-  return { teamId, starterIds, starterPositions, liberoId };
+  return {
+    teamId,
+    starterIds,
+    starterPositions,
+    receptionLiberoId,
+    defenseLiberoId,
+    liberoId: receptionLiberoId ?? defenseLiberoId,
+  };
 }

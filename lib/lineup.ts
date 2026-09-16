@@ -1,17 +1,26 @@
+import { designatedLiberos } from "@/lib/court";
 import type { MatchLineupEntry, MatchSubstitution, Player } from "@/lib/types";
 
 export function startingOnCourtIds(
-  lineup: Pick<MatchLineupEntry, "player_id" | "is_starter" | "is_libero">[]
+  lineup: Pick<
+    MatchLineupEntry,
+    "player_id" | "is_starter" | "is_libero" | "is_reception_libero" | "is_defense_libero" | "is_active_libero" | "team_id"
+  >[]
 ) {
   const ids = new Set<string>();
   for (const entry of lineup) {
-    if (entry.is_starter || entry.is_libero) ids.add(entry.player_id);
+    if (entry.is_starter) ids.add(entry.player_id);
   }
+  const { activeId } = designatedLiberos(lineup);
+  if (activeId) ids.add(activeId);
   return ids;
 }
 
 export function currentOnCourtIds(
-  lineup: Pick<MatchLineupEntry, "player_id" | "is_starter" | "is_libero" | "team_id">[],
+  lineup: Pick<
+    MatchLineupEntry,
+    "player_id" | "is_starter" | "is_libero" | "is_reception_libero" | "is_defense_libero" | "is_active_libero" | "team_id"
+  >[],
   substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
   teamId?: string
 ) {

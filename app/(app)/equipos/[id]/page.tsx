@@ -8,14 +8,14 @@ import dynamic from "next/dynamic";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { PlayerRankingTable } from "@/components/stats/player-ranking-table";
 import { StatSummary, WinRateCard } from "@/components/stats/stat-summary";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PlayerRosterCard } from "@/components/teams/player-roster-card";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
 import { getCategoryMeta } from "@/lib/categories";
-import { MATCH_WITH_TEAMS_SELECT, PLAYER_ROSTER_SELECT, POSITION_LABELS, TEAM_SELECT } from "@/lib/constants";
+import { MATCH_WITH_TEAMS_SELECT, PLAYER_ROSTER_SELECT, TEAM_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildPlayerMatchSeries,
@@ -35,7 +35,6 @@ import {
   serveStatsFromEvents,
 } from "@/lib/volleyball-stats";
 import { MatchCard } from "@/components/matches/match-card";
-import { formatJersey, initials } from "@/lib/utils";
 import { totalPlayerPoints } from "@/lib/volleyball";
 import type { MatchWithTeams, Player, PointType, Team } from "@/lib/types";
 
@@ -52,7 +51,7 @@ export default async function TeamDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { isAdmin } = await requireViewer();
+  const { isAdmin, user } = await requireViewer();
   const supabase = await createClient();
 
   const [{ data: team, error: teamError }, { data: players, error: playersError }, { data: matches }] =
@@ -319,27 +318,12 @@ export default async function TeamDetailPage({
           ) : (
             <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
               {typedPlayers.map((player) => (
-                <Link key={player.id} href={`/jugadores/${player.id}`} className="block h-full">
-                  <Card className="h-full">
-                    <CardContent className="flex items-center gap-3 p-4">
-                      <Avatar>
-                        <AvatarImage src={player.avatar_url ?? undefined} alt={player.full_name} />
-                        <AvatarFallback>{initials(player.full_name)}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold">
-                          {formatJersey(player.jersey_number)} {player.full_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {player.position ? POSITION_LABELS[player.position] : "Sin posición"}
-                        </p>
-                      </div>
-                      <p className="text-sm font-bold tabular-nums">
-                        {totalPlayerPoints(player)} pts
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
+                <PlayerRosterCard
+                  key={player.id}
+                  player={player}
+                  href={`/jugadores/${player.id}`}
+                  canEditJersey={isAdmin || user?.profile.player?.id === player.id}
+                />
               ))}
             </div>
           )}

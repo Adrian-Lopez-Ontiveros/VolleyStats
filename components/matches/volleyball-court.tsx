@@ -4,11 +4,13 @@ import { cn, formatJersey } from "@/lib/utils";
 import {
   COURT_LAYOUT,
   COURT_POSITION_META,
+  LIBERO_KIND_LABEL,
   firstName,
   type CourtOccupant,
   type CourtPosition,
   type CourtSlots,
 } from "@/lib/court";
+import type { LiberoKind } from "@/lib/types";
 
 function jerseyLabel(player: CourtOccupant | null | undefined) {
   if (!player) return "";
@@ -80,19 +82,27 @@ function CourtToken({
 export function VolleyballCourt({
   slots,
   libero = null,
+  liberos,
   serving = false,
   interactive = false,
   onSlotClick,
   onLiberoClick,
+  onActivateLibero,
   onPlayerClick,
 }: {
   slots: CourtSlots;
   libero?: CourtOccupant | null;
+  liberos?: {
+    reception: CourtOccupant | null;
+    defense: CourtOccupant | null;
+    activeKind?: LiberoKind | null;
+  };
   serving?: boolean;
   interactive?: boolean;
   onSlotClick?: (position: CourtPosition) => void;
-  onLiberoClick?: () => void;
-  onPlayerClick?: (player: CourtOccupant, position: CourtPosition | "libero") => void;
+  onLiberoClick?: (kind: LiberoKind) => void;
+  onActivateLibero?: (kind: LiberoKind) => void;
+  onPlayerClick?: (player: CourtOccupant, position: CourtPosition | LiberoKind) => void;
 }) {
   function handleSlot(position: CourtPosition) {
     const player = slots[position] ?? null;
@@ -103,16 +113,11 @@ export function VolleyballCourt({
     if (interactive && onSlotClick) onSlotClick(position);
   }
 
-  function handleLibero() {
-    if (libero && onPlayerClick) {
-      onPlayerClick(libero, "libero");
-      return;
-    }
-    if (interactive && onLiberoClick) onLiberoClick();
-  }
-
-  const liberoClickable = Boolean((libero && onPlayerClick) || (interactive && onLiberoClick));
-  const LiberoTag = liberoClickable ? "button" : "div";
+  const pair = liberos ?? {
+    reception: libero,
+    defense: libero,
+    activeKind: libero ? ("reception" as const) : null,
+  };
 
   return (
     <div className="space-y-2">
@@ -175,30 +180,133 @@ export function VolleyballCourt({
         </div>
       </div>
 
-      <LiberoTag
-        type={liberoClickable ? "button" : undefined}
-        onClick={liberoClickable ? handleLibero : undefined}
+      <div className="grid grid-cols-2 gap-2">
+        <LiberoCard
+          kind="reception"
+          player={pair.reception}
+          active={pair.activeKind === "reception" || pair.reception?.id === pair.defense?.id}
+          onAssign={onLiberoClick}
+          onActivate={
+            onActivateLibero &&
+            pair.reception &&
+            pair.defense &&
+            pair.reception.id !== pair.defense.id &&
+            pair.activeKind !== "reception"
+              ? onActivateLibero
+              : undefined
+          }
+          onPlayerClick={onPlayerClick}
+        />
+        <LiberoCard
+          kind="defense"
+          player={pair.defense}
+          active={pair.activeKind === "defense" || pair.reception?.id === pair.defense?.id}
+          onAssign={onLiberoClick}
+          onActivate={
+            onActivateLibero &&
+            pair.reception &&
+            pair.defense &&
+            pair.reception.id !== pair.defense.id &&
+            pair.activeKind !== "defense"
+              ? onActivateLibero
+              : undefined
+          }
+          onPlayerClick={onPlayerClick}
+        />
+      </div>
+    </div>
+  );
+}
+
+function LiberoCard({
+  kind,
+  player,
+  active,
+  onAssign,
+  onActivate,
+  onPlayerClick,
+}: {
+  kind: LiberoKind;
+  player: CourtOccupant | null;
+  active: boolean;
+  onAssign?: (kind: LiberoKind) => void;
+  onActivate?: (kind: LiberoKind) => void;
+  onPlayerClick?: (player: CourtOccupant, position: LiberoKind) => void;
+}) {
+  const canAssign = Boolean(onAssign);
+  const canPick = Boolean(player && onPlayerClick);
+  const clickable = canAssign || canPick;
+
+  function handleClick() {
+    if (player && onPlayerClick) {
+      onPlayerClick(player, kind);
+      return;
+    }
+    if (canAssign) onAssign?.(kind);
+  }
+
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border bg-card px-3 py-2.5 shadow-sm",
+        active && player ? "border-accent" : ""
+      )}
+    >
+      <button
+        type={clickable ? "button" : undefined}
+        onClick={clickable ? handleClick : undefined}
+        disabled={!clickable}
         className={cn(
-          "flex w-full items-center gap-3 rounded-2xl border bg-card px-3 py-2.5 text-left shadow-sm",
-          liberoClickable && "active:scale-[0.99]"
+          "flex w-full items-center gap-2.5 text-left",
+          clickable && "active:scale-[0.99]"
         )}
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-accent/60 bg-accent/10 text-sm font-black text-accent">
-          {libero ? jerseyLabel(libero) : "L"}
+        <span
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 text-sm font-black",
+            player
+              ? "border-accent/60 bg-accent/10 text-accent"
+              : "border-dashed border-accent/40 bg-accent/5 text-accent/70"
+          )}
+        >
+          {player ? jerseyLabel(player) : "L"}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[10px] font-bold uppercase tracking-wide text-accent">
-            Líbero · fuera de pista
+            {LIBERO_KIND_LABEL[kind]}
+            {active && player ? " · en uso" : ""}
           </span>
           <span className="block truncate text-sm font-semibold">
-            {libero
-              ? `${formatJersey(libero.jersey_number)} ${libero.full_name}`
-              : interactive
-                ? "Toca para elegir líbero"
+            {player
+              ? `${formatJersey(player.jersey_number)} ${player.full_name}`
+              : canAssign
+                ? "Elegir"
                 : "Sin líbero"}
           </span>
         </span>
-      </LiberoTag>
+      </button>
+      {canAssign || onActivate ? (
+        <div className="mt-2 flex gap-1.5">
+          {onActivate ? (
+            <button
+              type="button"
+              onClick={() => onActivate(kind)}
+              className="h-8 flex-1 rounded-lg bg-accent px-2 text-[11px] font-semibold text-accent-foreground"
+            >
+              Usar
+            </button>
+          ) : null}
+          {canAssign && player ? (
+            <button
+              type="button"
+              onClick={() => onAssign?.(kind)}
+              className="h-8 flex-1 rounded-lg bg-secondary px-2 text-[11px] font-semibold text-muted-foreground"
+            >
+              Cambiar
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

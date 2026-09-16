@@ -6,6 +6,7 @@ export const CHECKIN_STREAK_CAP = 30;
 export const PREDICTION_HIT_XP = 25;
 export const JORNADA_PERFECT_XP = 50;
 export const JORNADA_PERFECT_MIN = 2;
+export const JERSEY_XP = 20;
 
 export type RewardKind = "title" | "frame" | "badge";
 

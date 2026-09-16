@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore, 
 import { useRouter } from "next/navigation";
 import { Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { addSubstitution, recordPoint, undoLastPoint } from "@/lib/actions/matches";
+import { activateMatchLibero, addSubstitution, recordPoint, setMatchLibero, undoLastPoint } from "@/lib/actions/matches";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
@@ -29,13 +29,14 @@ import { VolleyballCourt } from "@/components/matches/volleyball-court";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { useLiveMatchEvents } from "@/components/matches/use-live-match-events";
 import {
+  LIBERO_KIND_LABEL,
   currentCourtSlots,
-  currentLiberoPlayer,
-  liberoOffCourt,
+  currentLiberoPlayers,
   lineupHasCourtPositions,
   type CourtOccupant,
 } from "@/lib/court";
 import type {
+  LiberoKind,
   MatchEventWithPlayer,
   MatchLineupEntry,
   MatchSubstitution,
@@ -100,6 +101,7 @@ export function LiveTracker({
   const {
     events: liveEvents,
     substitutions: liveSubstitutions,
+    lineup: liveLineup,
     addOptimistic,
     confirmOptimistic,
     removeOptimistic,
@@ -109,6 +111,7 @@ export function LiveTracker({
     matchId: match.id,
     initialEvents: events,
     initialSubstitutions: substitutions,
+    initialLineup: lineup,
     players: [...homePlayers, ...awayPlayers],
   });
   const mergedEvents = useMemo(() => {
@@ -160,6 +163,7 @@ export function LiveTracker({
   const [swapTeamId, setSwapTeamId] = useState<string | null>(null);
   const [playerOutId, setPlayerOutId] = useState("");
   const [playerInId, setPlayerInId] = useState("");
+  const [liberoEdit, setLiberoEdit] = useState<{ teamId: string; kind: LiberoKind } | null>(null);
   const [actionGroup, setActionGroup] = useState<ActionGroup>("punto");
   const [servingOverride, setServingOverride] = useState<string | null>(null);
   const [homeRotationOverride, setHomeRotationOverride] = useState<number | null>(null);
@@ -195,12 +199,12 @@ export function LiveTracker({
     setAwayRotationOverride(null);
   }, [mergedEvents.length, displayMatch.current_set, displayMatch.home_points, displayMatch.away_points]);
   const homeOnCourtIds = useMemo(
-    () => currentOnCourtIds(lineup, liveSubstitutions, match.home_team_id),
-    [lineup, liveSubstitutions, match.home_team_id]
+    () => currentOnCourtIds(liveLineup, liveSubstitutions, match.home_team_id),
+    [liveLineup, liveSubstitutions, match.home_team_id]
   );
   const awayOnCourtIds = useMemo(
-    () => currentOnCourtIds(lineup, liveSubstitutions, match.away_team_id),
-    [lineup, liveSubstitutions, match.away_team_id]
+    () => currentOnCourtIds(liveLineup, liveSubstitutions, match.away_team_id),
+    [liveLineup, liveSubstitutions, match.away_team_id]
   );
   const homeOnCourt = useMemo(
     () =>
@@ -229,30 +233,30 @@ export function LiveTracker({
     [awayPlayers, awayOnCourtIds]
   );
   const homeHasCourt = useMemo(
-    () => lineupHasCourtPositions(lineup, match.home_team_id),
-    [lineup, match.home_team_id]
+    () => lineupHasCourtPositions(liveLineup, match.home_team_id),
+    [liveLineup, match.home_team_id]
   );
   const awayHasCourt = useMemo(
-    () => lineupHasCourtPositions(lineup, match.away_team_id),
-    [lineup, match.away_team_id]
+    () => lineupHasCourtPositions(liveLineup, match.away_team_id),
+    [liveLineup, match.away_team_id]
   );
   const homeCourtSlots = useMemo(
     () =>
-      currentCourtSlots(lineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id),
-    [lineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id]
+      currentCourtSlots(liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id),
+    [liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id]
   );
   const awayCourtSlots = useMemo(
     () =>
-      currentCourtSlots(lineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id),
-    [lineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id]
+      currentCourtSlots(liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id),
+    [liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id]
   );
-  const homeLibero = useMemo(
-    () => currentLiberoPlayer(lineup, liveSubstitutions, homePlayers, match.home_team_id),
-    [lineup, liveSubstitutions, homePlayers, match.home_team_id]
+  const homeLiberos = useMemo(
+    () => currentLiberoPlayers(liveLineup, liveSubstitutions, homePlayers, match.home_team_id),
+    [liveLineup, liveSubstitutions, homePlayers, match.home_team_id]
   );
-  const awayLibero = useMemo(
-    () => currentLiberoPlayer(lineup, liveSubstitutions, awayPlayers, match.away_team_id),
-    [lineup, liveSubstitutions, awayPlayers, match.away_team_id]
+  const awayLiberos = useMemo(
+    () => currentLiberoPlayers(liveLineup, liveSubstitutions, awayPlayers, match.away_team_id),
+    [liveLineup, liveSubstitutions, awayPlayers, match.away_team_id]
   );
 
   useEffect(() => {
@@ -465,8 +469,56 @@ export function LiveTracker({
     });
   }
 
+  function submitLibero(playerId: string | null) {
+    if (!liberoEdit) return;
+    startTransition(async () => {
+      const result = await setMatchLibero(match.id, liberoEdit.teamId, liberoEdit.kind, playerId);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(
+        playerId
+          ? `Líbero de ${LIBERO_KIND_LABEL[liberoEdit.kind].toLowerCase()} actualizado`
+          : "Líbero quitado"
+      );
+      setLiberoEdit(null);
+      void pullEvents();
+      router.refresh();
+    });
+  }
+
+  function submitActivateLibero(teamId: string, kind: LiberoKind) {
+    startTransition(async () => {
+      const result = await activateMatchLibero(match.id, teamId, kind);
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`En uso: líbero de ${LIBERO_KIND_LABEL[kind].toLowerCase()}`);
+      void pullEvents();
+      router.refresh();
+    });
+  }
+
   const swapOnCourt = swapTeamId === match.home_team_id ? homeOnCourt : awayOnCourt;
   const swapBench = swapTeamId === match.home_team_id ? homeBench : awayBench;
+  const liberoTeamPlayers =
+    liberoEdit?.teamId === match.home_team_id
+      ? homePlayers
+      : liberoEdit?.teamId === match.away_team_id
+        ? awayPlayers
+        : [];
+  const liberoOnCourtIds =
+    liberoEdit?.teamId === match.home_team_id
+      ? homeOnCourtIds
+      : liberoEdit?.teamId === match.away_team_id
+        ? awayOnCourtIds
+        : null;
+  const currentLiberoId =
+    liberoEdit?.kind === "defense"
+      ? (liberoEdit.teamId === match.home_team_id ? homeLiberos.defense : awayLiberos.defense)?.id ?? ""
+      : (liberoEdit?.teamId === match.home_team_id ? homeLiberos.reception : awayLiberos.reception)?.id ?? "";
 
   return (
     <div className="space-y-4">
@@ -558,7 +610,11 @@ export function LiveTracker({
           federationTeamId={match.home_team.federation_team_id}
           rotation={homeRotation}
           slots={homeCourtSlots}
-          libero={liberoOffCourt(homeLibero, homeCourtSlots)}
+          liberos={{
+            reception: homeLiberos.reception,
+            defense: homeLiberos.defense,
+            activeKind: homeLiberos.activeKind,
+          }}
           serving={servingTeamId === match.home_team_id}
           canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
           disabled={finished || pending}
@@ -571,6 +627,8 @@ export function LiveTracker({
             setPlayerOutId("");
             setPlayerInId("");
           }}
+          onAssignLibero={(kind) => setLiberoEdit({ teamId: match.home_team_id, kind })}
+          onActivateLibero={(kind) => submitActivateLibero(match.home_team_id, kind)}
         />
       ) : (
         <Roster
@@ -598,7 +656,11 @@ export function LiveTracker({
           federationTeamId={match.away_team.federation_team_id}
           rotation={awayRotation}
           slots={awayCourtSlots}
-          libero={liberoOffCourt(awayLibero, awayCourtSlots)}
+          liberos={{
+            reception: awayLiberos.reception,
+            defense: awayLiberos.defense,
+            activeKind: awayLiberos.activeKind,
+          }}
           serving={servingTeamId === match.away_team_id}
           canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
           disabled={finished || pending}
@@ -611,6 +673,8 @@ export function LiveTracker({
             setPlayerOutId("");
             setPlayerInId("");
           }}
+          onAssignLibero={(kind) => setLiberoEdit({ teamId: match.away_team_id, kind })}
+          onActivateLibero={(kind) => submitActivateLibero(match.away_team_id, kind)}
         />
       ) : (
         <Roster
@@ -651,6 +715,67 @@ export function LiveTracker({
           playerLinks={false}
         />
       </section>
+
+      <Sheet
+        open={!!liberoEdit}
+        onOpenChange={(open) => {
+          if (!open) setLiberoEdit(null);
+        }}
+      >
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>
+              Líbero de {liberoEdit ? LIBERO_KIND_LABEL[liberoEdit.kind].toLowerCase() : ""}
+            </SheetTitle>
+            <SheetDescription>
+              Elige el mismo jugador para recepción y defensa, o uno distinto. El cambio queda
+              registrado en el partido.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-4">
+            {currentLiberoId ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => submitLibero(null)}
+                className="h-11 w-full rounded-xl border border-dashed text-sm font-semibold text-muted-foreground"
+              >
+                Quitar este líbero
+              </button>
+            ) : null}
+            {liberoTeamPlayers.map((player) => {
+              const selected = currentLiberoId === player.id;
+              const onCourt = liberoOnCourtIds?.has(player.id) ?? false;
+              return (
+                <button
+                  key={player.id}
+                  type="button"
+                  disabled={pending}
+                  onClick={() => submitLibero(player.id)}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left",
+                    selected ? "border-primary bg-primary text-primary-foreground" : "bg-card"
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block font-semibold leading-tight">
+                      {formatJersey(player.jersey_number)} {player.full_name}
+                    </span>
+                    <span
+                      className={cn(
+                        "block text-xs",
+                        selected ? "text-primary-foreground/80" : "text-muted-foreground"
+                      )}
+                    >
+                      {onCourt ? "En pista" : "Banquillo"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet
         open={!!swapTeamId}
@@ -808,12 +933,14 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
   federationTeamId,
   rotation,
   slots,
-  libero,
+  liberos,
   serving,
   canSubstitute,
   disabled,
   onPick,
   onSubstitute,
+  onAssignLibero,
+  onActivateLibero,
 }: {
   title: string;
   logoUrl?: string | null;
@@ -821,12 +948,18 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
   federationTeamId?: string | null;
   rotation: number;
   slots: ReturnType<typeof currentCourtSlots>;
-  libero: CourtOccupant | null;
+  liberos: {
+    reception: CourtOccupant | null;
+    defense: CourtOccupant | null;
+    activeKind: LiberoKind | null;
+  };
   serving: boolean;
   canSubstitute: boolean;
   disabled: boolean;
   onPick: (player: CourtOccupant) => void;
   onSubstitute: () => void;
+  onAssignLibero: (kind: LiberoKind) => void;
+  onActivateLibero: (kind: LiberoKind) => void;
 }) {
   return (
     <section className="space-y-2">
@@ -854,9 +987,11 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
       </div>
       <VolleyballCourt
         slots={slots}
-        libero={libero}
+        liberos={liberos}
         serving={serving}
         onPlayerClick={disabled ? undefined : onPick}
+        onLiberoClick={disabled ? undefined : onAssignLibero}
+        onActivateLibero={disabled ? undefined : onActivateLibero}
       />
     </section>
   );
