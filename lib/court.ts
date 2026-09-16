@@ -107,6 +107,48 @@ export const LIBERO_KIND_LABEL: Record<LiberoKind, string> = {
   defense: "Defensa",
 };
 
+export function liberoKindForPhase(
+  serving: boolean,
+  receptionId: string | null,
+  defenseId: string | null
+): LiberoKind | null {
+  if (!receptionId && !defenseId) return null;
+  if (serving) return defenseId ? "defense" : "reception";
+  return receptionId ? "reception" : "defense";
+}
+
+export function phaseLiberoId(
+  serving: boolean,
+  receptionId: string | null,
+  defenseId: string | null
+) {
+  const kind = liberoKindForPhase(serving, receptionId, defenseId);
+  if (kind === "defense") return defenseId;
+  if (kind === "reception") return receptionId;
+  return null;
+}
+
+export function applyPhaseLibero(
+  onCourt: Set<string> | null,
+  slots: CourtSlots,
+  receptionId: string | null,
+  defenseId: string | null,
+  serving: boolean
+) {
+  if (!onCourt) return onCourt;
+  const next = new Set(onCourt);
+  const inSlot = new Set(
+    Object.values(slots)
+      .filter((player): player is CourtOccupant => Boolean(player))
+      .map((player) => player.id)
+  );
+  const phaseId = phaseLiberoId(serving, receptionId, defenseId);
+  const otherId = phaseId === receptionId ? defenseId : receptionId;
+  if (otherId && otherId !== phaseId && !inSlot.has(otherId)) next.delete(otherId);
+  if (phaseId) next.add(phaseId);
+  return next;
+}
+
 export function startingCourtByPosition(
   lineup: Pick<
     MatchLineupEntry,

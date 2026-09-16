@@ -87,7 +87,6 @@ export function VolleyballCourt({
   interactive = false,
   onSlotClick,
   onLiberoClick,
-  onActivateLibero,
   onPlayerClick,
 }: {
   slots: CourtSlots;
@@ -101,7 +100,6 @@ export function VolleyballCourt({
   interactive?: boolean;
   onSlotClick?: (position: CourtPosition) => void;
   onLiberoClick?: (kind: LiberoKind) => void;
-  onActivateLibero?: (kind: LiberoKind) => void;
   onPlayerClick?: (player: CourtOccupant, position: CourtPosition | LiberoKind) => void;
 }) {
   function handleSlot(position: CourtPosition) {
@@ -186,15 +184,6 @@ export function VolleyballCourt({
           player={pair.reception}
           active={pair.activeKind === "reception" || pair.reception?.id === pair.defense?.id}
           onAssign={onLiberoClick}
-          onActivate={
-            onActivateLibero &&
-            pair.reception &&
-            pair.defense &&
-            pair.reception.id !== pair.defense.id &&
-            pair.activeKind !== "reception"
-              ? onActivateLibero
-              : undefined
-          }
           onPlayerClick={onPlayerClick}
         />
         <LiberoCard
@@ -202,15 +191,6 @@ export function VolleyballCourt({
           player={pair.defense}
           active={pair.activeKind === "defense" || pair.reception?.id === pair.defense?.id}
           onAssign={onLiberoClick}
-          onActivate={
-            onActivateLibero &&
-            pair.reception &&
-            pair.defense &&
-            pair.reception.id !== pair.defense.id &&
-            pair.activeKind !== "defense"
-              ? onActivateLibero
-              : undefined
-          }
           onPlayerClick={onPlayerClick}
         />
       </div>
@@ -223,14 +203,12 @@ function LiberoCard({
   player,
   active,
   onAssign,
-  onActivate,
   onPlayerClick,
 }: {
   kind: LiberoKind;
   player: CourtOccupant | null;
   active: boolean;
   onAssign?: (kind: LiberoKind) => void;
-  onActivate?: (kind: LiberoKind) => void;
   onPlayerClick?: (player: CourtOccupant, position: LiberoKind) => void;
 }) {
   const canAssign = Boolean(onAssign);
@@ -285,27 +263,14 @@ function LiberoCard({
           </span>
         </span>
       </button>
-      {canAssign || onActivate ? (
-        <div className="mt-2 flex gap-1.5">
-          {onActivate ? (
-            <button
-              type="button"
-              onClick={() => onActivate(kind)}
-              className="h-8 flex-1 rounded-lg bg-accent px-2 text-[11px] font-semibold text-accent-foreground"
-            >
-              Usar
-            </button>
-          ) : null}
-          {canAssign && player ? (
-            <button
-              type="button"
-              onClick={() => onAssign?.(kind)}
-              className="h-8 flex-1 rounded-lg bg-secondary px-2 text-[11px] font-semibold text-muted-foreground"
-            >
-              Cambiar
-            </button>
-          ) : null}
-        </div>
+      {canAssign && player ? (
+        <button
+          type="button"
+          onClick={() => onAssign?.(kind)}
+          className="mt-2 h-8 w-full rounded-lg bg-secondary px-2 text-[11px] font-semibold text-muted-foreground"
+        >
+          Cambiar
+        </button>
       ) : null}
     </div>
   );

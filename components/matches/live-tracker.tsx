@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import { useRouter } from "next/navigation";
 import { Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { activateMatchLibero, addSubstitution, recordPoint, setMatchLibero, undoPoint } from "@/lib/actions/matches";
+import { addSubstitution, recordPoint, setMatchLibero, undoPoint } from "@/lib/actions/matches";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
@@ -30,8 +30,10 @@ import { TeamLogo } from "@/components/teams/team-logo";
 import { isLocalEventId, useLiveMatchEvents } from "@/components/matches/use-live-match-events";
 import {
   LIBERO_KIND_LABEL,
+  applyPhaseLibero,
   currentCourtSlots,
   currentLiberoPlayers,
+  liberoKindForPhase,
   lineupHasCourtPositions,
   type CourtOccupant,
 } from "@/lib/court";
@@ -201,6 +203,8 @@ export function LiveTracker({
     [mergedEvents, displayMatch.home_team_id, displayMatch.away_team_id, displayMatch.current_set]
   );
   const servingTeamId = servingOverride ?? inferredServer;
+  const homeServing = servingTeamId === match.home_team_id;
+  const awayServing = servingTeamId === match.away_team_id;
   const homeRotation = homeRotationOverride ?? inferredRotations.home;
   const awayRotation = awayRotationOverride ?? inferredRotations.away;
 
@@ -209,13 +213,79 @@ export function LiveTracker({
     setHomeRotationOverride(null);
     setAwayRotationOverride(null);
   }, [mergedEvents.length, displayMatch.current_set, displayMatch.home_points, displayMatch.away_points]);
+  const homeHasCourt = useMemo(
+    () => lineupHasCourtPositions(liveLineup, match.home_team_id),
+    [liveLineup, match.home_team_id]
+  );
+  const awayHasCourt = useMemo(
+    () => lineupHasCourtPositions(liveLineup, match.away_team_id),
+    [liveLineup, match.away_team_id]
+  );
+  const homeCourtSlots = useMemo(
+    () =>
+      currentCourtSlots(liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id),
+    [liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id]
+  );
+  const awayCourtSlots = useMemo(
+    () =>
+      currentCourtSlots(liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id),
+    [liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id]
+  );
+  const homeLiberos = useMemo(
+    () => currentLiberoPlayers(liveLineup, liveSubstitutions, homePlayers, match.home_team_id),
+    [liveLineup, liveSubstitutions, homePlayers, match.home_team_id]
+  );
+  const awayLiberos = useMemo(
+    () => currentLiberoPlayers(liveLineup, liveSubstitutions, awayPlayers, match.away_team_id),
+    [liveLineup, liveSubstitutions, awayPlayers, match.away_team_id]
+  );
+  const homeLiberoKind = liberoKindForPhase(
+    homeServing,
+    homeLiberos.reception?.id ?? null,
+    homeLiberos.defense?.id ?? null
+  );
+  const awayLiberoKind = liberoKindForPhase(
+    awayServing,
+    awayLiberos.reception?.id ?? null,
+    awayLiberos.defense?.id ?? null
+  );
   const homeOnCourtIds = useMemo(
-    () => currentOnCourtIds(liveLineup, liveSubstitutions, match.home_team_id),
-    [liveLineup, liveSubstitutions, match.home_team_id]
+    () =>
+      applyPhaseLibero(
+        currentOnCourtIds(liveLineup, liveSubstitutions, match.home_team_id),
+        homeCourtSlots,
+        homeLiberos.reception?.id ?? null,
+        homeLiberos.defense?.id ?? null,
+        homeServing
+      ),
+    [
+      liveLineup,
+      liveSubstitutions,
+      match.home_team_id,
+      homeCourtSlots,
+      homeLiberos.reception?.id,
+      homeLiberos.defense?.id,
+      homeServing,
+    ]
   );
   const awayOnCourtIds = useMemo(
-    () => currentOnCourtIds(liveLineup, liveSubstitutions, match.away_team_id),
-    [liveLineup, liveSubstitutions, match.away_team_id]
+    () =>
+      applyPhaseLibero(
+        currentOnCourtIds(liveLineup, liveSubstitutions, match.away_team_id),
+        awayCourtSlots,
+        awayLiberos.reception?.id ?? null,
+        awayLiberos.defense?.id ?? null,
+        awayServing
+      ),
+    [
+      liveLineup,
+      liveSubstitutions,
+      match.away_team_id,
+      awayCourtSlots,
+      awayLiberos.reception?.id,
+      awayLiberos.defense?.id,
+      awayServing,
+    ]
   );
   const homeOnCourt = useMemo(
     () =>
@@ -242,32 +312,6 @@ export function LiveTracker({
   const awayBench = useMemo(
     () => playersOnBench(awayPlayers, awayOnCourtIds),
     [awayPlayers, awayOnCourtIds]
-  );
-  const homeHasCourt = useMemo(
-    () => lineupHasCourtPositions(liveLineup, match.home_team_id),
-    [liveLineup, match.home_team_id]
-  );
-  const awayHasCourt = useMemo(
-    () => lineupHasCourtPositions(liveLineup, match.away_team_id),
-    [liveLineup, match.away_team_id]
-  );
-  const homeCourtSlots = useMemo(
-    () =>
-      currentCourtSlots(liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id),
-    [liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id]
-  );
-  const awayCourtSlots = useMemo(
-    () =>
-      currentCourtSlots(liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id),
-    [liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id]
-  );
-  const homeLiberos = useMemo(
-    () => currentLiberoPlayers(liveLineup, liveSubstitutions, homePlayers, match.home_team_id),
-    [liveLineup, liveSubstitutions, homePlayers, match.home_team_id]
-  );
-  const awayLiberos = useMemo(
-    () => currentLiberoPlayers(liveLineup, liveSubstitutions, awayPlayers, match.away_team_id),
-    [liveLineup, liveSubstitutions, awayPlayers, match.away_team_id]
   );
 
   const flushingRef = useRef(false);
@@ -453,19 +497,6 @@ export function LiveTracker({
     });
   }
 
-  function submitActivateLibero(teamId: string, kind: LiberoKind) {
-    startTransition(async () => {
-      const result = await activateMatchLibero(match.id, teamId, kind);
-      if ("error" in result && result.error) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success(`En uso: líbero de ${LIBERO_KIND_LABEL[kind].toLowerCase()}`);
-      void pullEvents();
-      router.refresh();
-    });
-  }
-
   const swapOnCourt = swapTeamId === match.home_team_id ? homeOnCourt : awayOnCourt;
   const swapBench = swapTeamId === match.home_team_id ? homeBench : awayBench;
   const liberoTeamPlayers =
@@ -581,9 +612,9 @@ export function LiveTracker({
           liberos={{
             reception: homeLiberos.reception,
             defense: homeLiberos.defense,
-            activeKind: homeLiberos.activeKind,
+            activeKind: homeLiberoKind,
           }}
-          serving={servingTeamId === match.home_team_id}
+          serving={homeServing}
           canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
           disabled={finished}
           onPick={(player) => {
@@ -596,7 +627,6 @@ export function LiveTracker({
             setPlayerInId("");
           }}
           onAssignLibero={(kind) => setLiberoEdit({ teamId: match.home_team_id, kind })}
-          onActivateLibero={(kind) => submitActivateLibero(match.home_team_id, kind)}
         />
       ) : (
         <Roster
@@ -627,9 +657,9 @@ export function LiveTracker({
           liberos={{
             reception: awayLiberos.reception,
             defense: awayLiberos.defense,
-            activeKind: awayLiberos.activeKind,
+            activeKind: awayLiberoKind,
           }}
-          serving={servingTeamId === match.away_team_id}
+          serving={awayServing}
           canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
           disabled={finished}
           onPick={(player) => {
@@ -642,7 +672,6 @@ export function LiveTracker({
             setPlayerInId("");
           }}
           onAssignLibero={(kind) => setLiberoEdit({ teamId: match.away_team_id, kind })}
-          onActivateLibero={(kind) => submitActivateLibero(match.away_team_id, kind)}
         />
       ) : (
         <Roster
@@ -912,7 +941,6 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
   onPick,
   onSubstitute,
   onAssignLibero,
-  onActivateLibero,
 }: {
   title: string;
   logoUrl?: string | null;
@@ -931,7 +959,6 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
   onPick: (player: CourtOccupant) => void;
   onSubstitute: () => void;
   onAssignLibero: (kind: LiberoKind) => void;
-  onActivateLibero: (kind: LiberoKind) => void;
 }) {
   return (
     <section className="space-y-2">
@@ -963,7 +990,6 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
         serving={serving}
         onPlayerClick={disabled ? undefined : onPick}
         onLiberoClick={disabled ? undefined : onAssignLibero}
-        onActivateLibero={disabled ? undefined : onActivateLibero}
       />
     </section>
   );
