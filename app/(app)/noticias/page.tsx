@@ -14,7 +14,7 @@ import type { ClubNews } from "@/lib/types";
 export const metadata: Metadata = { title: "Noticias" };
 
 export default async function NewsPage() {
-  const { isAdmin, isGuest } = await requireViewer();
+  const { canManage, isGuest } = await requireViewer();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("news")
@@ -39,7 +39,7 @@ export default async function NewsPage() {
         title="Noticias"
         description="Tablón de anuncios y novedades del club."
         action={
-          isAdmin ? (
+          canManage ? (
             <Button asChild variant="accent" size="sm">
               <Link href="/noticias/nuevo">
                 <Plus className="h-4 w-4" />
@@ -75,12 +75,12 @@ export default async function NewsPage() {
           icon={Newspaper}
           title="Todavía no hay noticias"
           description={
-            isAdmin
+            canManage
               ? "Publica el primer anuncio del club: convocatoria, resultado o aviso."
               : "Cuando haya novedades del club aparecerán aquí."
           }
           action={
-            isAdmin ? (
+            canManage ? (
               <Button asChild variant="accent">
                 <Link href="/noticias/nuevo">Escribir noticia</Link>
               </Button>

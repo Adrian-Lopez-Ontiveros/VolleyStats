@@ -10,7 +10,7 @@ export default async function TeamsPage({
   searchParams: Promise<{ categoria?: string }>;
 }) {
   const { categoria: rawCategory } = await searchParams;
-  const { isAdmin, user } = await requireViewer();
+  const { canManage, user } = await requireViewer();
   const categoria = parseCategory(rawCategory);
 
   const [{ data: teams, error: teamsError }, { data: players, error: playersError }] =
@@ -26,7 +26,7 @@ export default async function TeamsPage({
     <TeamsBrowser
       teams={clubTeams}
       players={clubPlayers}
-      isAdmin={isAdmin}
+      canManage={canManage}
       currentPlayerId={user?.profile.player?.id ?? null}
       initialCategory={categoria}
       loadError={teamsError?.message ?? playersError?.message}

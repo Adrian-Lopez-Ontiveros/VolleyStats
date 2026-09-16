@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MatchForm } from "@/components/matches/match-form";
 import { PageHeader } from "@/components/page-header";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { MATCH_LINEUP_SELECT, PLAYER_LINEUP_SELECT, TEAM_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { Match, MatchLineupEntry, Player, Team } from "@/lib/types";
@@ -15,7 +15,7 @@ export default async function EditMatchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
   const [{ data: match }, { data: teams }, { data: players }, { data: lineup }, events] =
     await Promise.all([

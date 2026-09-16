@@ -6,7 +6,7 @@ import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
 import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { sendDueMatchReminders } from "@/lib/actions/notifications";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { parseCategory, type TeamCategory } from "@/lib/categories";
 import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
 import { datetimeLocalMadridToIso } from "@/lib/federation/schedule";
@@ -203,7 +203,7 @@ async function applyManualScores(
 }
 
 export async function createMatch(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireCoach();
   const parsed = matchSchema.safeParse({
     category: formData.get("category") ?? "",
     homeTeamId: formData.get("homeTeamId") ?? "",
@@ -276,7 +276,7 @@ export async function createMatch(formData: FormData) {
 }
 
 export async function updateMatch(matchId: string, formData: FormData) {
-  await requireAdmin();
+  await requireCoach();
   const parsed = matchSchema.safeParse({
     category: formData.get("category") ?? "",
     homeTeamId: formData.get("homeTeamId") ?? "",

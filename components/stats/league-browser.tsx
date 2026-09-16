@@ -18,13 +18,13 @@ import type { Team } from "@/lib/types";
 export function LeagueBrowser({
   teams,
   matches,
-  isAdmin,
+  canManage,
   initialCategory,
   loadError,
 }: {
   teams: Team[];
   matches: MatchStandingInput[];
-  isAdmin: boolean;
+  canManage: boolean;
   initialCategory: TeamCategory;
   loadError?: string;
 }) {
@@ -44,10 +44,10 @@ export function LeagueBrowser({
   );
   const unassigned = useMemo(
     () =>
-      isAdmin
+      canManage
         ? teams.filter((team) => !team.category && !team.is_club_team && !team.is_one_off)
         : [],
-    [teams, isAdmin]
+    [teams, canManage]
   );
   const rows = useMemo(() => {
     const teamIds = new Set(typedTeams.map((team) => team.id));
@@ -89,7 +89,7 @@ export function LeagueBrowser({
                 ]),
               ]}
             />
-            {isAdmin ? (
+            {canManage ? (
               <Button asChild variant="accent" size="sm">
                 <Link href={`/liga/rival?categoria=${activeCategory}`}>
                   <Plus className="h-4 w-4" />
@@ -138,7 +138,7 @@ export function LeagueBrowser({
           icon={Medal}
           title={`Sin equipos en ${meta.label}`}
           description={
-            isAdmin
+            canManage
               ? "Crea el equipo del club en Equipos y añade aquí a los rivales de esta liga."
               : "Cuando existan equipos de esta liga aparecerán ordenados por los resultados."
           }
@@ -147,7 +147,7 @@ export function LeagueBrowser({
         <div className="space-y-4">
           <StandingsTable rows={rows} />
 
-          {isAdmin ? (
+          {canManage ? (
             <Card>
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-center justify-between gap-3">

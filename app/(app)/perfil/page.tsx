@@ -12,7 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProgressCard } from "@/components/game/progress-card";
 import { requireUser } from "@/lib/auth";
-import { PLAYER_CARD_SELECT, POSITION_LABELS, ROLE_LABELS, USER_PROGRESS_SELECT } from "@/lib/constants";
+import {
+  PLAYER_CARD_SELECT,
+  POSITION_LABELS,
+  ROLE_LABELS,
+  USER_PROGRESS_SELECT,
+  hasCoachAccess,
+} from "@/lib/constants";
 import { rewardLabel } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
 import type { PlayerCard, PointType, UserProgress } from "@/lib/types";
@@ -111,7 +117,13 @@ export default async function ProfilePage() {
           >
             {ROLE_LABELS[user.profile.role]}
           </Badge>
-          {user.profile.team ? <Badge variant="outline">{user.profile.team.name}</Badge> : null}
+          {user.profile.team ? (
+            <Badge variant="outline">Juega · {user.profile.team.name}</Badge>
+          ) : null}
+          {user.profile.coached_team &&
+          user.profile.coached_team.id !== user.profile.team?.id ? (
+            <Badge variant="outline">Entrena · {user.profile.coached_team.name}</Badge>
+          ) : null}
           {player?.position ? (
             <Badge variant="outline">{POSITION_LABELS[player.position]}</Badge>
           ) : null}
@@ -155,7 +167,13 @@ export default async function ProfilePage() {
 
       <Card>
         <CardContent className="space-y-2 p-4 text-sm">
-          <Row label="Equipo" value={user.profile.team?.name ?? "Sin equipo"} />
+          <Row label="Juega en" value={user.profile.team?.name ?? "Sin equipo"} />
+          {hasCoachAccess(user.profile.role) ? (
+            <Row
+              label="Entrena"
+              value={user.profile.coached_team?.name ?? "Sin equipo asignado"}
+            />
+          ) : null}
           <Row
             label="Dorsal"
             value={player?.jersey_number != null ? `#${player.jersey_number}` : "—"}
@@ -165,7 +183,7 @@ export default async function ProfilePage() {
             value={player?.position ? POSITION_LABELS[player.position] : "—"}
           />
           <p className="pt-2 text-xs text-muted-foreground">
-            Puedes cambiar tu foto, tu cromo y tu dorsal desde Equipos. El resto de datos lo edita un administrador.
+            Puedes cambiar tu foto, tu cromo y tu dorsal desde Equipos. El equipo que juegas y el que entrenas los asigna un administrador.
           </p>
         </CardContent>
       </Card>
@@ -177,7 +195,7 @@ export default async function ProfilePage() {
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Evolución de rendimiento</h2>
-              {user.profile.role === "admin" && player.team_id ? (
+              {hasCoachAccess(user.profile.role) && player.team_id ? (
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/comparar?ids=${player.id}`}>Comparar</Link>
                 </Button>

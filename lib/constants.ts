@@ -195,8 +195,14 @@ export const PLAYER_ROSTER_SELECT =
 export const PLAYER_LINEUP_SELECT =
   "id, team_id, full_name, jersey_number, position, avatar_url" as const;
 
+const PROFILE_TEAM_FIELDS =
+  "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id";
+
 export const PROFILE_SESSION_SELECT =
-  "id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(id, name, short_name, logo_url, city, category, is_club_team, federation_team_id)" as const;
+  `id, email, full_name, avatar_url, role, team_id, coached_team_id, created_at, updated_at, team:teams!team_id(${PROFILE_TEAM_FIELDS}), coached_team:teams!coached_team_id(${PROFILE_TEAM_FIELDS})` as const;
+
+export const PROFILE_SESSION_SELECT_LEGACY =
+  `id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(${PROFILE_TEAM_FIELDS})` as const;
 
 export const USER_PROGRESS_SELECT =
   "user_id, xp, level, current_streak, longest_streak, last_checkin_on, equipped_title, equipped_frame, created_at, updated_at" as const;

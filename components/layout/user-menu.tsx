@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { KeyRound, LogOut, Newspaper, Shield, Target, UserRound } from "lucide-react";
+import { ClipboardList, KeyRound, LogOut, Newspaper, Shield, Target, UserRound } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
+import { hasCoachAccess } from "@/lib/constants";
 import { initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,14 @@ export function UserMenu({ user }: { user: SessionUser }) {
             Cambiar contraseña
           </Link>
         </DropdownMenuItem>
+        {hasCoachAccess(user.profile.role) ? (
+          <DropdownMenuItem asChild>
+            <Link href="/entrenador">
+              <ClipboardList className="h-4 w-4" />
+              Táctica
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         {user.profile.role === "admin" && (
           <DropdownMenuItem asChild>
             <Link href="/admin">

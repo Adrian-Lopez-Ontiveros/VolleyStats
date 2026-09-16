@@ -32,7 +32,7 @@ export default async function PlayerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { user, isAdmin } = await requireViewer();
+  const { user, canManage } = await requireViewer();
   const supabase = await createClient();
 
   const [{ data: player }, { data: events }, { data: card }] = await Promise.all([
@@ -91,7 +91,7 @@ export default async function PlayerDetailPage({
                     ]),
                   ]}
                 />
-                {isAdmin ? (
+                {canManage ? (
                   <>
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/comparar?ids=${id}`}>Comparar</Link>
@@ -111,7 +111,7 @@ export default async function PlayerDetailPage({
             {typed.position ? (
               <Badge variant="secondary">{POSITION_LABELS[typed.position]}</Badge>
             ) : null}
-            {isAdmin ? (
+            {canManage ? (
               typed.user_id ? (
                 <Badge>Cuenta vinculada</Badge>
               ) : (
@@ -140,7 +140,7 @@ export default async function PlayerDetailPage({
       <h2 className="mb-3 mt-8 text-lg font-semibold">Estadísticas totales</h2>
       <StatGrid stats={typed} />
 
-      {isAdmin ? (
+      {canManage ? (
         <div className="mt-8">
           <DeletePlayerButton playerId={id} />
         </div>

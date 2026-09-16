@@ -22,7 +22,7 @@ export default async function NewsDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { isAdmin } = await requireViewer();
+  const { canManage } = await requireViewer();
   const supabase = await createClient();
   const { data } = await supabase
     .from("news")
@@ -74,7 +74,7 @@ export default async function NewsDetailPage({
         </div>
       </article>
 
-      {isAdmin ? (
+      {canManage ? (
         <div className="mt-8 space-y-2 sm:mt-10 lg:flex lg:max-w-lg lg:gap-2 lg:space-y-0">
           <Button asChild variant="outline" className="w-full lg:flex-1">
             <Link href={`/noticias/${id}/editar`}>

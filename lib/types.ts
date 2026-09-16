@@ -115,12 +115,14 @@ export type Profile = {
   avatar_url: string | null;
   role: UserRole;
   team_id: string | null;
+  coached_team_id?: string | null;
   created_at: string;
   updated_at: string;
 };
 
 export type ProfileWithRelations = Profile & {
   team: Team | null;
+  coached_team?: Team | null;
   player: Player | null;
 };
 

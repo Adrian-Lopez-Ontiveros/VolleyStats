@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { PlayerCompare } from "@/components/stats/player-compare";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { getClubTeams, getPlayers } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import type { Player, PointType, Team } from "@/lib/types";
@@ -14,7 +14,7 @@ export default async function ComparePlayersPage({
   searchParams: Promise<{ ids?: string; team?: string }>;
 }) {
   const { ids, team } = await searchParams;
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
 
   const [{ data: teams }, { data: players }] = await Promise.all([

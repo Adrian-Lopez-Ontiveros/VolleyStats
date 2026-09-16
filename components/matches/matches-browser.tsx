@@ -17,13 +17,13 @@ import type { MatchWithTeams } from "@/lib/types";
 
 export function MatchesBrowser({
   matches,
-  isAdmin,
+  canManage,
   isGuest = false,
   initialCategory,
   loadError,
 }: {
   matches: MatchWithTeams[];
-  isAdmin: boolean;
+  canManage: boolean;
   isGuest?: boolean;
   initialCategory: TeamCategory | "all";
   loadError?: string;
@@ -75,7 +75,7 @@ export function MatchesBrowser({
         title="Partidos"
         description="Partidos de CV Fuenlabrada. En Todos solo aparecen los del club; en cada liga ves todo el calendario."
         action={
-          isAdmin ? (
+          canManage ? (
             <Button asChild variant="accent" size="sm">
               <Link href="/partidos/nuevo">
                 <Plus className="h-4 w-4" />

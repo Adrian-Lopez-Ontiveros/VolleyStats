@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { LiveTracker } from "@/components/matches/live-tracker";
 import { PageHeader } from "@/components/page-header";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { canTrackLiveMatch } from "@/lib/federation/leagues";
 import {
   MATCH_EVENT_SELECT,
@@ -29,7 +29,7 @@ export default async function LiveMatchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
 
   const [{ data: match }, { data: events }, { data: lineup }, { data: subRows }] =

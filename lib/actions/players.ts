@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { hasCoachAccess } from "@/lib/constants";
+import { requireCoach, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PlayerPosition } from "@/lib/types";
 import { normalizeStoredPersonName } from "@/lib/utils";
@@ -18,7 +19,7 @@ const playerSchema = z.object({
 });
 
 export async function createPlayer(formData: FormData) {
-  await requireAdmin();
+  await requireCoach();
   const parsed = playerSchema.safeParse({
     fullName: formData.get("fullName"),
     teamId: formData.get("teamId") ?? "",
@@ -64,7 +65,7 @@ export async function createPlayer(formData: FormData) {
 }
 
 export async function updatePlayer(playerId: string, formData: FormData) {
-  await requireAdmin();
+  await requireCoach();
   const parsed = playerSchema.safeParse({
     fullName: formData.get("fullName"),
     teamId: formData.get("teamId") ?? "",
@@ -134,9 +135,9 @@ export async function setPlayerJersey(
   | { success: true; xpGained: number; leveledUp: boolean; level: number | null }
 > {
   const session = await requireUser();
-  const isAdmin = session.profile.role === "admin";
+  const canManage = hasCoachAccess(session.profile.role);
   const ownPlayerId = session.profile.player?.id ?? null;
-  if (!isAdmin && ownPlayerId !== playerId) {
+  if (!canManage && ownPlayerId !== playerId) {
     return { error: "Solo puedes editar tu dorsal." };
   }
 
@@ -163,7 +164,7 @@ export async function setPlayerJersey(
     .eq("id", playerId);
 
   if (error) {
-    if (/protect_player_updates|jersey_number/i.test(error.message) && !isAdmin) {
+    if (/protect_player_updates|jersey_number/i.test(error.message) && !canManage) {
       return {
         error:
           "No se pudo guardar el dorsal. Ejecuta la migración supabase/migrations/027_jersey_xp.sql.",
@@ -196,7 +197,7 @@ export async function setPlayerJersey(
 }
 
 export async function deletePlayer(playerId: string) {
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
   const { data: current } = await supabase
     .from("players")

@@ -51,7 +51,7 @@ export default async function TeamDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { isAdmin, user } = await requireViewer();
+  const { isAdmin, canManage, user } = await requireViewer();
   const supabase = await createClient();
 
   const [{ data: team, error: teamError }, { data: players, error: playersError }, { data: matches }] =
@@ -208,7 +208,7 @@ export default async function TeamDetailPage({
                 ]),
               ]}
             />
-            {isAdmin ? (
+            {canManage ? (
               <>
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/comparar?team=${id}`}>Comparar</Link>
@@ -304,7 +304,7 @@ export default async function TeamDetailPage({
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Plantilla</h2>
-            {isAdmin ? (
+            {canManage ? (
               <Button asChild size="sm" variant="outline">
                 <Link href={`/jugadores/nuevo?team=${id}`}>
                   <Plus className="h-4 w-4" />
@@ -322,7 +322,7 @@ export default async function TeamDetailPage({
                   key={player.id}
                   player={player}
                   href={`/jugadores/${player.id}`}
-                  canEditJersey={isAdmin || user?.profile.player?.id === player.id}
+                  canEditJersey={canManage || user?.profile.player?.id === player.id}
                 />
               ))}
             </div>

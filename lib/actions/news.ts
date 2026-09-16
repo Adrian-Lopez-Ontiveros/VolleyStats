@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { NEWS_BUCKET } from "@/lib/constants";
 import { clampCoverFocus, clampCoverZoom, MAX_COVER_ZOOM, MIN_COVER_ZOOM } from "@/lib/news";
 import { createClient } from "@/lib/supabase/server";
@@ -35,7 +35,7 @@ function parsePublishedAt(value?: string) {
 }
 
 export async function createNews(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireCoach();
   const parsed = newsSchema.safeParse({
     title: formData.get("title"),
     body: formData.get("body"),
@@ -85,7 +85,7 @@ export async function createNews(formData: FormData) {
 }
 
 export async function updateNews(newsId: string, formData: FormData) {
-  await requireAdmin();
+  await requireCoach();
   const parsed = newsSchema.safeParse({
     title: formData.get("title"),
     body: formData.get("body"),
@@ -133,7 +133,7 @@ export async function updateNews(newsId: string, formData: FormData) {
 }
 
 export async function deleteNews(newsId: string) {
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
   const { data: current } = await supabase
     .from("news")

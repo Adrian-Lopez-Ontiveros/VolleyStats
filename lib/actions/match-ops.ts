@@ -6,7 +6,7 @@ import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
 import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { notifyMatchFinished } from "@/lib/actions/notifications";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { applySlotSubstitutions, designatedLiberos, startingCourtByPosition } from "@/lib/court";
 import { currentOnCourtIds } from "@/lib/lineup";
 import { createClient } from "@/lib/supabase/server";
@@ -185,7 +185,7 @@ async function refreshPlayerStats(playerId: string | null) {
 }
 
 export async function deleteMatch(matchId: string) {
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
 
   const { data: events } = await supabase
@@ -212,7 +212,7 @@ export async function setMatchStatus(
   matchId: string,
   status: "scheduled" | "live" | "finished" | "cancelled"
 ) {
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
   const { error } = await supabase
     .from("matches")
@@ -259,7 +259,7 @@ export async function recordPoint(input: {
   awayRotation?: number | null;
   setNumber?: number | null;
 }) {
-  const session = await requireAdmin();
+  const session = await requireCoach();
   const supabase = await createClient();
 
   const { data: match, error: matchError } = await supabase
@@ -365,7 +365,7 @@ export async function recordPoint(input: {
 }
 
 export async function undoLastPoint(matchId: string) {
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
 
   const { data: lastEvent, error } = await supabase
@@ -423,7 +423,7 @@ const substitutionSchema = z.object({
 });
 
 export async function addSubstitution(matchId: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireCoach();
   const parsed = substitutionSchema.safeParse({
     playerOutId: formData.get("playerOutId"),
     playerInId: formData.get("playerInId"),
@@ -502,7 +502,7 @@ export async function addSubstitution(matchId: string, formData: FormData) {
 }
 
 export async function deleteSubstitution(matchId: string, substitutionId: string) {
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
   const { error } = await supabase
     .from("match_substitutions")
@@ -603,7 +603,7 @@ export async function setMatchLibero(
   kind: LiberoKind,
   playerId: string | null
 ) {
-  const session = await requireAdmin();
+  const session = await requireCoach();
   const supabase = await createClient();
   const { data: match } = await supabase
     .from("matches")
@@ -693,7 +693,7 @@ export async function setMatchLibero(
 }
 
 export async function activateMatchLibero(matchId: string, teamId: string, kind: LiberoKind) {
-  const session = await requireAdmin();
+  const session = await requireCoach();
   const supabase = await createClient();
   const { data: match } = await supabase
     .from("matches")

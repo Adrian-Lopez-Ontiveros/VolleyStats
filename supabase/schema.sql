@@ -73,6 +73,7 @@ create table if not exists public.profiles (
   avatar_url text,
   role public.user_role not null default 'player',
   team_id uuid references public.teams (id) on delete set null,
+  coached_team_id uuid references public.teams (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -166,6 +167,7 @@ create table if not exists public.match_substitutions (
 -- ---------- Índices ----------
 create index if not exists idx_profiles_role on public.profiles (role);
 create index if not exists idx_profiles_team on public.profiles (team_id);
+create index if not exists idx_profiles_coached_team on public.profiles (coached_team_id);
 create index if not exists idx_players_team on public.players (team_id);
 create index if not exists idx_players_user on public.players (user_id);
 create index if not exists idx_teams_category on public.teams (category);
@@ -551,11 +553,12 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "teams_write_admin" on public.teams;
-create policy "teams_write_admin"
+drop policy if exists "teams_write_staff" on public.teams;
+create policy "teams_write_staff"
 on public.teams for all
 to authenticated
-using (public.is_admin())
-with check (public.is_admin());
+using (public.is_coach_or_admin())
+with check (public.is_coach_or_admin());
 
 -- Profiles
 drop policy if exists "profiles_select_auth" on public.profiles;
@@ -587,17 +590,19 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "players_insert_admin" on public.players;
-create policy "players_insert_admin"
+drop policy if exists "players_insert_staff" on public.players;
+create policy "players_insert_staff"
 on public.players for insert
 to authenticated
-with check (public.is_admin());
+with check (public.is_coach_or_admin());
 
 drop policy if exists "players_update_admin" on public.players;
-create policy "players_update_admin"
+drop policy if exists "players_update_staff" on public.players;
+create policy "players_update_staff"
 on public.players for update
 to authenticated
-using (public.is_admin())
-with check (public.is_admin());
+using (public.is_coach_or_admin())
+with check (public.is_coach_or_admin());
 
 drop policy if exists "players_update_own_avatar" on public.players;
 create policy "players_update_own_avatar"
@@ -607,10 +612,11 @@ using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
 drop policy if exists "players_delete_admin" on public.players;
-create policy "players_delete_admin"
+drop policy if exists "players_delete_staff" on public.players;
+create policy "players_delete_staff"
 on public.players for delete
 to authenticated
-using (public.is_admin());
+using (public.is_coach_or_admin());
 
 -- Matches
 drop policy if exists "matches_select_auth" on public.matches;
@@ -621,11 +627,12 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "matches_write_admin" on public.matches;
-create policy "matches_write_admin"
+drop policy if exists "matches_write_staff" on public.matches;
+create policy "matches_write_staff"
 on public.matches for all
 to authenticated
-using (public.is_admin())
-with check (public.is_admin());
+using (public.is_coach_or_admin())
+with check (public.is_coach_or_admin());
 
 -- Match events
 drop policy if exists "events_select_auth" on public.match_events;
@@ -636,11 +643,12 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "events_write_admin" on public.match_events;
-create policy "events_write_admin"
+drop policy if exists "events_write_staff" on public.match_events;
+create policy "events_write_staff"
 on public.match_events for all
 to authenticated
-using (public.is_admin())
-with check (public.is_admin());
+using (public.is_coach_or_admin())
+with check (public.is_coach_or_admin());
 
 drop policy if exists "lineups_select_public" on public.match_lineups;
 create policy "lineups_select_public"
@@ -649,11 +657,12 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "lineups_write_admin" on public.match_lineups;
-create policy "lineups_write_admin"
+drop policy if exists "lineups_write_staff" on public.match_lineups;
+create policy "lineups_write_staff"
 on public.match_lineups for all
 to authenticated
-using (public.is_admin())
-with check (public.is_admin());
+using (public.is_coach_or_admin())
+with check (public.is_coach_or_admin());
 
 drop policy if exists "substitutions_select_public" on public.match_substitutions;
 create policy "substitutions_select_public"
@@ -662,11 +671,12 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "substitutions_write_admin" on public.match_substitutions;
-create policy "substitutions_write_admin"
+drop policy if exists "substitutions_write_staff" on public.match_substitutions;
+create policy "substitutions_write_staff"
 on public.match_substitutions for all
 to authenticated
-using (public.is_admin())
-with check (public.is_admin());
+using (public.is_coach_or_admin())
+with check (public.is_coach_or_admin());
 
 -- ---------- Storage: avatares ----------
 insert into storage.buckets (id, name, public)
@@ -724,6 +734,7 @@ begin
   new.role := old.role;
   new.email := old.email;
   new.full_name := old.full_name;
+  new.coached_team_id := old.coached_team_id;
   if old.team_id is not null then
     new.team_id := old.team_id;
   end if;
@@ -743,7 +754,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if auth.uid() is null or public.is_admin() then
+  if auth.uid() is null or public.is_coach_or_admin() then
     return new;
   end if;
 
@@ -1169,11 +1180,12 @@ to anon, authenticated
 using (true);
 
 drop policy if exists "news_write_admin" on public.news;
-create policy "news_write_admin"
+drop policy if exists "news_write_staff" on public.news;
+create policy "news_write_staff"
 on public.news for all
 to authenticated
-using (public.is_admin())
-with check (public.is_admin());
+using (public.is_coach_or_admin())
+with check (public.is_coach_or_admin());
 
 insert into storage.buckets (id, name, public)
 values ('news', 'news', true)
@@ -1185,23 +1197,26 @@ on storage.objects for select
 using (bucket_id = 'news');
 
 drop policy if exists "news_admin_insert" on storage.objects;
-create policy "news_admin_insert"
+drop policy if exists "news_staff_insert" on storage.objects;
+create policy "news_staff_insert"
 on storage.objects for insert
 to authenticated
-with check (bucket_id = 'news' and public.is_admin());
+with check (bucket_id = 'news' and public.is_coach_or_admin());
 
 drop policy if exists "news_admin_update" on storage.objects;
-create policy "news_admin_update"
+drop policy if exists "news_staff_update" on storage.objects;
+create policy "news_staff_update"
 on storage.objects for update
 to authenticated
-using (bucket_id = 'news' and public.is_admin())
-with check (bucket_id = 'news' and public.is_admin());
+using (bucket_id = 'news' and public.is_coach_or_admin())
+with check (bucket_id = 'news' and public.is_coach_or_admin());
 
 drop policy if exists "news_admin_delete" on storage.objects;
-create policy "news_admin_delete"
+drop policy if exists "news_staff_delete" on storage.objects;
+create policy "news_staff_delete"
 on storage.objects for delete
 to authenticated
-using (bucket_id = 'news' and public.is_admin());
+using (bucket_id = 'news' and public.is_coach_or_admin());
 
 -- Racha, XP, niveles, recompensas y predicciones (migraci�n 022)
 

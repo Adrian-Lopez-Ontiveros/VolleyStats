@@ -14,7 +14,7 @@ export default async function LeaguePage({
   searchParams: Promise<{ categoria?: string }>;
 }) {
   const { categoria: rawCategory } = await searchParams;
-  const { isAdmin } = await requireViewer();
+  const { canManage } = await requireViewer();
   const categoria = parseCategory(rawCategory);
 
   const [{ data: teams, error: teamsError }, { data: matches, error: matchesError }] =
@@ -24,7 +24,7 @@ export default async function LeaguePage({
     <LeagueBrowser
       teams={(teams ?? []) as Team[]}
       matches={(matches ?? []) as MatchStandingInput[]}
-      isAdmin={isAdmin}
+      canManage={canManage}
       initialCategory={categoria}
       loadError={teamsError?.message ?? matchesError?.message}
     />

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { NewsForm } from "@/components/news/news-form";
 import { PageHeader } from "@/components/page-header";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { NEWS_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import type { ClubNews } from "@/lib/types";
@@ -15,7 +15,7 @@ export default async function EditNewsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await requireAdmin();
+  const session = await requireCoach();
   const supabase = await createClient();
   const { data } = await supabase
     .from("news")

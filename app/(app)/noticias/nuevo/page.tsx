@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { NewsForm } from "@/components/news/news-form";
 import { PageHeader } from "@/components/page-header";
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Nueva noticia" };
 
 export default async function NewNewsPage() {
-  const session = await requireAdmin();
+  const session = await requireCoach();
 
   return (
     <>

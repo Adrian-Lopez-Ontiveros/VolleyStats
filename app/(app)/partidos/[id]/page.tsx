@@ -48,7 +48,7 @@ export default async function MatchDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { isAdmin } = await requireViewer();
+  const { canManage } = await requireViewer();
   const supabase = await createClient();
 
   const [
@@ -111,7 +111,7 @@ export default async function MatchDetailPage({
       : "CV Fuenlabrada";
   const roster = (clubPlayers ?? []) as Player[];
   const onCourtIds = clubTeamId ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId) : null;
-  const activity = isAdmin ? await getMatchActivity(id) : [];
+  const activity = canManage ? await getMatchActivity(id) : [];
   const exportRows = [
     ["Partido", `${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`],
     ["Fecha", typedMatch.scheduled_at],
@@ -184,7 +184,7 @@ export default async function MatchDetailPage({
           </BoxScoreReveal>
         ) : null}
 
-        {isAdmin ? (
+        {canManage ? (
           <MatchAdminActions
             matchId={typedMatch.id}
             status={typedMatch.status}
@@ -203,7 +203,7 @@ export default async function MatchDetailPage({
             onCourtPlayers={playersOnCourt(roster, onCourtIds)}
             benchPlayers={playersOnBench(roster, onCourtIds)}
             substitutions={typedSubs}
-            canEdit={isAdmin && typedMatch.status !== "cancelled"}
+            canEdit={canManage && typedMatch.status !== "cancelled"}
           />
         ) : null}
 
@@ -221,7 +221,7 @@ export default async function MatchDetailPage({
           />
         </section>
 
-        {isAdmin ? (
+        {canManage ? (
           <section>
             <h2 className="mb-3 text-lg font-semibold">Historial de cambios</h2>
             <ActivityLog entries={activity} />

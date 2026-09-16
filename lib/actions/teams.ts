@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { TEAM_CATEGORY_IDS } from "@/lib/categories";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 const teamSchema = z.object({
@@ -28,7 +28,7 @@ function revalidateTeams(teamId?: string) {
 }
 
 export async function createTeam(formData: FormData) {
-  await requireAdmin();
+  await requireCoach();
   const parsed = teamSchema.safeParse({
     name: formData.get("name"),
     shortName: formData.get("shortName") ?? "",
@@ -67,7 +67,7 @@ export async function createTeam(formData: FormData) {
 }
 
 export async function updateTeamLogo(teamId: string, logoUrl: string) {
-  await requireAdmin();
+  await requireCoach();
   const supabase = await createClient();
   const { error } = await supabase
     .from("teams")
@@ -81,7 +81,7 @@ export async function updateTeamLogo(teamId: string, logoUrl: string) {
 }
 
 export async function updateTeam(teamId: string, formData: FormData) {
-  await requireAdmin();
+  await requireCoach();
   const parsed = teamSchema.safeParse({
     name: formData.get("name"),
     shortName: formData.get("shortName") ?? "",

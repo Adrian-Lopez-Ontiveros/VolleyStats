@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function logMatchActivity(
@@ -9,7 +9,7 @@ export async function logMatchActivity(
   detail: string
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireCoach();
     const supabase = await createClient();
     await supabase.from("activity_log").insert({
       match_id: matchId,

@@ -12,14 +12,14 @@ export default async function MatchesPage({
   searchParams: Promise<{ categoria?: string }>;
 }) {
   const { categoria: rawCategory } = await searchParams;
-  const { isAdmin, isGuest } = await requireViewer();
+  const { canManage, isGuest } = await requireViewer();
   const categoria = isTeamCategory(rawCategory) ? rawCategory : "all";
   const { data, error } = await getMatchesList();
 
   return (
     <MatchesBrowser
       matches={(data ?? []) as MatchWithTeams[]}
-      isAdmin={isAdmin}
+      canManage={canManage}
       isGuest={isGuest}
       initialCategory={categoria}
       loadError={error?.message}

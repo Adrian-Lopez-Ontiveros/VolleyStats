@@ -10,13 +10,15 @@ const PUBLIC_PATHS = [
   "/offline",
 ];
 
-const ADMIN_PREFIXES = [
-  "/admin",
+const ADMIN_ONLY_PREFIXES = ["/admin"];
+
+const STAFF_PREFIXES = [
   "/equipos/nuevo",
   "/jugadores/nuevo",
   "/partidos/nuevo",
   "/noticias/nuevo",
   "/liga/rival",
+  "/comparar",
 ];
 
 const SPECTATOR_PREFIXES = ["/partidos", "/liga", "/equipos", "/jugadores", "/noticias"];
@@ -28,11 +30,16 @@ function isPublicPath(pathname: string) {
   );
 }
 
-function isAdminPath(pathname: string) {
+function isAdminOnlyPath(pathname: string) {
+  return ADMIN_ONLY_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+function isStaffPath(pathname: string) {
   if (pathname === "/entrenador" || pathname.startsWith("/entrenador/")) {
     return false;
   }
-  if (ADMIN_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+  if (isAdminOnlyPath(pathname)) return false;
+  if (STAFF_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return true;
   }
   if (pathname.includes("/editar")) return true;
@@ -101,7 +108,7 @@ export async function updateSession(request: NextRequest) {
   const isGuest = request.cookies.get(SPECTATOR_COOKIE)?.value === "1";
 
   if (!user && !isPublicPath(pathname) && pathname !== "/") {
-    if (isGuest && isSpectatorPath(pathname) && !isAdminPath(pathname)) {
+    if (isGuest && isSpectatorPath(pathname) && !isStaffPath(pathname) && !isAdminOnlyPath(pathname)) {
       return supabaseResponse;
     }
     const redirectUrl = request.nextUrl.clone();
@@ -117,14 +124,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && isAdminPath(pathname)) {
+  if (user && (isAdminOnlyPath(pathname) || isStaffPath(pathname))) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.role !== "admin") {
+    const role = profile?.role;
+    const allowed = isAdminOnlyPath(pathname)
+      ? role === "admin"
+      : role === "admin" || role === "coach";
+
+    if (!allowed) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/noticias";
       redirectUrl.search = "";

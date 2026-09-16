@@ -19,14 +19,14 @@ import type { Player, Team } from "@/lib/types";
 export function TeamsBrowser({
   teams,
   players,
-  isAdmin,
+  canManage = false,
   currentPlayerId = null,
   initialCategory,
   loadError,
 }: {
   teams: Team[];
   players: Player[];
-  isAdmin: boolean;
+  canManage?: boolean;
   currentPlayerId?: string | null;
   initialCategory: TeamCategory;
   loadError?: string;
@@ -54,7 +54,7 @@ export function TeamsBrowser({
         title="Equipos"
         description="Las tres plantillas de CV Fuenlabrada. Los rivales se gestionan desde Liga."
         action={
-          isAdmin && !typedTeam ? (
+          canManage && !typedTeam ? (
             <Button asChild variant="accent" size="sm">
               <Link href={`/equipos/nuevo?categoria=${activeCategory}`}>
                 <Plus className="h-4 w-4" />
@@ -74,7 +74,7 @@ export function TeamsBrowser({
           icon={CircleDot}
           title={`Sin equipo ${meta.label}`}
           description={
-            isAdmin
+            canManage
               ? "Crea el equipo del club para esta categoría. Los rivales se añaden desde la clasificación."
               : "Todavía no hay equipo del club en esta categoría."
           }
@@ -114,7 +114,7 @@ export function TeamsBrowser({
           <section>
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Plantilla</h2>
-              {isAdmin ? (
+              {canManage ? (
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/jugadores/nuevo?team=${typedTeam.id}`}>
                     <Plus className="h-4 w-4" />
@@ -137,9 +137,9 @@ export function TeamsBrowser({
                     key={player.id}
                     player={player}
                     href={`/jugadores/${player.id}`}
-                    canEditJersey={isAdmin || currentPlayerId === player.id}
+                    canEditJersey={canManage || currentPlayerId === player.id}
                     subtitle={
-                      isAdmin
+                      canManage
                         ? player.user_id
                           ? "Cuenta vinculada"
                           : "Pendiente de registro"

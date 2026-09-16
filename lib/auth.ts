@@ -5,15 +5,18 @@ import {
   SPECTATOR_COOKIE,
   PLAYER_ROSTER_SELECT,
   PROFILE_SESSION_SELECT,
+  PROFILE_SESSION_SELECT_LEGACY,
   hasCoachAccess,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { unwrapOne } from "@/lib/utils";
 import type { Player, ProfileWithRelations, SessionUser } from "@/lib/types";
 
 export type Viewer = {
   user: SessionUser | null;
   isAdmin: boolean;
   isCoach: boolean;
+  canManage: boolean;
   isGuest: boolean;
 };
 
@@ -38,7 +41,7 @@ async function loadSessionUser(): Promise<SessionUser | null> {
 
   if (!user) return null;
 
-  const [{ data: profile }, { data: player }] = await Promise.all([
+  const [{ data: profile, error: profileError }, { data: player }] = await Promise.all([
     supabase
       .from("profiles")
       .select(PROFILE_SESSION_SELECT as "*")
@@ -51,13 +54,26 @@ async function loadSessionUser(): Promise<SessionUser | null> {
       .maybeSingle(),
   ]);
 
-  if (!profile) return null;
+  let resolved = profile;
+  if (!resolved && profileError && /coached_team_id/i.test(profileError.message)) {
+    const fallback = await supabase
+      .from("profiles")
+      .select(PROFILE_SESSION_SELECT_LEGACY as "*")
+      .eq("id", user.id)
+      .maybeSingle();
+    resolved = fallback.data;
+  }
 
+  if (!resolved) return null;
+
+  const typed = resolved as ProfileWithRelations;
   return {
     id: user.id,
-    email: user.email ?? profile.email,
+    email: user.email ?? typed.email,
     profile: {
-      ...(profile as ProfileWithRelations),
+      ...typed,
+      team: unwrapOne(typed.team),
+      coached_team: unwrapOne(typed.coached_team ?? null),
       player: (player as Player | null) ?? null,
     },
   };
@@ -94,16 +110,18 @@ export async function requireUser() {
 export async function requireViewer(): Promise<Viewer> {
   const user = await getSessionUser();
   if (user) {
+    const staff = hasCoachAccess(user.profile.role);
     return {
       user,
       isAdmin: user.profile.role === "admin",
-      isCoach: hasCoachAccess(user.profile.role),
+      isCoach: staff,
+      canManage: staff,
       isGuest: false,
     };
   }
 
   if (await isSpectatorGuest()) {
-    return { user: null, isAdmin: false, isCoach: false, isGuest: true };
+    return { user: null, isAdmin: false, isCoach: false, canManage: false, isGuest: true };
   }
 
   redirect("/login");

@@ -1,5 +1,6 @@
 import {
   CircleDot,
+  ClipboardList,
   Medal,
   Target,
   Newspaper,
@@ -32,6 +33,7 @@ const memberItems: AppNavItem[] = [
 
 export function getAppNavItems({
   isAdmin,
+  isCoach,
   isGuest,
 }: {
   isAdmin: boolean;
@@ -42,6 +44,7 @@ export function getAppNavItems({
 
   return [
     ...memberItems,
+    ...(isCoach ? [{ href: "/entrenador", label: "Táctica", icon: ClipboardList }] : []),
     { href: "/perfil", label: "Perfil", icon: UserRound },
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
