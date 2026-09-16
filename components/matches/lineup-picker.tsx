@@ -15,7 +15,57 @@ import {
   type CourtSlots,
 } from "@/lib/court";
 import { cn, formatJersey } from "@/lib/utils";
-import type { LiberoKind, MatchLineupEntry, Player } from "@/lib/types";
+import type { LiberoKind, MatchLineupEntry, Player, PlayerPosition } from "@/lib/types";
+
+const POSITION_ORDER: (PlayerPosition | "none")[] = [
+  "colocador",
+  "opuesto",
+  "receptor",
+  "central",
+  "universal",
+  "libero",
+  "none",
+];
+
+const COURT_PREFERRED: Record<CourtPosition, PlayerPosition[]> = {
+  1: ["colocador", "opuesto"],
+  2: ["opuesto", "colocador"],
+  3: ["central"],
+  4: ["receptor", "opuesto"],
+  5: ["receptor"],
+  6: ["central"],
+};
+
+function positionKey(player: Player): PlayerPosition | "none" {
+  return player.position ?? "none";
+}
+
+function positionLabel(key: PlayerPosition | "none") {
+  return key === "none" ? "Sin posición" : POSITION_LABELS[key];
+}
+
+function groupPlayers(players: Player[], preferred: PlayerPosition[] = []) {
+  const groups = new Map<PlayerPosition | "none", Player[]>();
+  for (const player of players) {
+    const key = positionKey(player);
+    const list = groups.get(key) ?? [];
+    list.push(player);
+    groups.set(key, list);
+  }
+  const preferredSet = new Set(preferred);
+  const keys = POSITION_ORDER.filter((key) => groups.has(key)).sort((a, b) => {
+    const aPref = a !== "none" && preferredSet.has(a) ? 0 : 1;
+    const bPref = b !== "none" && preferredSet.has(b) ? 0 : 1;
+    if (aPref !== bPref) return aPref - bPref;
+    return POSITION_ORDER.indexOf(a) - POSITION_ORDER.indexOf(b);
+  });
+  return keys.map((key) => ({
+    key,
+    label: positionLabel(key),
+    preferred: key !== "none" && preferredSet.has(key),
+    players: groups.get(key) ?? [],
+  }));
+}
 
 function emptySlots(): Record<CourtPosition, string> {
   return { 1: "", 2: "", 3: "", 4: "", 5: "", 6: "" };
@@ -113,16 +163,7 @@ export function LineupPicker({
       return;
     }
 
-    setSlots((current) => {
-      const next = { ...current };
-      const previousOwner = next[activeSlot];
-      const fromPosition = COURT_POSITIONS.find((position) => next[position] === playerId);
-      next[activeSlot] = playerId;
-      if (fromPosition && fromPosition !== activeSlot) {
-        next[fromPosition] = previousOwner;
-      }
-      return next;
-    });
+    setSlots((current) => ({ ...current, [activeSlot]: playerId }));
     if (receptionId === playerId) setReceptionId("");
     if (defenseId === playerId) setDefenseId("");
     setActiveSlot(null);
@@ -144,6 +185,38 @@ export function LineupPicker({
       : "Jugador";
   const currentLiberoId =
     activeSlot === "reception" ? receptionId : activeSlot === "defense" ? defenseId : "";
+  const currentCourtId =
+    activeSlot && !isLiberoSlot ? slots[activeSlot as CourtPosition] : "";
+
+  const pickerPlayers = useMemo(() => {
+    if (!activeSlot) return [];
+    const currentId = isLiberoSlot ? currentLiberoId : currentCourtId;
+    const otherLiberoId = activeSlot === "reception" ? defenseId : activeSlot === "defense" ? receptionId : "";
+
+    return players.filter((player) => {
+      if (player.id === currentId) return true;
+      if (placedIds.has(player.id)) {
+        return isLiberoSlot && player.id === otherLiberoId;
+      }
+      if (isLiberoSlot) return player.position === "libero";
+      return true;
+    });
+  }, [
+    activeSlot,
+    isLiberoSlot,
+    currentLiberoId,
+    currentCourtId,
+    placedIds,
+    players,
+    receptionId,
+    defenseId,
+  ]);
+
+  const pickerGroups = useMemo(() => {
+    const preferred =
+      activeSlot && !isLiberoSlot ? COURT_PREFERRED[activeSlot as CourtPosition] : [];
+    return groupPlayers(pickerPlayers, preferred);
+  }, [activeSlot, isLiberoSlot, pickerPlayers]);
 
   return (
     <div className="space-y-3">
@@ -218,12 +291,12 @@ export function LineupPicker({
             <SheetTitle>{sheetTitle}</SheetTitle>
             <SheetDescription>
               {isLiberoSlot
-                ? "Puedes repetir el mismo líbero en recepción y defensa, o elegir uno distinto para cada rol."
-                : "El dorsal se verá en esa casilla. Si ya estaba en otra, se intercambian."}
+                ? "Solo aparecen las líberos. Puedes repetir la misma en recepción y defensa."
+                : "Agrupadas por posición; puedes colocar a cualquiera en esta casilla. Quien ya está en pista no sale."}
             </SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-4">
-            {(isLiberoSlot ? currentLiberoId : activeSlot && slots[activeSlot]) ? (
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-4">
+            {(isLiberoSlot ? currentLiberoId : currentCourtId) ? (
               <button
                 type="button"
                 onClick={clearActive}
@@ -232,52 +305,61 @@ export function LineupPicker({
                 Quitar de esta posición
               </button>
             ) : null}
-            {players.map((player) => {
-              const onCourtAt = COURT_POSITIONS.find((position) => slots[position] === player.id);
-              const reception = receptionId === player.id;
-              const defense = defenseId === player.id;
-              const selected =
-                (activeSlot === "reception" && reception) ||
-                (activeSlot === "defense" && defense) ||
-                (activeSlot !== "reception" &&
-                  activeSlot !== "defense" &&
-                  activeSlot !== null &&
-                  slots[activeSlot] === player.id);
-              return (
-                <button
-                  key={player.id}
-                  type="button"
-                  onClick={() => assignPlayer(player.id)}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left",
-                    selected ? "border-primary bg-primary text-primary-foreground" : "bg-card"
-                  )}
-                >
-                  <span className="min-w-0">
-                    <span className="block font-semibold leading-tight">
-                      {formatJersey(player.jersey_number)} {player.full_name}
-                    </span>
-                    <span
-                      className={cn(
-                        "block text-xs",
-                        selected ? "text-primary-foreground/80" : "text-muted-foreground"
-                      )}
-                    >
-                      {player.position ? POSITION_LABELS[player.position] : "Sin posición"}
-                    </span>
-                  </span>
-                  {onCourtAt ? (
-                    <Badge variant={selected ? "secondary" : "outline"}>P{onCourtAt}</Badge>
-                  ) : reception && defense ? (
-                    <Badge variant={selected ? "secondary" : "accent"}>Ambos</Badge>
-                  ) : reception ? (
-                    <Badge variant={selected ? "secondary" : "accent"}>Recepción</Badge>
-                  ) : defense ? (
-                    <Badge variant={selected ? "secondary" : "accent"}>Defensa</Badge>
-                  ) : null}
-                </button>
-              );
-            })}
+            {pickerPlayers.length === 0 ? (
+              <p className="rounded-xl bg-secondary px-3 py-2 text-sm text-muted-foreground">
+                {isLiberoSlot
+                  ? "No hay líberos libres en la plantilla. Asigna la posición Líbero a las jugadoras."
+                  : "No quedan jugadoras libres para esta casilla."}
+              </p>
+            ) : (
+              pickerGroups.map((group) => (
+                <div key={group.key} className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                    {group.preferred ? " · habitual aquí" : ""}
+                  </p>
+                  {group.players.map((player) => {
+                    const selected =
+                      (activeSlot === "reception" && receptionId === player.id) ||
+                      (activeSlot === "defense" && defenseId === player.id) ||
+                      (!isLiberoSlot && currentCourtId === player.id);
+                    const bothLiberos = receptionId === player.id && defenseId === player.id;
+                    return (
+                      <button
+                        key={player.id}
+                        type="button"
+                        onClick={() => assignPlayer(player.id)}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left",
+                          selected ? "border-primary bg-primary text-primary-foreground" : "bg-card"
+                        )}
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-semibold leading-tight">
+                            {formatJersey(player.jersey_number)} {player.full_name}
+                          </span>
+                          <span
+                            className={cn(
+                              "block text-xs",
+                              selected ? "text-primary-foreground/80" : "text-muted-foreground"
+                            )}
+                          >
+                            {player.position ? POSITION_LABELS[player.position] : "Sin posición"}
+                          </span>
+                        </span>
+                        {bothLiberos ? (
+                          <Badge variant={selected ? "secondary" : "accent"}>Ambos</Badge>
+                        ) : receptionId === player.id ? (
+                          <Badge variant={selected ? "secondary" : "accent"}>Recepción</Badge>
+                        ) : defenseId === player.id ? (
+                          <Badge variant={selected ? "secondary" : "accent"}>Defensa</Badge>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))
+            )}
           </div>
         </SheetContent>
       </Sheet>

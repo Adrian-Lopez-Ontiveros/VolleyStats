@@ -711,7 +711,12 @@ export function LiveTracker({
                 Quitar este líbero
               </button>
             ) : null}
-            {liberoTeamPlayers.map((player) => {
+            {liberoTeamPlayers
+              .filter(
+                (player) =>
+                  player.position === "libero" || player.id === currentLiberoId
+              )
+              .map((player) => {
               const selected = currentLiberoId === player.id;
               const onCourt = liberoOnCourtIds?.has(player.id) ?? false;
               return (
