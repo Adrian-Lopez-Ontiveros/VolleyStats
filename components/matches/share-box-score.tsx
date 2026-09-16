@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Printer, Share2 } from "lucide-react";
+import { Download, FileDown, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
+import { downloadBlob, jpegToPdfBlob } from "@/lib/download-pdf";
 
 export function ShareBoxScore({
   captureId,
@@ -65,6 +66,32 @@ export function ShareBoxScore({
     }
   }
 
+  async function onPdf() {
+    setPending(true);
+    try {
+      const dataUrl = await capturePng();
+      const image = new Image();
+      image.src = dataUrl;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No se pudo generar el PDF");
+      ctx.fillStyle = "#0B1F3A";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0);
+      const jpegUrl = canvas.toDataURL("image/jpeg", 0.92);
+      const jpeg = Uint8Array.from(atob(jpegUrl.split(",")[1] ?? ""), (char) => char.charCodeAt(0));
+      const pdf = jpegToPdfBlob(jpeg, image.width, image.height);
+      downloadBlob(pdf, `${fileName}.pdf`);
+    } catch {
+      toast.error("No se pudo descargar el PDF.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div className="print-hidden grid grid-cols-3 gap-2">
       <Button variant="accent" disabled={pending} onClick={onShare}>
@@ -75,8 +102,8 @@ export function ShareBoxScore({
         <Download className="h-4 w-4" />
         Imagen
       </Button>
-      <Button variant="outline" onClick={() => window.print()}>
-        <Printer className="h-4 w-4" />
+      <Button variant="outline" disabled={pending} onClick={onPdf}>
+        <FileDown className="h-4 w-4" />
         PDF
       </Button>
     </div>
