@@ -65,7 +65,9 @@ export function AttackServeCards({
           value={formatSkillRate(reception.goodRate)}
           hint={
             reception.total
-              ? `${reception.good} buenas · ${reception.medium} medias · ${reception.bad} malas`
+              ? `${reception.good} buenas · ${reception.medium} medias · ${reception.bad} malas${
+                  reception.errors ? ` · ${reception.errors} err` : ""
+                }`
               : "Sin recepciones"
           }
         />

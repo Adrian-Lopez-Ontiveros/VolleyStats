@@ -119,6 +119,41 @@ export const POINT_TYPE_META: Record<
     buttonClassName:
       "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100",
   },
+  reception_error: {
+    label: "Error de recepción",
+    short: "ERX",
+    className: "bg-rose-100 text-rose-950",
+    buttonClassName:
+      "border-rose-400 bg-rose-100 text-rose-950 hover:bg-rose-200",
+  },
+  defense_good: {
+    label: "Defensa buena",
+    short: "DB",
+    className: "bg-emerald-100 text-emerald-950",
+    buttonClassName:
+      "border-emerald-400 bg-emerald-100 text-emerald-950 hover:bg-emerald-200",
+  },
+  defense_medium: {
+    label: "Defensa media",
+    short: "DM",
+    className: "bg-amber-100 text-amber-950",
+    buttonClassName:
+      "border-amber-400 bg-amber-100 text-amber-950 hover:bg-amber-200",
+  },
+  defense_bad: {
+    label: "Defensa mala",
+    short: "DX",
+    className: "bg-rose-50 text-rose-900",
+    buttonClassName:
+      "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100",
+  },
+  defense_error: {
+    label: "Error de defensa",
+    short: "EDX",
+    className: "bg-rose-100 text-rose-950",
+    buttonClassName:
+      "border-rose-400 bg-rose-100 text-rose-950 hover:bg-rose-200",
+  },
 };
 
 export const POSITION_LABELS: Record<PlayerPosition, string> = {

@@ -32,7 +32,12 @@ export type PointType =
   | "serve_in"
   | "reception_good"
   | "reception_medium"
-  | "reception_bad";
+  | "reception_bad"
+  | "reception_error"
+  | "defense_good"
+  | "defense_medium"
+  | "defense_bad"
+  | "defense_error";
 
 export type PlayerPosition =
   | "opuesto"

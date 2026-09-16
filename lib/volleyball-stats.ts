@@ -20,6 +20,16 @@ export type ReceptionStats = {
   good: number;
   medium: number;
   bad: number;
+  errors: number;
+  total: number;
+  goodRate: number | null;
+};
+
+export type DefenseStats = {
+  good: number;
+  medium: number;
+  bad: number;
+  errors: number;
   total: number;
   goodRate: number | null;
 };
@@ -108,13 +118,30 @@ export function receptionStatsFromEvents(events: SkillEvent[]): ReceptionStats {
   let good = 0;
   let medium = 0;
   let bad = 0;
+  let errors = 0;
   for (const event of events) {
     if (event.point_type === "reception_good") good += 1;
     else if (event.point_type === "reception_medium") medium += 1;
     else if (event.point_type === "reception_bad") bad += 1;
+    else if (event.point_type === "reception_error") errors += 1;
   }
-  const total = good + medium + bad;
-  return { good, medium, bad, total, goodRate: rate(good, total) };
+  const total = good + medium + bad + errors;
+  return { good, medium, bad, errors, total, goodRate: rate(good, total) };
+}
+
+export function defenseStatsFromEvents(events: SkillEvent[]): DefenseStats {
+  let good = 0;
+  let medium = 0;
+  let bad = 0;
+  let errors = 0;
+  for (const event of events) {
+    if (event.point_type === "defense_good") good += 1;
+    else if (event.point_type === "defense_medium") medium += 1;
+    else if (event.point_type === "defense_bad") bad += 1;
+    else if (event.point_type === "defense_error") errors += 1;
+  }
+  const total = good + medium + bad + errors;
+  return { good, medium, bad, errors, total, goodRate: rate(good, total) };
 }
 
 export function formatSkillRate(value: number | null) {

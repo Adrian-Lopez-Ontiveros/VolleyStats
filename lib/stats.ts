@@ -269,6 +269,14 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
     case "reception_bad":
       sample.receptionBad += 1;
       break;
+    case "reception_error":
+    case "defense_error":
+      sample.errors += 1;
+      break;
+    case "defense_good":
+    case "defense_medium":
+    case "defense_bad":
+      break;
   }
   sample.attackAttempts = sample.attackKills + sample.attackErrors + sample.attackContinuations;
   sample.attackEffPct =
@@ -447,6 +455,11 @@ export function emptyPointTypeCounts(): PointTypeCounts {
     reception_good: 0,
     reception_medium: 0,
     reception_bad: 0,
+    reception_error: 0,
+    defense_good: 0,
+    defense_medium: 0,
+    defense_bad: 0,
+    defense_error: 0,
   };
 }
 
@@ -455,7 +468,12 @@ export function countChartPointTypes(
 ): PointTypeCounts {
   const counts = emptyPointTypeCounts();
   for (const event of events) {
-    if (event.point_type === "attack_error" || event.point_type === "serve_error") {
+    if (
+      event.point_type === "attack_error" ||
+      event.point_type === "serve_error" ||
+      event.point_type === "reception_error" ||
+      event.point_type === "defense_error"
+    ) {
       counts.error += 1;
     } else if (
       event.point_type === "attack" ||

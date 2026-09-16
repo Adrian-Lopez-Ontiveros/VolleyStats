@@ -32,10 +32,21 @@ do $$ begin
     'serve_in',
     'reception_good',
     'reception_medium',
-    'reception_bad'
+    'reception_bad',
+    'reception_error',
+    'defense_good',
+    'defense_medium',
+    'defense_bad',
+    'defense_error'
   );
 exception when duplicate_object then null;
 end $$;
+
+alter type public.point_type add value if not exists 'reception_error';
+alter type public.point_type add value if not exists 'defense_good';
+alter type public.point_type add value if not exists 'defense_medium';
+alter type public.point_type add value if not exists 'defense_bad';
+alter type public.point_type add value if not exists 'defense_error';
 
 do $$ begin
   create type public.player_position as enum (

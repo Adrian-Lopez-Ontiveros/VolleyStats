@@ -51,7 +51,7 @@ type PendingTarget = {
   player?: Player;
 };
 
-type ActionGroup = "punto" | "ataque" | "saque" | "recepcion";
+type ActionGroup = "punto" | "ataque" | "saque" | "recepcion" | "defensa";
 
 const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = [
   {
@@ -72,7 +72,12 @@ const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = 
   {
     id: "recepcion",
     label: "Recepción",
-    types: ["reception_good", "reception_medium", "reception_bad"],
+    types: ["reception_good", "reception_medium", "reception_bad", "reception_error"],
+  },
+  {
+    id: "defensa",
+    label: "Defensa",
+    types: ["defense_good", "defense_medium", "defense_bad", "defense_error"],
   },
 ];
 
@@ -805,18 +810,18 @@ export function LiveTracker({
                 : `Punto de ${target?.teamName ?? ""}`}
             </SheetTitle>
             <SheetDescription>
-              Un error de ataque o saque suma el punto al rival. Continuación, saque
-              dentro y recepción no cambian el marcador.
+              Un error de ataque, saque, recepción o defensa suma el punto al rival.
+              Continuación, saque dentro, recepción y defensa no cambian el marcador.
             </SheetDescription>
           </SheetHeader>
-          <div className="grid grid-cols-4 gap-1 rounded-xl bg-secondary p-1">
+          <div className="grid grid-cols-5 gap-1 rounded-xl bg-secondary p-1">
             {ACTION_GROUPS.map((group) => (
               <button
                 key={group.id}
                 type="button"
                 onClick={() => setActionGroup(group.id)}
                 className={cn(
-                  "rounded-lg px-1 py-1.5 text-[11px] font-semibold",
+                  "rounded-lg px-0.5 py-1.5 text-[10px] font-semibold sm:text-[11px]",
                   actionGroup === group.id
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground"

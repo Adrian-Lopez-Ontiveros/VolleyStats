@@ -6,7 +6,13 @@ import {
 } from "@/lib/constants";
 import type { MatchEvent, PointType, SetScore } from "@/lib/types";
 
-const OWN_ERROR_TYPES: PointType[] = ["error", "attack_error", "serve_error"];
+const OWN_ERROR_TYPES: PointType[] = [
+  "error",
+  "attack_error",
+  "serve_error",
+  "reception_error",
+  "defense_error",
+];
 
 const NON_SCORING_TYPES: PointType[] = [
   "attack_continuation",
@@ -14,6 +20,9 @@ const NON_SCORING_TYPES: PointType[] = [
   "reception_good",
   "reception_medium",
   "reception_bad",
+  "defense_good",
+  "defense_medium",
+  "defense_bad",
 ];
 
 export function isScoringAction(pointType: PointType) {
@@ -162,6 +171,8 @@ export function statFromPointType(pointType: PointType) {
     case "error":
     case "attack_error":
     case "serve_error":
+    case "reception_error":
+    case "defense_error":
       return "errors" as const;
     case "opponent_error":
       return "opponent_errors" as const;

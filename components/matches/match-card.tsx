@@ -53,18 +53,19 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
               )}
             >
               <p className="text-xl font-bold tabular-nums leading-none">
-                {match.home_sets} – {match.away_sets}
+                {match.home_points} – {match.away_points}
               </p>
-              {match.status === "live" ? (
-                <p
-                  className={cn(
-                    "mt-1 text-[10px] uppercase tracking-wide",
-                    isFriendlyMatch(match) ? "text-orange-700" : "text-orange-300"
-                  )}
-                >
-                  {match.home_points}-{match.away_points}
-                </p>
-              ) : null}
+              <p
+                className={cn(
+                  "mt-1 text-[10px] font-semibold uppercase tracking-wide",
+                  isFriendlyMatch(match) ? "text-orange-700" : "text-orange-300"
+                )}
+              >
+                Sets{" "}
+                <span className="tabular-nums">
+                  {match.home_sets}–{match.away_sets}
+                </span>
+              </p>
             </div>
             <TeamSide team={match.away_team} align="left" caption="Visitante" />
           </div>
