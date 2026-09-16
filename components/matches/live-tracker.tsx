@@ -1,10 +1,10 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { activateMatchLibero, addSubstitution, recordPoint, setMatchLibero, undoLastPoint } from "@/lib/actions/matches";
+import { activateMatchLibero, addSubstitution, recordPoint, setMatchLibero, undoPoint } from "@/lib/actions/matches";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
@@ -27,7 +27,7 @@ import { PointHistory } from "@/components/matches/point-history";
 import { Scoreboard } from "@/components/matches/scoreboard";
 import { VolleyballCourt } from "@/components/matches/volleyball-court";
 import { TeamLogo } from "@/components/teams/team-logo";
-import { useLiveMatchEvents } from "@/components/matches/use-live-match-events";
+import { isLocalEventId, useLiveMatchEvents } from "@/components/matches/use-live-match-events";
 import {
   LIBERO_KIND_LABEL,
   currentCourtSlots,
@@ -116,7 +116,12 @@ export function LiveTracker({
   });
   const mergedEvents = useMemo(() => {
     const extras: MatchEventWithPlayer[] = pendingForMatch
-      .filter((item) => !liveEvents.some((event) => event.id === item.id))
+      .filter(
+        (item) =>
+          !liveEvents.some(
+            (event) => event.id === item.id || event.client_id === item.id
+          )
+      )
       .map((item) => ({
         id: item.id,
         match_id: item.matchId,
@@ -133,6 +138,7 @@ export function LiveTracker({
         home_rotation: item.homeRotation,
         away_rotation: item.awayRotation,
         point_type: item.pointType,
+        client_id: item.id,
         created_by: null,
         created_at: item.createdAt,
         player: item.player,
@@ -259,14 +265,20 @@ export function LiveTracker({
     [liveLineup, liveSubstitutions, awayPlayers, match.away_team_id]
   );
 
-  useEffect(() => {
-    let cancelled = false;
+  const flushingRef = useRef(false);
+  const confirmRef = useRef(confirmOptimistic);
+  const removeOptimisticRef = useRef(removeOptimistic);
+  confirmRef.current = confirmOptimistic;
+  removeOptimisticRef.current = removeOptimistic;
 
-    async function flushQueue() {
-      if (typeof navigator !== "undefined" && !navigator.onLine) return;
-      const items = queueForMatch(match.id);
-      if (items.length === 0) return;
-      for (const item of items) {
+  const flushQueue = useCallback(async () => {
+    if (flushingRef.current) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    flushingRef.current = true;
+    try {
+      while (true) {
+        const item = queueForMatch(match.id)[0];
+        if (!item) break;
         try {
           const result = await recordPoint({
             matchId: item.matchId,
@@ -277,46 +289,45 @@ export function LiveTracker({
             homeRotation: item.homeRotation,
             awayRotation: item.awayRotation,
             setNumber: item.setNumber,
+            clientId: item.id,
+            liveFast: true,
           });
           if (result.error) {
-            if (!isNetworkError(result.error)) {
-              toast.error(result.error);
-              removeQueued(item.id);
-            }
-            break;
+            if (isNetworkError(result.error)) break;
+            toast.error(result.error);
+            removeQueued(item.id);
+            removeOptimisticRef.current(item.id);
+            continue;
           }
           removeQueued(item.id);
-          if (result.event) {
-            confirmOptimistic(item.id, {
-              ...result.event,
+          if ("event" in result && result.event && "id" in result.event) {
+            confirmRef.current(item.id, {
+              ...(result.event as MatchEventWithPlayer),
               player: item.player,
             });
           }
         } catch (error) {
-          if (!isNetworkError(error)) {
-            toast.error("No se pudo sincronizar una acción pendiente.");
-            removeQueued(item.id);
-            removeOptimistic(item.id);
-          }
-          break;
+          if (isNetworkError(error)) break;
+          toast.error("No se pudo sincronizar una acción pendiente.");
+          removeQueued(item.id);
+          removeOptimisticRef.current(item.id);
         }
       }
-      if (!cancelled) {
-        await pullEvents();
-        router.refresh();
-      }
+    } finally {
+      flushingRef.current = false;
     }
+  }, [match.id]);
 
+  useEffect(() => {
     const onOnline = () => {
       void flushQueue();
     };
     window.addEventListener("online", onOnline);
     void flushQueue();
     return () => {
-      cancelled = true;
       window.removeEventListener("online", onOnline);
     };
-  }, [match.id, router, confirmOptimistic, removeOptimistic, pullEvents]);
+  }, [flushQueue]);
 
   const openTeam = useCallback(
     (teamId: string, teamName: string, player?: Player) => {
@@ -364,87 +375,36 @@ export function LiveTracker({
       home_rotation: queuedItem.homeRotation,
       away_rotation: queuedItem.awayRotation,
       point_type: queuedItem.pointType,
+      client_id: queuedItem.id,
       created_by: null,
       created_at: queuedItem.createdAt,
       player: queuedItem.player,
     };
     setTarget(null);
     addOptimistic(optimistic);
-
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      enqueuePoint(queuedItem);
-      toast.message("Guardado sin conexión. Se enviará al recuperar internet.");
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        const result = await recordPoint({
-          matchId: match.id,
-          actingTeamId: queuedItem.actingTeamId,
-          playerId: queuedItem.playerId,
-          pointType: queuedItem.pointType,
-          servingTeamId: queuedItem.servingTeamId,
-          homeRotation: queuedItem.homeRotation,
-          awayRotation: queuedItem.awayRotation,
-          setNumber: queuedItem.setNumber,
-        });
-        if (result.error) {
-          if (isNetworkError(result.error)) {
-            enqueuePoint(queuedItem);
-            toast.message("Sin conexión. La acción queda pendiente.");
-            return;
-          }
-          removeOptimistic(queuedItem.id);
-          toast.error(result.error);
-          return;
-        }
-        if (result.event) {
-          confirmOptimistic(queuedItem.id, {
-            ...result.event,
-            player: queuedItem.player,
-          });
-        }
-        void pullEvents();
-      } catch (error) {
-        if (isNetworkError(error)) {
-          enqueuePoint(queuedItem);
-          toast.message("Sin conexión. La acción queda pendiente.");
-          return;
-        }
-        removeOptimistic(queuedItem.id);
-        toast.error("No se pudo registrar la acción.");
-      }
-    });
+    enqueuePoint(queuedItem);
+    void flushQueue();
   }
 
   function onUndo() {
-    const lastQueued = [...pendingForMatch].pop();
-    if (lastQueued) {
-      removeQueued(lastQueued.id);
-      removeOptimistic(lastQueued.id);
-      toast.success("Acción local deshecha.");
+    const last = mergedEvents[mergedEvents.length - 1];
+    if (!last) return;
+    removeOptimistic(last.id);
+    if (last.client_id) removeOptimistic(last.client_id);
+    const queuedId = pendingForMatch.find(
+      (item) => item.id === last.id || item.id === last.client_id
+    )?.id;
+    if (queuedId) {
+      removeQueued(queuedId);
       return;
     }
-    const lastLive = mergedEvents[mergedEvents.length - 1];
-    if (lastLive && (lastLive.id.startsWith("local-") || lastLive.id.startsWith("offline-"))) {
-      removeOptimistic(lastLive.id);
-      toast.success("Acción local deshecha.");
-      return;
-    }
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast.error("Necesitas conexión para deshacer un punto ya guardado.");
-      return;
-    }
-    const removed = removeLastEvent();
+    if (isLocalEventId(last.id)) return;
     startTransition(async () => {
-      const result = await undoLastPoint(match.id);
+      const result = await undoPoint(match.id, last.id);
       if (result.error) {
-        if (removed) addOptimistic(removed);
+        addOptimistic(last);
         toast.error(result.error);
-        return;
       }
-      void pullEvents();
     });
   }
 
@@ -523,13 +483,19 @@ export function LiveTracker({
   return (
     <div className="space-y-4">
       <Scoreboard match={displayMatch} />
+      {pendingForMatch.length > 0 ? (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-900">
+          {pendingForMatch.length === 1
+            ? "1 acción guardada aquí. Se está subiendo para el resto."
+            : `${pendingForMatch.length} acciones guardadas aquí. Se están subiendo para el resto.`}
+        </p>
+      ) : null}
 
       {!finished ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border bg-card px-3 py-2">
           <span className="text-xs font-medium text-muted-foreground">Saca</span>
           <button
             type="button"
-            disabled={pending}
             onClick={() => setServingOverride(match.home_team_id)}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-semibold",
@@ -542,7 +508,6 @@ export function LiveTracker({
           </button>
           <button
             type="button"
-            disabled={pending}
             onClick={() => setServingOverride(match.away_team_id)}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-semibold",
@@ -564,13 +529,13 @@ export function LiveTracker({
           <RotationPicker
             label={match.home_team.short_name || "Local"}
             value={homeRotation}
-            disabled={pending}
+            disabled={false}
             onChange={setHomeRotationOverride}
           />
           <RotationPicker
             label={match.away_team.short_name || "Visitante"}
             value={awayRotation}
-            disabled={pending}
+            disabled={false}
             onChange={setAwayRotationOverride}
           />
         </div>
@@ -585,7 +550,6 @@ export function LiveTracker({
           <Button
             size="xl"
             className="h-20 bg-sky-700 text-white hover:bg-sky-800"
-            disabled={pending}
             onClick={() => openTeam(match.home_team_id, match.home_team.name)}
           >
             Punto {match.home_team.short_name || "local"}
@@ -594,7 +558,6 @@ export function LiveTracker({
             size="xl"
             variant="accent"
             className="h-20"
-            disabled={pending}
             onClick={() => openTeam(match.away_team_id, match.away_team.name)}
           >
             Punto {match.away_team.short_name || "visitante"}
@@ -617,7 +580,7 @@ export function LiveTracker({
           }}
           serving={servingTeamId === match.home_team_id}
           canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
-          disabled={finished || pending}
+          disabled={finished}
           onPick={(player) => {
             const full = homePlayers.find((item) => item.id === player.id);
             if (full) openTeam(match.home_team_id, match.home_team.name, full);
@@ -639,7 +602,7 @@ export function LiveTracker({
           players={homeOnCourt}
           hasLineup={homeOnCourtIds !== null}
           canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
-          disabled={finished || pending}
+          disabled={finished}
           onPick={(player) => openTeam(match.home_team_id, match.home_team.name, player)}
           onSubstitute={() => {
             setSwapTeamId(match.home_team_id);
@@ -663,7 +626,7 @@ export function LiveTracker({
           }}
           serving={servingTeamId === match.away_team_id}
           canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
-          disabled={finished || pending}
+          disabled={finished}
           onPick={(player) => {
             const full = awayPlayers.find((item) => item.id === player.id);
             if (full) openTeam(match.away_team_id, match.away_team.name, full);
@@ -685,7 +648,7 @@ export function LiveTracker({
           players={awayOnCourt}
           hasLineup={awayOnCourtIds !== null}
           canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
-          disabled={finished || pending}
+          disabled={finished}
           onPick={(player) => openTeam(match.away_team_id, match.away_team.name, player)}
           onSubstitute={() => {
             setSwapTeamId(match.away_team_id);
@@ -698,7 +661,7 @@ export function LiveTracker({
       <Button
         variant="outline"
         className="w-full"
-        disabled={pending || mergedEvents.length === 0}
+        disabled={mergedEvents.length === 0}
         onClick={onUndo}
       >
         <Undo2 className="h-4 w-4" />
@@ -870,7 +833,6 @@ export function LiveTracker({
                 <button
                   key={type}
                   type="button"
-                  disabled={pending}
                   onClick={() => submitPoint(type)}
                   className={cn(
                     "flex h-16 items-center justify-center rounded-2xl border-2 px-3 text-center text-sm font-bold shadow-sm transition-colors disabled:opacity-50",

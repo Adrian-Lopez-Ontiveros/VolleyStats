@@ -263,6 +263,7 @@ export type MatchEvent = {
   home_rotation: number | null;
   away_rotation: number | null;
   point_type: PointType;
+  client_id?: string | null;
   created_by: string | null;
   created_at: string;
 };

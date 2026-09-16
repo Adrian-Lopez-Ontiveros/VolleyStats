@@ -5,24 +5,12 @@ import { MATCH_EVENT_SELECT, MATCH_LINEUP_SELECT, MATCH_SUB_SELECT } from "@/lib
 import { createClient } from "@/lib/supabase/client";
 import type { MatchEvent, MatchEventWithPlayer, MatchLineupEntry, MatchSubstitution, Player } from "@/lib/types";
 
-function isLocalId(id: string) {
+export function isLocalEventId(id: string) {
   return id.startsWith("local-") || id.startsWith("offline-");
 }
 
 function byTime(a: { created_at: string }, b: { created_at: string }) {
   return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-}
-
-function sameAction(
-  left: Pick<MatchEvent, "acting_team_id" | "point_type" | "player_id" | "created_at">,
-  right: Pick<MatchEvent, "acting_team_id" | "point_type" | "player_id" | "created_at">
-) {
-  return (
-    left.acting_team_id === right.acting_team_id &&
-    left.point_type === right.point_type &&
-    (left.player_id ?? null) === (right.player_id ?? null) &&
-    Math.abs(new Date(left.created_at).getTime() - new Date(right.created_at).getTime()) < 20000
-  );
 }
 
 function withPlayer(
@@ -43,17 +31,42 @@ function withPlayer(
     : { ...event, player: null };
 }
 
-function mergeEvents(incoming: MatchEventWithPlayer[], current: MatchEventWithPlayer[]) {
+function clientKey(event: Pick<MatchEvent, "id" | "client_id">) {
+  return event.client_id || event.id;
+}
+
+function adoptServerEvents(current: MatchEventWithPlayer[], incoming: MatchEventWithPlayer[]) {
+  const server = incoming.filter((event) => !isLocalEventId(event.id));
+  const locals = current.filter((event) => isLocalEventId(event.id));
+  const usedLocals = new Set<string>();
   const next = new Map<string, MatchEventWithPlayer>();
-  for (const event of incoming) next.set(event.id, event);
+
   for (const event of current) {
-    if (isLocalId(event.id)) {
-      const confirmed = incoming.some((item) => !isLocalId(item.id) && sameAction(item, event));
-      if (!confirmed) next.set(event.id, event);
+    if (!isLocalEventId(event.id)) next.set(event.id, event);
+  }
+
+  for (const event of server) {
+    const local = locals.find(
+      (item) =>
+        !usedLocals.has(item.id) &&
+        (item.id === event.client_id || item.client_id === event.client_id || item.id === event.id)
+    );
+    if (local) {
+      usedLocals.add(local.id);
+      next.set(event.id, {
+        ...event,
+        client_id: event.client_id || local.client_id || local.id,
+        player: event.player ?? local.player,
+      });
       continue;
     }
-    if (!next.has(event.id)) next.set(event.id, event);
+    next.set(event.id, event);
   }
+
+  for (const local of locals) {
+    if (!usedLocals.has(local.id)) next.set(local.id, local);
+  }
+
   return [...next.values()].sort(byTime);
 }
 
@@ -100,7 +113,7 @@ export function useLiveMatchEvents({
       const incoming = (eventRows as MatchEventWithPlayer[]).map((event) =>
         withPlayer(event, playersRef.current)
       );
-      setEvents((current) => mergeEvents(incoming, current));
+      setEvents((current) => adoptServerEvents(current, incoming));
     }
     if (subRows) {
       setSubstitutions(subRows as MatchSubstitution[]);
@@ -124,7 +137,7 @@ export function useLiveMatchEvents({
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         void pullEvents();
-      }, 80);
+      }, 120);
     };
 
     const channel = supabase
@@ -146,19 +159,15 @@ export function useLiveMatchEvents({
             return;
           }
           setEvents((current) =>
-            mergeEvents(
-              [
-                ...current.filter((event) => event.id !== row.id && !isLocalId(event.id)),
-                withPlayer(
-                  {
-                    ...row,
-                    player: null,
-                  },
-                  playersRef.current
-                ),
-              ],
-              current
-            )
+            adoptServerEvents(current, [
+              withPlayer(
+                {
+                  ...row,
+                  player: null,
+                },
+                playersRef.current
+              ),
+            ])
           );
         }
       )
@@ -182,13 +191,11 @@ export function useLiveMatchEvents({
     const onVisible = () => {
       if (document.visibilityState === "visible") void pullEvents();
     };
-    const poll = window.setInterval(onVisible, 3000);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
 
     return () => {
       if (timer) clearTimeout(timer);
-      window.clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
       supabase.removeChannel(channel);
@@ -196,18 +203,31 @@ export function useLiveMatchEvents({
   }, [matchId, pullEvents]);
 
   const addOptimistic = useCallback((event: MatchEventWithPlayer) => {
-    setEvents((current) => mergeEvents(current, [event]));
+    setEvents((current) => {
+      if (current.some((item) => item.id === event.id || clientKey(item) === clientKey(event))) {
+        return current;
+      }
+      return [...current, event].sort(byTime);
+    });
   }, []);
 
   const confirmOptimistic = useCallback((localId: string, event: MatchEventWithPlayer) => {
     setEvents((current) => {
-      const withoutLocal = current.filter((item) => item.id !== localId);
-      return mergeEvents(withoutLocal, [withPlayer(event, playersRef.current)]);
+      const resolved = withPlayer(
+        { ...event, client_id: event.client_id || localId },
+        playersRef.current
+      );
+      const withoutLocal = current.filter(
+        (item) => item.id !== localId && item.id !== resolved.id && item.client_id !== localId
+      );
+      return [...withoutLocal, resolved].sort(byTime);
     });
   }, []);
 
   const removeOptimistic = useCallback((localId: string) => {
-    setEvents((current) => current.filter((event) => event.id !== localId));
+    setEvents((current) =>
+      current.filter((event) => event.id !== localId && event.client_id !== localId)
+    );
   }, []);
 
   const removeLastEvent = useCallback(() => {

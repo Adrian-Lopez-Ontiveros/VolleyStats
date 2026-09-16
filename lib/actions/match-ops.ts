@@ -258,9 +258,24 @@ export async function recordPoint(input: {
   homeRotation?: number | null;
   awayRotation?: number | null;
   setNumber?: number | null;
+  clientId?: string | null;
+  liveFast?: boolean;
 }) {
   const session = await requireCoach();
   const supabase = await createClient();
+  const clientId = input.clientId?.trim() || null;
+
+  if (clientId) {
+    const { data: existing } = await supabase
+      .from("match_events")
+      .select(
+        "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, client_id, created_by, created_at"
+      )
+      .eq("match_id", input.matchId)
+      .eq("client_id", clientId)
+      .maybeSingle();
+    if (existing) return { success: true as const, event: existing };
+  }
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
@@ -279,7 +294,7 @@ export async function recordPoint(input: {
     return { error: "El equipo no participa en este partido" };
   }
 
-  if (input.playerId) {
+  if (input.playerId && !input.liveFast) {
     const { data: player } = await supabase
       .from("players")
       .select("id, team_id")
@@ -319,39 +334,74 @@ export async function recordPoint(input: {
       ? input.setNumber
       : match.current_set;
 
-  const { data: inserted, error: insertError } = await supabase
+  const row = {
+    match_id: match.id,
+    set_number: setNumber,
+    player_id: input.playerId || null,
+    acting_team_id: input.actingTeamId,
+    scoring_team_id: scoringTeamId,
+    serving_team_id: servingTeamId,
+    home_rotation: parseRotation(input.homeRotation),
+    away_rotation: parseRotation(input.awayRotation),
+    point_type: input.pointType,
+    client_id: clientId,
+    created_by: session.id,
+  };
+
+  let inserted: Record<string, unknown> | null = null;
+  const insert = await supabase
     .from("match_events")
-    .insert({
-      match_id: match.id,
-      set_number: setNumber,
-      player_id: input.playerId || null,
-      acting_team_id: input.actingTeamId,
-      scoring_team_id: scoringTeamId,
-      serving_team_id: servingTeamId,
-      home_rotation: parseRotation(input.homeRotation),
-      away_rotation: parseRotation(input.awayRotation),
-      point_type: input.pointType,
-      created_by: session.id,
-    })
+    .insert(row)
     .select(
-      "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, created_by, created_at"
+      "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, client_id, created_by, created_at"
     )
     .single();
 
-  if (insertError) return { error: insertError.message };
+  if (insert.error) {
+    const conflict = /duplicate|unique/i.test(insert.error.message);
+    const missingClientId = /client_id/i.test(insert.error.message) && !conflict;
+    if (conflict && clientId) {
+      const { data: existing } = await supabase
+        .from("match_events")
+        .select(
+          "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, client_id, created_by, created_at"
+        )
+        .eq("match_id", match.id)
+        .eq("client_id", clientId)
+        .maybeSingle();
+      if (existing) return { success: true as const, event: existing };
+      return { error: insert.error.message };
+    }
+    if (missingClientId) {
+      const withoutClient = { ...row, client_id: null };
+      const fallback = await supabase
+        .from("match_events")
+        .insert(withoutClient)
+        .select(
+          "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, created_by, created_at"
+        )
+        .single();
+      if (fallback.error) return { error: fallback.error.message };
+      inserted = fallback.data;
+    } else {
+      return { error: insert.error.message };
+    }
+  } else {
+    inserted = insert.data;
+  }
 
   try {
-    const [nextStatus] = await Promise.all([
-      persistComputedMatch(match.id, match.home_team_id, "live"),
-      refreshPlayerStats(input.playerId ?? null),
-    ]);
-    revalidateMatchStats({
-      matchId: match.id,
-      playerId: input.playerId,
-      homeTeamId: match.home_team_id,
-      awayTeamId: match.away_team_id,
-      finished: nextStatus === "finished",
-    });
+    const nextStatus = await persistComputedMatch(match.id, match.home_team_id, "live");
+    if (!input.liveFast || nextStatus === "finished") {
+      await refreshPlayerStats(input.playerId ?? null);
+      revalidateMatchStats({
+        matchId: match.id,
+        playerId: input.playerId,
+        homeTeamId: match.home_team_id,
+        awayTeamId: match.away_team_id,
+        finished: nextStatus === "finished",
+      });
+    }
     if (nextStatus === "finished") {
       await notifyMatchFinished(match.id);
     }
@@ -361,7 +411,55 @@ export async function recordPoint(input: {
     };
   }
 
-  return { success: true, event: inserted };
+  return { success: true as const, event: inserted };
+}
+
+export async function undoPoint(matchId: string, eventId: string) {
+  await requireCoach();
+  const supabase = await createClient();
+
+  const { data: lastEvent, error } = await supabase
+    .from("match_events")
+    .select("id, player_id")
+    .eq("match_id", matchId)
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (error) return { error: error.message };
+  if (!lastEvent) return { error: "No hay puntos para deshacer" };
+
+  const { data: match } = await supabase
+    .from("matches")
+    .select("home_team_id, away_team_id")
+    .eq("id", matchId)
+    .single();
+
+  if (!match) return { error: "Partido no encontrado" };
+
+  const { error: deleteError } = await supabase
+    .from("match_events")
+    .delete()
+    .eq("id", lastEvent.id)
+    .eq("match_id", matchId);
+
+  if (deleteError) return { error: deleteError.message };
+
+  try {
+    const nextStatus = await persistComputedMatch(matchId, match.home_team_id, "live");
+    revalidateMatchStats({
+      matchId,
+      playerId: lastEvent.player_id,
+      homeTeamId: match.home_team_id,
+      awayTeamId: match.away_team_id,
+      finished: nextStatus === "finished",
+    });
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "No se pudo actualizar el marcador",
+    };
+  }
+
+  return { success: true, deletedId: lastEvent.id };
 }
 
 export async function undoLastPoint(matchId: string) {

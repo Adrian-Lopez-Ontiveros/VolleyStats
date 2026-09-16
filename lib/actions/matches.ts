@@ -18,6 +18,7 @@ import {
   setMatchStatus as setMatchStatusImpl,
   recordPoint as recordPointImpl,
   undoLastPoint as undoLastPointImpl,
+  undoPoint as undoPointImpl,
   addSubstitution as addSubstitutionImpl,
   deleteSubstitution as deleteSubstitutionImpl,
   setMatchLibero as setMatchLiberoImpl,
@@ -392,12 +393,18 @@ export async function recordPoint(input: {
   homeRotation?: number | null;
   awayRotation?: number | null;
   setNumber?: number | null;
+  clientId?: string | null;
+  liveFast?: boolean;
 }) {
   return recordPointImpl(input);
 }
 
 export async function undoLastPoint(matchId: string) {
   return undoLastPointImpl(matchId);
+}
+
+export async function undoPoint(matchId: string, eventId: string) {
+  return undoPointImpl(matchId, eventId);
 }
 
 export async function addSubstitution(matchId: string, formData: FormData) {

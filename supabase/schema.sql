@@ -132,6 +132,7 @@ create table if not exists public.match_events (
   home_rotation int check (home_rotation is null or (home_rotation >= 1 and home_rotation <= 6)),
   away_rotation int check (away_rotation is null or (away_rotation >= 1 and away_rotation <= 6)),
   point_type public.point_type not null,
+  client_id text,
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -178,6 +179,9 @@ create index if not exists idx_matches_status on public.matches (status);
 create index if not exists idx_matches_date on public.matches (scheduled_at desc);
 create index if not exists idx_match_events_match on public.match_events (match_id, created_at);
 create index if not exists idx_match_events_player on public.match_events (player_id);
+create unique index if not exists idx_match_events_client_id
+  on public.match_events (match_id, client_id)
+  where client_id is not null;
 create index if not exists idx_match_events_serving on public.match_events (match_id, serving_team_id);
 create index if not exists idx_match_events_rotations
   on public.match_events (match_id, home_rotation, away_rotation);
