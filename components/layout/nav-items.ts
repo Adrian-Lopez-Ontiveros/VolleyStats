@@ -31,6 +31,8 @@ const memberItems: AppNavItem[] = [
   { href: "/equipos", label: "Equipos", icon: CircleDot },
 ];
 
+export const SHOW_TACTICS_NAV = false;
+
 export function getAppNavItems({
   isAdmin,
   isCoach,
@@ -44,7 +46,9 @@ export function getAppNavItems({
 
   return [
     ...memberItems,
-    ...(isCoach ? [{ href: "/entrenador", label: "Táctica", icon: ClipboardList }] : []),
+    ...(SHOW_TACTICS_NAV && isCoach
+      ? [{ href: "/entrenador", label: "Táctica", icon: ClipboardList }]
+      : []),
     { href: "/perfil", label: "Perfil", icon: UserRound },
     ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ClipboardList, KeyRound, LogOut, Newspaper, Shield, Target, UserRound } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
+import { SHOW_TACTICS_NAV } from "@/components/layout/nav-items";
 import { hasCoachAccess } from "@/lib/constants";
 import { initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -64,7 +65,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
             Cambiar contraseña
           </Link>
         </DropdownMenuItem>
-        {hasCoachAccess(user.profile.role) ? (
+        {SHOW_TACTICS_NAV && hasCoachAccess(user.profile.role) ? (
           <DropdownMenuItem asChild>
             <Link href="/entrenador">
               <ClipboardList className="h-4 w-4" />

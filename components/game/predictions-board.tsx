@@ -291,7 +291,7 @@ function TeamPick({
         federationTeamId={team.federation_team_id}
         size="sm"
       />
-      <span className="line-clamp-2 text-xs font-semibold leading-tight">{team.short_name || team.name}</span>
+      <span className="line-clamp-2 text-xs font-semibold leading-tight">{team.name}</span>
       {percent != null ? (
         <span className="text-[10px] text-muted-foreground">{percent}% de la afición</span>
       ) : null}
