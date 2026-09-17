@@ -702,16 +702,15 @@ export function LiveTracker({
         Deshacer última acción
       </Button>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Historial del partido</h3>
-        <PointHistory
-          events={[...mergedEvents].reverse()}
-          substitutions={liveSubstitutions}
-          homeTeamId={match.home_team_id}
-          limit={16}
-          playerLinks={false}
-        />
-      </section>
+      <PointHistory
+        events={[...mergedEvents].reverse()}
+        substitutions={liveSubstitutions}
+        homeTeamId={match.home_team_id}
+        homeTeam={match.home_team}
+        awayTeam={match.away_team}
+        limit={16}
+        playerLinks={false}
+      />
 
       <Sheet
         open={!!liberoEdit}

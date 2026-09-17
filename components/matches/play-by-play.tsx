@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { annotateEventScores, isScoringAction } from "@/lib/volleyball";
 import type { MatchEventWithPlayer, Team } from "@/lib/types";
 
-type TeamInfo = Pick<Team, "name" | "short_name" | "logo_url" | "federation_team_id">;
+export type RallyTeamInfo = Pick<Team, "name" | "short_name" | "logo_url" | "federation_team_id">;
 
 export const PlayByPlay = memo(function PlayByPlay({
   events,
@@ -16,8 +16,8 @@ export const PlayByPlay = memo(function PlayByPlay({
 }: {
   events: MatchEventWithPlayer[];
   homeTeamId: string;
-  homeTeam: TeamInfo;
-  awayTeam: TeamInfo;
+  homeTeam: RallyTeamInfo;
+  awayTeam: RallyTeamInfo;
 }) {
   const homeLabel = homeTeam.short_name || homeTeam.name;
   const awayLabel = awayTeam.short_name || awayTeam.name;
@@ -51,7 +51,7 @@ export const PlayByPlay = memo(function PlayByPlay({
   if (groups.length === 0) {
     return (
       <section className="overflow-hidden rounded-3xl border bg-card shadow-card">
-        <Header />
+        <RallyHeader />
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
           Cuando se anote el primer punto verás aquí el marcador punto a punto.
         </p>
@@ -61,7 +61,7 @@ export const PlayByPlay = memo(function PlayByPlay({
 
   return (
     <section className="overflow-hidden rounded-3xl border bg-card shadow-card">
-      <Header />
+      <RallyHeader />
       <div className="divide-y">
         {groups.map((group, groupIndex) => (
           <div key={group.setNumber} className="px-3 py-4 sm:px-4">
@@ -89,31 +89,17 @@ export const PlayByPlay = memo(function PlayByPlay({
                   >
                     <div className="flex min-w-0 items-center justify-end gap-2">
                       {homeScored ? (
-                        <TeamSide team={homeTeam} label={homeLabel} align="right" />
+                        <RallyTeamSide team={homeTeam} label={homeLabel} align="right" />
                       ) : null}
                     </div>
-                    <p className="flex min-w-[4.75rem] items-baseline justify-center gap-1 rounded-xl bg-white px-2.5 py-1 text-center shadow-sm">
-                      <span
-                        className={cn(
-                          "text-lg font-black tabular-nums leading-none",
-                          homeScored ? "text-orange-600" : "text-slate-400"
-                        )}
-                      >
-                        {event.homeScore}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-300">–</span>
-                      <span
-                        className={cn(
-                          "text-lg font-black tabular-nums leading-none",
-                          homeScored ? "text-slate-400" : "text-orange-600"
-                        )}
-                      >
-                        {event.awayScore}
-                      </span>
-                    </p>
+                    <RallyScore
+                      homeScore={event.homeScore}
+                      awayScore={event.awayScore}
+                      highlight={homeScored ? "home" : "away"}
+                    />
                     <div className="flex min-w-0 items-center justify-start gap-2">
                       {!homeScored ? (
-                        <TeamSide team={awayTeam} label={awayLabel} align="left" />
+                        <RallyTeamSide team={awayTeam} label={awayLabel} align="left" />
                       ) : null}
                     </div>
                   </li>
@@ -127,23 +113,61 @@ export const PlayByPlay = memo(function PlayByPlay({
   );
 });
 
-function Header() {
+export function RallyScore({
+  homeScore,
+  awayScore,
+  highlight,
+}: {
+  homeScore: number;
+  awayScore: number;
+  highlight: "home" | "away" | "none";
+}) {
+  return (
+    <p className="flex min-w-[4.75rem] items-baseline justify-center gap-1 rounded-xl bg-white px-2.5 py-1 text-center shadow-sm">
+      <span
+        className={cn(
+          "text-lg font-black tabular-nums leading-none",
+          highlight === "home" ? "text-orange-600" : "text-slate-400"
+        )}
+      >
+        {homeScore}
+      </span>
+      <span className="text-xs font-semibold text-slate-300">–</span>
+      <span
+        className={cn(
+          "text-lg font-black tabular-nums leading-none",
+          highlight === "away" ? "text-orange-600" : "text-slate-400"
+        )}
+      >
+        {awayScore}
+      </span>
+    </p>
+  );
+}
+
+export function RallyHeader({
+  title = "Punto a punto",
+  eyebrow = "Seguimiento",
+}: {
+  title?: string;
+  eyebrow?: string;
+}) {
   return (
     <header className="bg-primary px-4 py-3 text-primary-foreground">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-300">
-        Seguimiento
+        {eyebrow}
       </p>
-      <h2 className="text-lg font-bold leading-tight">Punto a punto</h2>
+      <h2 className="text-lg font-bold leading-tight">{title}</h2>
     </header>
   );
 }
 
-function TeamSide({
+export function RallyTeamSide({
   team,
   label,
   align,
 }: {
-  team: TeamInfo;
+  team: RallyTeamInfo;
   label: string;
   align: "left" | "right";
 }) {

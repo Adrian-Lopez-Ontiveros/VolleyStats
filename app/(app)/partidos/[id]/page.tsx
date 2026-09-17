@@ -245,14 +245,13 @@ export default async function MatchDetailPage({
           <MatchStatsPanel match={typedMatch} events={typedEvents} />
         </section>
 
-        <section>
-          <h2 className="mb-3 text-lg font-semibold">Historial del partido</h2>
-          <PointHistory
-            events={typedEvents}
-            substitutions={typedSubs}
-            homeTeamId={typedMatch.home_team_id}
-          />
-        </section>
+        <PointHistory
+          events={typedEvents}
+          substitutions={typedSubs}
+          homeTeamId={typedMatch.home_team_id}
+          homeTeam={typedMatch.home_team}
+          awayTeam={typedMatch.away_team}
+        />
 
         <section>
           <h2 className="mb-3 text-lg font-semibold">Historial de cambios</h2>
