@@ -5,6 +5,7 @@ import { resolveTeamLogoUrl } from "@/lib/federation/crests";
 import { cn, initials } from "@/lib/utils";
 
 const SIZE_CLASS = {
+  xs: "h-7 w-7 text-[9px]",
   sm: "h-8 w-8 text-[10px]",
   md: "h-11 w-11 text-xs",
   lg: "h-16 w-16 text-lg",

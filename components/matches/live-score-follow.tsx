@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { PointHistory } from "@/components/matches/point-history";
+import { PlayByPlay } from "@/components/matches/play-by-play";
 import { Scoreboard } from "@/components/matches/scoreboard";
 import { useLiveMatchEvents } from "@/components/matches/use-live-match-events";
 import { computeMatchState } from "@/lib/volleyball";
@@ -43,16 +43,12 @@ export function LiveScoreFollow({
   return (
     <div className="space-y-4">
       <Scoreboard match={displayMatch} />
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Punto a punto</h2>
-        <PointHistory
-          events={liveEvents}
-          homeTeamId={match.home_team_id}
-          homeTeamName={match.home_team.short_name || match.home_team.name}
-          awayTeamName={match.away_team.short_name || match.away_team.name}
-          playByPlay
-        />
-      </section>
+      <PlayByPlay
+        events={liveEvents}
+        homeTeamId={match.home_team_id}
+        homeTeam={match.home_team}
+        awayTeam={match.away_team}
+      />
     </div>
   );
 }
