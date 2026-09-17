@@ -17,7 +17,7 @@ export function PlayerRosterCard({
   canEditJersey,
   subtitle,
 }: {
-  player: Player;
+  player: Pick<Player, "id" | "full_name" | "jersey_number" | "position" | "avatar_url">;
   href: string;
   canEditJersey: boolean;
   subtitle?: string;

@@ -127,6 +127,15 @@ export async function requireViewer(): Promise<Viewer> {
   redirect("/login");
 }
 
+export function ownPlayerId(viewer: Pick<Viewer, "user">) {
+  return viewer.user?.profile.player?.id ?? null;
+}
+
+export function canViewPlayerStats(viewer: Pick<Viewer, "canManage" | "user">, playerId?: string | null) {
+  if (viewer.canManage) return true;
+  return Boolean(playerId && ownPlayerId(viewer) === playerId);
+}
+
 export async function requireAdmin() {
   const session = await requireUser();
   if (session.profile.role !== "admin") redirect("/partidos");

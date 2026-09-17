@@ -43,7 +43,7 @@ function isStaffPath(pathname: string) {
     return true;
   }
   if (pathname.includes("/editar")) return true;
-  if (pathname.endsWith("/seguimiento") || pathname.includes("/seguimiento/")) {
+  if (pathname.endsWith("/resumen") || pathname.includes("/resumen/")) {
     return true;
   }
   return false;

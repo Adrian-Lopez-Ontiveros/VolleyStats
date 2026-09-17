@@ -2,7 +2,7 @@ import { memo } from "react";
 import Link from "next/link";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { formatJersey } from "@/lib/utils";
-import { annotateEventScores } from "@/lib/volleyball";
+import { annotateEventScores, isScoringAction } from "@/lib/volleyball";
 import type { MatchEventWithPlayer, MatchSubstitution } from "@/lib/types";
 
 type HistoryItem =
@@ -32,16 +32,23 @@ export const PointHistory = memo(function PointHistory({
   events,
   substitutions = [],
   homeTeamId,
+  homeTeamName,
+  awayTeamName,
   limit,
   playerLinks = true,
+  playByPlay = false,
 }: {
   events: MatchEventWithPlayer[];
   substitutions?: MatchSubstitution[];
   homeTeamId: string;
+  homeTeamName?: string;
+  awayTeamName?: string;
   limit?: number;
   playerLinks?: boolean;
+  playByPlay?: boolean;
 }) {
-  const scored = annotateEventScores(events, homeTeamId);
+  const visibleEvents = playByPlay ? events.filter((event) => isScoringAction(event.point_type)) : events;
+  const scored = annotateEventScores(visibleEvents, homeTeamId);
   const items: HistoryItem[] = [
     ...scored.map((event) => ({
       kind: "point" as const,
@@ -50,13 +57,15 @@ export const PointHistory = memo(function PointHistory({
       set_number: event.set_number,
       event,
     })),
-    ...substitutions.map((sub) => ({
-      kind: "substitution" as const,
-      id: sub.id,
-      created_at: sub.created_at,
-      set_number: sub.set_number ?? 1,
-      sub,
-    })),
+    ...(playByPlay
+      ? []
+      : substitutions.map((sub) => ({
+          kind: "substitution" as const,
+          id: sub.id,
+          created_at: sub.created_at,
+          set_number: sub.set_number ?? 1,
+          sub,
+        }))),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const visible = limit ? [...items].reverse().slice(0, limit) : [...items].reverse();
@@ -71,7 +80,9 @@ export const PointHistory = memo(function PointHistory({
   if (visible.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        Todavía no hay puntos ni cambios en este partido.
+        {playByPlay
+          ? "Todavía no hay puntos en este partido."
+          : "Todavía no hay puntos ni cambios en este partido."}
       </p>
     );
   }
@@ -105,6 +116,34 @@ export const PointHistory = memo(function PointHistory({
                   </div>
                   <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-950">
                     CAM
+                  </span>
+                </li>
+              ) : playByPlay ? (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border bg-card px-3 py-2.5 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {item.event.scoring_team_id === homeTeamId
+                        ? homeTeamName || "Local"
+                        : awayTeamName || "Visitante"}
+                    </p>
+                    {item.event.player ? (
+                      playerLinks ? (
+                        <Link
+                          href={`/jugadores/${item.event.player.id}`}
+                          className="text-xs text-muted-foreground hover:underline"
+                        >
+                          {playerName(item.event.player)}
+                        </Link>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">{playerName(item.event.player)}</p>
+                      )
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 rounded-lg bg-secondary px-2 py-1 text-sm font-bold tabular-nums text-secondary-foreground">
+                    {item.event.homeScore}–{item.event.awayScore}
                   </span>
                 </li>
               ) : (

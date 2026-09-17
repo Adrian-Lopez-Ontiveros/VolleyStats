@@ -230,6 +230,9 @@ export const PLAYER_ROSTER_SELECT =
 export const PLAYER_LINEUP_SELECT =
   "id, team_id, full_name, jersey_number, position, avatar_url" as const;
 
+export const PLAYER_PUBLIC_SELECT =
+  "id, team_id, full_name, jersey_number, position, avatar_url" as const;
+
 const PROFILE_TEAM_FIELDS =
   "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id";
 

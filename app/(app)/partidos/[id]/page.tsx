@@ -7,6 +7,7 @@ import { MatchAdminActions } from "@/components/matches/match-admin-actions";
 import { BoxScoreCard } from "@/components/matches/box-score";
 import { BoxScoreReveal } from "@/components/matches/box-score-reveal";
 import { ShareBoxScore } from "@/components/matches/share-box-score";
+import { LiveScoreFollow } from "@/components/matches/live-score-follow";
 import { MatchLineup } from "@/components/matches/match-lineup";
 import { MatchStatsPanel } from "@/components/stats/match-stats-panel";
 import { PointHistory } from "@/components/matches/point-history";
@@ -32,6 +33,7 @@ import {
   PLAYER_LINEUP_SELECT,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { isScoringAction } from "@/lib/volleyball";
 import type {
   MatchEventWithPlayer,
   MatchLineupEntry,
@@ -51,24 +53,13 @@ export default async function MatchDetailPage({
   const { canManage } = await requireViewer();
   const supabase = await createClient();
 
-  const [
-    { data: match, error: matchError },
-    { data: events },
-    { data: lineupRows },
-    { data: subRows },
-  ] = await Promise.all([
+  const [{ data: match, error: matchError }, { data: events }] = await Promise.all([
     supabase.from("matches").select(MATCH_WITH_TEAMS_SELECT as "*").eq("id", id).maybeSingle(),
     supabase
       .from("match_events")
       .select(MATCH_EVENT_SELECT as "*")
       .eq("match_id", id)
       .order("created_at", { ascending: false }),
-    supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", id),
-    supabase
-      .from("match_substitutions")
-      .select(MATCH_SUB_SELECT as "*")
-      .eq("match_id", id)
-      .order("created_at", { ascending: true }),
   ]);
 
   if (matchError) {
@@ -77,21 +68,67 @@ export default async function MatchDetailPage({
   if (!match) notFound();
 
   const typedMatch = match as MatchWithTeams;
+  const typedEvents = (events ?? []) as MatchEventWithPlayer[];
+  const publicEvents = typedEvents.filter((event) => isScoringAction(event.point_type));
+  const notes = stripFmvScheduleNote(typedMatch.notes);
+
+  if (!canManage) {
+    return (
+      <>
+        <div className="mb-3">
+          <BackButton href="/partidos" />
+        </div>
+        <PageHeader
+          title={`${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`}
+          description={formatMatchWhen({
+            scheduledAt: typedMatch.scheduled_at,
+            notes: typedMatch.notes,
+            isFederation: typedMatch.is_federation,
+          })}
+        />
+        <div className="space-y-4">
+          <LiveScoreFollow match={typedMatch} events={publicEvents} />
+          <p className="flex justify-center">
+            <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
+          </p>
+          {typedMatch.location ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+              {typedMatch.location}
+            </p>
+          ) : null}
+          {notes ? (
+            <Card>
+              <CardContent className="p-4 text-sm">{notes}</CardContent>
+            </Card>
+          ) : null}
+        </div>
+      </>
+    );
+  }
+
   const clubTeamId = typedMatch.home_team.is_club_team
     ? typedMatch.home_team_id
     : typedMatch.away_team.is_club_team
       ? typedMatch.away_team_id
       : null;
 
-  const { data: clubPlayers } = clubTeamId
-    ? await supabase
-        .from("players")
-        .select(PLAYER_LINEUP_SELECT as "*")
-        .eq("team_id", clubTeamId)
-        .order("jersey_number", { ascending: true, nullsFirst: false })
-    : { data: [] as Player[] };
+  const [{ data: lineupRows }, { data: subRows }, { data: clubPlayers }] = await Promise.all([
+    supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", id),
+    supabase
+      .from("match_substitutions")
+      .select(MATCH_SUB_SELECT as "*")
+      .eq("match_id", id)
+      .order("created_at", { ascending: true }),
+    clubTeamId
+      ? supabase
+          .from("players")
+          .select(PLAYER_LINEUP_SELECT as "*")
+          .eq("team_id", clubTeamId)
+          .order("jersey_number", { ascending: true, nullsFirst: false })
+      : Promise.resolve({ data: [] as Player[] }),
+  ]);
 
-  const typedEvents = (events ?? []) as MatchEventWithPlayer[];
   const playersById = new Map(((clubPlayers ?? []) as Player[]).map((player) => [player.id, player]));
   const typedLineup = ((lineupRows ?? []) as MatchLineupEntry[])
     .map((entry) => ({
@@ -111,7 +148,7 @@ export default async function MatchDetailPage({
       : "CV Fuenlabrada";
   const roster = (clubPlayers ?? []) as Player[];
   const onCourtIds = clubTeamId ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId) : null;
-  const activity = canManage ? await getMatchActivity(id) : [];
+  const activity = await getMatchActivity(id);
   const exportRows = [
     ["Partido", `${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`],
     ["Fecha", typedMatch.scheduled_at],
@@ -166,11 +203,9 @@ export default async function MatchDetailPage({
           </p>
         ) : null}
 
-        {stripFmvScheduleNote(typedMatch.notes) ? (
+        {notes ? (
           <Card>
-            <CardContent className="p-4 text-sm">
-              {stripFmvScheduleNote(typedMatch.notes)}
-            </CardContent>
+            <CardContent className="p-4 text-sm">{notes}</CardContent>
           </Card>
         ) : null}
 
@@ -184,13 +219,11 @@ export default async function MatchDetailPage({
           </BoxScoreReveal>
         ) : null}
 
-        {canManage ? (
-          <MatchAdminActions
-            matchId={typedMatch.id}
-            status={typedMatch.status}
-            canTrackLive={canTrackLiveMatch(typedMatch)}
-          />
-        ) : null}
+        <MatchAdminActions
+          matchId={typedMatch.id}
+          status={typedMatch.status}
+          canTrackLive={canTrackLiveMatch(typedMatch)}
+        />
 
         {canTrackLiveMatch(typedMatch) && clubTeamId ? (
           <MatchLineup teamName={clubTeamName} entries={typedLineup} />
@@ -203,7 +236,7 @@ export default async function MatchDetailPage({
             onCourtPlayers={playersOnCourt(roster, onCourtIds)}
             benchPlayers={playersOnBench(roster, onCourtIds)}
             substitutions={typedSubs}
-            canEdit={canManage && typedMatch.status !== "cancelled"}
+            canEdit={typedMatch.status !== "cancelled"}
           />
         ) : null}
 
@@ -221,12 +254,10 @@ export default async function MatchDetailPage({
           />
         </section>
 
-        {canManage ? (
-          <section>
-            <h2 className="mb-3 text-lg font-semibold">Historial de cambios</h2>
-            <ActivityLog entries={activity} />
-          </section>
-        ) : null}
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Historial de cambios</h2>
+          <ActivityLog entries={activity} />
+        </section>
       </div>
     </>
   );

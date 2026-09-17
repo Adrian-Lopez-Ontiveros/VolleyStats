@@ -7,7 +7,7 @@ import { ShareBoxScore } from "@/components/matches/share-box-score";
 import { RotationSummaryCards, RotationTable } from "@/components/stats/rotation-table";
 import { Button } from "@/components/ui/button";
 import { QueryError } from "@/components/query-error";
-import { requireViewer } from "@/lib/auth";
+import { requireCoach } from "@/lib/auth";
 import { buildBoxScore } from "@/lib/box-score";
 import { MATCH_EVENT_SELECT, MATCH_WITH_TEAMS_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +21,7 @@ export default async function MatchBoxScorePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireViewer();
+  await requireCoach();
   const supabase = await createClient();
 
   const [{ data: match, error: matchError }, { data: events }] = await Promise.all([

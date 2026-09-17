@@ -15,7 +15,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
 import { getCategoryMeta } from "@/lib/categories";
-import { MATCH_WITH_TEAMS_SELECT, PLAYER_ROSTER_SELECT, TEAM_SELECT } from "@/lib/constants";
+import {
+  MATCH_WITH_TEAMS_SELECT,
+  PLAYER_PUBLIC_SELECT,
+  PLAYER_ROSTER_SELECT,
+  TEAM_SELECT,
+} from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildPlayerMatchSeries,
@@ -59,7 +64,7 @@ export default async function TeamDetailPage({
       supabase.from("teams").select(TEAM_SELECT as "*").eq("id", id).maybeSingle(),
       supabase
         .from("players")
-        .select(PLAYER_ROSTER_SELECT as "*")
+        .select((canManage ? PLAYER_ROSTER_SELECT : PLAYER_PUBLIC_SELECT) as "*")
         .eq("team_id", id)
         .order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase
@@ -92,7 +97,7 @@ export default async function TeamDetailPage({
 
   const matchIds = finishedMatches.map((item) => item.id);
   const [{ data: events }, { data: teamMatchEvents }] = await Promise.all([
-    playerIds.length > 0
+    canManage && playerIds.length > 0
       ? supabase
           .from("match_events")
           .select("player_id, match_id, point_type, created_at, match:matches(scheduled_at, status)")
@@ -134,7 +139,7 @@ export default async function TeamDetailPage({
     seriesByPlayer.set(player.id, buildPlayerMatchSeries(eventsByPlayer.get(player.id) ?? []));
   }
 
-  const ranked = rankPlayers(typedPlayers, seriesByPlayer, eventsByPlayer);
+  const ranked = canManage ? rankPlayers(typedPlayers, seriesByPlayer, eventsByPlayer) : [];
   const teamSeries = buildTeamMatchSeries(id, finishedMatches);
   const teamTotals = summarizeTeamSeries(teamSeries);
   const typedTeamEvents = (teamMatchEvents ?? []) as {
@@ -187,17 +192,21 @@ export default async function TeamDetailPage({
                 ["PJ", teamTotals.played],
                 ["Ganados", teamTotals.won],
                 ["Perdidos", teamTotals.lost],
-                [],
-                ["Jugador", "Dorsal", "Puntos", "Ataques", "Bloqueos", "Aces", "Errores"],
-                ...typedPlayers.map((player) => [
-                  player.full_name,
-                  player.jersey_number,
-                  totalPlayerPoints(player),
-                  player.attack_points,
-                  player.block_points,
-                  player.aces,
-                  player.errors,
-                ]),
+                ...(canManage
+                  ? [
+                      [],
+                      ["Jugador", "Dorsal", "Puntos", "Ataques", "Bloqueos", "Aces", "Errores"],
+                      ...typedPlayers.map((player) => [
+                        player.full_name,
+                        player.jersey_number,
+                        totalPlayerPoints(player),
+                        player.attack_points,
+                        player.block_points,
+                        player.aces,
+                        player.errors,
+                      ]),
+                    ]
+                  : []),
                 [],
                 ["Rotación", "PF", "PC", "Errores"],
                 ...teamRotations.map((row) => [
@@ -292,14 +301,16 @@ export default async function TeamDetailPage({
           </Card>
         </section>
 
-        <section>
-          <h2 className="mb-3 text-lg font-semibold">Ranking de jugadores</h2>
-          {ranked.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Este equipo todavía no tiene jugadores.</p>
-          ) : (
-            <PlayerRankingTable players={ranked} />
-          )}
-        </section>
+        {canManage ? (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Ranking de jugadores</h2>
+            {ranked.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Este equipo todavía no tiene jugadores.</p>
+            ) : (
+              <PlayerRankingTable players={ranked} />
+            )}
+          </section>
+        ) : null}
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">

@@ -2,6 +2,7 @@ import { cache } from "react";
 import {
   MATCH_LIST_SELECT,
   MATCH_STANDING_SELECT,
+  PLAYER_PUBLIC_SELECT,
   PLAYER_ROSTER_SELECT,
   TEAM_SELECT,
 } from "@/lib/constants";
@@ -35,5 +36,13 @@ export const getPlayers = cache(async () => {
   return supabase
     .from("players")
     .select(PLAYER_ROSTER_SELECT as "*")
+    .order("jersey_number", { ascending: true, nullsFirst: false });
+});
+
+export const getPublicPlayers = cache(async () => {
+  const supabase = await createClient();
+  return supabase
+    .from("players")
+    .select(PLAYER_PUBLIC_SELECT as "*")
     .order("jersey_number", { ascending: true, nullsFirst: false });
 });

@@ -11,9 +11,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
-import { requireViewer } from "@/lib/auth";
+import { canViewPlayerStats, requireViewer } from "@/lib/auth";
 import {
   PLAYER_CARD_SELECT,
+  PLAYER_LINEUP_SELECT,
   PLAYER_ROSTER_SELECT,
   POINT_TYPE_META,
   POSITION_LABELS,
@@ -32,24 +33,28 @@ export default async function PlayerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { user, canManage } = await requireViewer();
+  const viewer = await requireViewer();
+  const { user, canManage } = viewer;
+  const canViewStats = canViewPlayerStats(viewer, id);
   const supabase = await createClient();
+  const playerSelect = canViewStats
+    ? `${PLAYER_ROSTER_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})`
+    : `${PLAYER_LINEUP_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})`;
 
-  const [{ data: player }, { data: events }, { data: card }] = await Promise.all([
-    supabase
-      .from("players")
-      .select(`${PLAYER_ROSTER_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})` as "*")
-      .eq("id", id)
-      .maybeSingle(),
-    supabase
-      .from("match_events")
-      .select(
-        "id, match_id, point_type, created_at, set_number, serving_team_id, match:matches(id, scheduled_at)" as "*"
-      )
-      .eq("player_id", id)
-      .order("created_at", { ascending: false }),
+  const [{ data: player }, eventsResult, { data: card }] = await Promise.all([
+    supabase.from("players").select(`${playerSelect}` as "*").eq("id", id).maybeSingle(),
+    canViewStats
+      ? supabase
+          .from("match_events")
+          .select(
+            "id, match_id, point_type, created_at, set_number, serving_team_id, match:matches(id, scheduled_at)" as "*"
+          )
+          .eq("player_id", id)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
     supabase.from("player_cards").select(PLAYER_CARD_SELECT as "*").eq("player_id", id).maybeSingle(),
   ]);
+  const events = eventsResult.data;
 
   if (!player) notFound();
   const typed = player as PlayerWithTeam;
@@ -77,20 +82,22 @@ export default async function PlayerDetailPage({
             description={typed.team?.name ?? "Sin equipo"}
             action={
               <div className="flex flex-wrap justify-end gap-2">
-                <ExportCsvButton
-                  filename={`jugador-${typed.full_name.replace(/\s+/g, "-").toLowerCase()}`}
-                  rows={[
-                    ["Jugador", typed.full_name],
-                    ["Equipo", typed.team?.name ?? ""],
-                    [],
-                    ["Hora", "Partido", "Acción"],
-                    ...typedEvents.map((event) => [
-                      event.created_at,
-                      event.match_id,
-                      POINT_TYPE_META[event.point_type]?.label ?? event.point_type,
-                    ]),
-                  ]}
-                />
+                {canViewStats ? (
+                  <ExportCsvButton
+                    filename={`jugador-${typed.full_name.replace(/\s+/g, "-").toLowerCase()}`}
+                    rows={[
+                      ["Jugador", typed.full_name],
+                      ["Equipo", typed.team?.name ?? ""],
+                      [],
+                      ["Hora", "Partido", "Acción"],
+                      ...typedEvents.map((event) => [
+                        event.created_at,
+                        event.match_id,
+                        POINT_TYPE_META[event.point_type]?.label ?? event.point_type,
+                      ]),
+                    ]}
+                  />
+                ) : null}
                 {canManage ? (
                   <>
                     <Button asChild size="sm" variant="outline">
@@ -134,11 +141,19 @@ export default async function PlayerDetailPage({
         />
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold">Evolución de rendimiento</h2>
-      <PlayerEvolutionPanel events={typedEvents} teamId={typed.team_id} />
+      {canViewStats ? (
+        <>
+          <h2 className="mb-3 text-lg font-semibold">Evolución de rendimiento</h2>
+          <PlayerEvolutionPanel events={typedEvents} teamId={typed.team_id} />
 
-      <h2 className="mb-3 mt-8 text-lg font-semibold">Estadísticas totales</h2>
-      <StatGrid stats={typed} />
+          <h2 className="mb-3 mt-8 text-lg font-semibold">Estadísticas totales</h2>
+          <StatGrid stats={typed} />
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Las estadísticas de cada jugador solo las ven el cuerpo técnico y el propio jugador.
+        </p>
+      )}
 
       {canManage ? (
         <div className="mt-8">
