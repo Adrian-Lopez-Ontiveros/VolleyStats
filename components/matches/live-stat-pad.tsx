@@ -112,13 +112,16 @@ export function LiveStatPad({
   onAction: (player: PadPlayer, pointType: PointType) => void;
 }) {
   const [flash, setFlash] = useState<{ playerId: string; type: PointType } | null>(null);
-  const [localServeLocked, setLocalServeLocked] = useState(serveLocked);
-  const [localRecLocked, setLocalRecLocked] = useState(receptionLocked);
+  const [tappedServe, setTappedServe] = useState(false);
+  const [tappedRec, setTappedRec] = useState(false);
 
   useEffect(() => {
-    setLocalServeLocked(serveLocked);
-    setLocalRecLocked(receptionLocked);
-  }, [serveLocked, receptionLocked, serving]);
+    setTappedServe(false);
+    setTappedRec(false);
+  }, [serving, serveLocked, receptionLocked]);
+
+  const serveIsLocked = serveLocked || tappedServe;
+  const recIsLocked = receptionLocked || tappedRec;
 
   const teamSkills = useMemo(() => skillOrder(serving, false), [serving]);
   const orderedPlayers = useMemo(() => {
@@ -137,14 +140,14 @@ export function LiveStatPad({
   }
 
   function canUseServe(player: PadPlayer) {
-    if (disabled || !serving || localServeLocked) return false;
+    if (disabled || !serving || serveIsLocked) return false;
     if (player.position === "libero") return false;
-    if (serverPlayerId && player.id !== serverPlayerId) return false;
+    if (serverPlayerId) return player.id === serverPlayerId;
     return true;
   }
 
   function canUseReception() {
-    if (disabled || serving || localRecLocked) return false;
+    if (disabled || serving || recIsLocked) return false;
     return true;
   }
 
@@ -157,7 +160,7 @@ export function LiveStatPad({
   function blockReason(skillId: SkillId, player: PadPlayer) {
     if (skillId === "saq") {
       if (!serving) return "El saque solo se anota cuando este equipo saca";
-      if (localServeLocked) return "El saque de este punto ya está anotado";
+      if (serveIsLocked) return "El saque de este punto ya está anotado";
       if (player.position === "libero") return "La líbero no saca";
       if (serverPlayerId && player.id !== serverPlayerId) {
         return "Solo puede sacar quien está en zona 1";
@@ -165,15 +168,15 @@ export function LiveStatPad({
     }
     if (skillId === "rec") {
       if (serving) return "La recepción solo se anota cuando este equipo recibe";
-      if (localRecLocked) return "La recepción de este punto ya está anotada";
+      if (recIsLocked) return "La recepción de este punto ya está anotada";
     }
     return "";
   }
 
   function tap(player: PadPlayer, skillId: SkillId, option: SkillOption) {
     if (disabled || skillBlocked(skillId, player)) return;
-    if (isServeType(option.type)) setLocalServeLocked(true);
-    if (isReceptionType(option.type)) setLocalRecLocked(true);
+    if (isServeType(option.type)) setTappedServe(true);
+    if (isReceptionType(option.type)) setTappedRec(true);
     setFlash({ playerId: player.id, type: option.type });
     window.setTimeout(() => setFlash(null), 220);
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {

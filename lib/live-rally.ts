@@ -6,6 +6,7 @@ type RallyEvent = {
   acting_team_id: string;
   set_number: number;
   created_at: string;
+  scoring_team_id?: string | null;
 };
 
 const SERVE_TYPES: PointType[] = ["ace", "serve_in", "serve_error"];
@@ -31,7 +32,9 @@ export function eventsInCurrentRally<T extends RallyEvent>(events: T[], currentS
 
   let start = 0;
   for (let index = 0; index < inSet.length; index += 1) {
-    if (isScoringAction(inSet[index].point_type)) start = index + 1;
+    if (inSet[index].scoring_team_id || isScoringAction(inSet[index].point_type)) {
+      start = index + 1;
+    }
   }
   return inSet.slice(start);
 }
@@ -40,15 +43,17 @@ export function rallyLocks(
   events: RallyEvent[],
   currentSet: number,
   teamId: string,
-  serving: boolean
+  _serving: boolean
 ) {
   const rally = eventsInCurrentRally(events, currentSet);
-  const serveUsed = rally.some((event) => isServeType(event.point_type));
+  const serveUsed = rally.some(
+    (event) => isServeType(event.point_type) && event.acting_team_id === teamId
+  );
   const receptionUsed = rally.some(
     (event) => isReceptionType(event.point_type) && event.acting_team_id === teamId
   );
   return {
-    serveLocked: !serving || serveUsed,
-    receptionLocked: serving || receptionUsed,
+    serveLocked: serveUsed,
+    receptionLocked: receptionUsed,
   };
 }
