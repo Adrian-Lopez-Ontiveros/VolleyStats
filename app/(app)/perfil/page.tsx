@@ -5,7 +5,6 @@ import { PlayerCardSection } from "@/components/players/player-card-section";
 import { AvatarUpload } from "@/components/profile/avatar-upload";
 import { NotificationToggle } from "@/components/profile/notification-toggle";
 import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
-import { AttendanceCard } from "@/components/stats/stat-summary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +27,6 @@ export default async function ProfilePage() {
   const user = await requireUser();
   const supabase = await createClient();
   const player = user.profile.player;
-  let teamMatches = 0;
   let skillEvents: {
     match_id: string;
     point_type: PointType;
@@ -39,25 +37,15 @@ export default async function ProfilePage() {
   }[] = [];
 
   if (player?.id) {
-    const [{ data: events }, teamResult] = await Promise.all([
-      supabase
-        .from("match_events")
-        .select(
-          "match_id, point_type, created_at, set_number, serving_team_id, match:matches(scheduled_at, status)"
-        )
-        .eq("player_id", player.id)
-        .order("created_at", { ascending: true }),
-      player.team_id
-        ? supabase
-            .from("matches")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "finished")
-            .or(`home_team_id.eq.${player.team_id},away_team_id.eq.${player.team_id}`)
-        : Promise.resolve({ count: 0 }),
-    ]);
+    const { data: events } = await supabase
+      .from("match_events")
+      .select(
+        "match_id, point_type, created_at, set_number, serving_team_id, match:matches(scheduled_at, status)"
+      )
+      .eq("player_id", player.id)
+      .order("created_at", { ascending: true });
 
     skillEvents = (events ?? []) as typeof skillEvents;
-    teamMatches = teamResult.count ?? 0;
   }
 
   const [{ data: notifyPrefs }, cardResult, progressResult, predsResult] = await Promise.all([
@@ -202,11 +190,6 @@ export default async function ProfilePage() {
             </div>
             <PlayerEvolutionPanel events={skillEvents} teamId={player.team_id} />
           </div>
-
-          <AttendanceCard
-            played={new Set(skillEvents.map((event) => event.match_id)).size}
-            teamMatches={teamMatches}
-          />
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
