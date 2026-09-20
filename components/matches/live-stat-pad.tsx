@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { firstName } from "@/lib/court";
-import { cn, formatJersey } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { POSITION_LABELS } from "@/lib/constants";
+import { cn, formatJersey, initials } from "@/lib/utils";
 import type { Player, PointType } from "@/lib/types";
 
 type PadPlayer = Pick<Player, "id" | "full_name" | "jersey_number" | "position">;
@@ -70,19 +71,19 @@ const SKILLS: Record<
 };
 
 const SKILL_HEADER: Record<SkillId, string> = {
-  rec: "bg-sky-500",
-  saq: "bg-violet-500",
-  ata: "bg-amber-400 text-amber-950",
-  blo: "bg-emerald-500",
-  def: "bg-rose-500",
+  rec: "bg-sky-100 text-sky-950",
+  saq: "bg-violet-100 text-violet-950",
+  ata: "bg-amber-100 text-amber-950",
+  blo: "bg-emerald-100 text-emerald-950",
+  def: "bg-rose-100 text-rose-950",
 };
 
 const TONE_CLASS: Record<SkillOption["tone"], string> = {
-  point: "text-emerald-300",
-  good: "text-sky-300",
-  mid: "text-amber-300",
-  poor: "text-orange-300",
-  error: "text-rose-400",
+  point: "border-emerald-300 bg-emerald-50 text-emerald-900",
+  good: "border-sky-300 bg-sky-50 text-sky-900",
+  mid: "border-amber-300 bg-amber-50 text-amber-900",
+  poor: "border-orange-200 bg-orange-50 text-orange-900",
+  error: "border-rose-300 bg-rose-50 text-rose-900",
 };
 
 function skillOrder(serving: boolean, isLibero: boolean): SkillId[] {
@@ -104,11 +105,11 @@ export function LiveStatPad({
   onAction: (player: PadPlayer, pointType: PointType) => void;
 }) {
   const [flash, setFlash] = useState<{ playerId: string; type: PointType } | null>(null);
-  const columns = useMemo(() => skillOrder(serving, false), [serving]);
+  const teamSkills = useMemo(() => skillOrder(serving, false), [serving]);
 
   if (players.length === 0) {
     return (
-      <p className="rounded-2xl bg-[#16182a] px-4 py-6 text-center text-sm text-white/70">
+      <p className="rounded-2xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground shadow-card">
         No hay jugadoras en pista para {teamName}.
       </p>
     );
@@ -125,88 +126,90 @@ export function LiveStatPad({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-[#16182a] text-white shadow-card">
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <p className="truncate text-xs font-semibold uppercase tracking-wide text-white/70">
-          {teamName}
-          <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white">
-            {serving ? "Saca" : "Recibe"}
-          </span>
-        </p>
-        <p className="shrink-0 text-[10px] text-white/40">+ punto/buena · = cont/media · − error</p>
+    <section className="overflow-hidden rounded-2xl border bg-card shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-secondary/60 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-tight">{teamName}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {serving ? "Saca" : "Recibe"} · + punto/buena · = cont/media · − error
+          </p>
+        </div>
+        <Badge variant={serving ? "accent" : "secondary"}>{serving ? "Saque" : "Recepción"}</Badge>
       </div>
-      <div className="overflow-x-auto">
-        <div className="min-w-[34rem]">
-          {players.map((player) => {
-            const libero = player.position === "libero";
-            const skills = skillOrder(serving, libero);
-            return (
-              <div
-                key={player.id}
-                className="grid grid-cols-[4.5rem_repeat(5,minmax(0,1fr))] border-t border-white/10"
-              >
-                <div className="flex items-center gap-2 px-2 py-2">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fuchsia-500 text-xs font-black">
-                    {player.jersey_number ?? "·"}
-                  </span>
-                  <span className="min-w-0 truncate text-xs font-semibold leading-tight">
-                    {firstName(player.full_name)}
-                    <span className="block text-[10px] font-medium text-white/40">
-                      {formatJersey(player.jersey_number)}
-                    </span>
-                  </span>
+      <ul>
+        {players.map((player) => {
+          const libero = player.position === "libero";
+          const skills = skillOrder(serving, libero);
+          const name = player.full_name;
+          return (
+            <li key={player.id} className="border-b last:border-b-0">
+              <div className="flex items-center gap-3 px-3 pt-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black tabular-nums text-primary-foreground">
+                  {player.jersey_number ?? initials(player.full_name)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
+                    {name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatJersey(player.jersey_number)}
+                    {player.position ? ` · ${POSITION_LABELS[player.position]}` : ""}
+                  </p>
                 </div>
-                {columns.map((skillId) => {
+                {libero ? <Badge variant="secondary">Líbero</Badge> : null}
+              </div>
+              <div
+                className={cn(
+                  "grid gap-2 px-3 py-3",
+                  skills.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-5"
+                )}
+              >
+                {(libero ? skills : teamSkills).map((skillId) => {
                   const skill = SKILLS[skillId];
-                  const visible = skills.includes(skillId);
                   return (
-                    <div key={skillId} className="border-l border-white/10 p-1">
+                    <div key={skillId} className="min-w-0">
                       <div
                         className={cn(
-                          "mb-1 rounded px-1 py-0.5 text-center text-[10px] font-black tracking-wide",
-                          SKILL_HEADER[skillId],
-                          !visible && "opacity-30"
+                          "mb-1 rounded-lg px-1 py-1 text-center text-[11px] font-bold tracking-wide",
+                          SKILL_HEADER[skillId]
                         )}
                       >
                         {skill.header}
                       </div>
-                      {visible ? (
-                        <div className="grid grid-cols-2 gap-0.5">
-                          {skill.options.map((option) => {
-                            const active =
-                              flash?.playerId === player.id && flash.type === option.type;
-                            return (
-                              <button
-                                key={option.type}
-                                type="button"
-                                disabled={disabled}
-                                title={`${skill.label}: ${option.label}`}
-                                aria-label={`${firstName(player.full_name)} · ${skill.label} ${option.label}`}
-                                onClick={() => tap(player, option)}
-                                className={cn(
-                                  "flex h-8 items-center justify-center rounded-md text-sm font-black tabular-nums transition-colors disabled:opacity-40",
-                                  TONE_CLASS[option.tone],
-                                  active
-                                    ? "bg-amber-400 text-amber-950 ring-2 ring-amber-200"
-                                    : "bg-white/5 hover:bg-white/10"
-                                )}
-                              >
-                                {option.symbol}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="h-[4.25rem]" />
-                      )}
+                      <div className="grid grid-cols-2 gap-1">
+                        {skill.options.map((option) => {
+                          const active =
+                            flash?.playerId === player.id && flash.type === option.type;
+                          return (
+                            <button
+                              key={option.type}
+                              type="button"
+                              disabled={disabled}
+                              title={`${skill.label}: ${option.label}`}
+                              aria-label={`${name} · ${skill.label} ${option.label}`}
+                              onClick={() => tap(player, option)}
+                              className={cn(
+                                "flex h-10 flex-col items-center justify-center rounded-xl border text-sm font-black leading-none shadow-sm transition-colors disabled:opacity-40",
+                                TONE_CLASS[option.tone],
+                                active && "border-accent bg-accent text-accent-foreground ring-2 ring-accent/40"
+                              )}
+                            >
+                              <span>{option.symbol}</span>
+                              <span className="mt-0.5 text-[9px] font-semibold tracking-wide opacity-80">
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
