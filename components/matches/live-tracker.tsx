@@ -19,6 +19,7 @@ import {
   subscribeQueue,
   type QueuedPoint,
 } from "@/lib/offline-queue";
+import { rallyPadState } from "@/lib/live-rally";
 import { inferNextRotations, inferNextServer } from "@/lib/volleyball-stats";
 import { computeMatchState, resolveScoringTeam, setsToWinOf } from "@/lib/volleyball";
 import { cn, formatJersey, initials } from "@/lib/utils";
@@ -633,6 +634,23 @@ export function LiveTracker({
     awayCourtSlots,
     awayOnCourt.length > 0 ? awayOnCourt : awayOnCourtIds ? [] : awayPlayers
   );
+  const homeRally = useMemo(
+    () => rallyPadState(mergedEvents, displayMatch.current_set, match.home_team_id, homeServing),
+    [mergedEvents, displayMatch.current_set, match.home_team_id, homeServing]
+  );
+  const awayRally = useMemo(
+    () => rallyPadState(mergedEvents, displayMatch.current_set, match.away_team_id, awayServing),
+    [mergedEvents, displayMatch.current_set, match.away_team_id, awayServing]
+  );
+  const padRally = padSide === "home" ? homeRally : awayRally;
+  const padServerPlayerId =
+    padSide === "home"
+      ? homeServing
+        ? homeCourtSlots[1]?.id ?? null
+        : null
+      : awayServing
+        ? awayCourtSlots[1]?.id ?? null
+        : null;
   const lineupTeamId = lineupTeams[0] ?? null;
   const lineupTeam =
     lineupTeamId === match.home_team_id
@@ -763,6 +781,9 @@ export function LiveTracker({
             serving={padSide === "home" ? homeServing : awayServing}
             players={padSide === "home" ? padHomePlayers : padAwayPlayers}
             disabled={finished}
+            phase={padRally.phase}
+            serveLocked={padRally.serveLocked}
+            serverPlayerId={padServerPlayerId}
             onAction={(player, pointType) =>
               recordAction(
                 padSide === "home" ? match.home_team_id : match.away_team_id,
