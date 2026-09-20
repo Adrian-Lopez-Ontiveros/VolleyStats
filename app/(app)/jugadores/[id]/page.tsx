@@ -6,7 +6,6 @@ import { DeletePlayerButton } from "@/components/players/delete-player-button";
 import { PlayerCardSection } from "@/components/players/player-card-section";
 import { PageHeader } from "@/components/page-header";
 import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
-import { StatGrid } from "@/components/stats/stat-grid";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ExportCsvButton } from "@/components/export-csv-button";
@@ -145,9 +144,6 @@ export default async function PlayerDetailPage({
         <>
           <h2 className="mb-3 text-lg font-semibold">Evolución de rendimiento</h2>
           <PlayerEvolutionPanel events={typedEvents} teamId={typed.team_id} />
-
-          <h2 className="mb-3 mt-8 text-lg font-semibold">Estadísticas totales</h2>
-          <StatGrid stats={typed} />
         </>
       ) : (
         <p className="text-sm text-muted-foreground">

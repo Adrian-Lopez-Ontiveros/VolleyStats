@@ -97,8 +97,19 @@ export function PlayerEvolutionPanel({
       <StatSummary
         items={[
           { label: "Puntos", value: totals.points, accent: true },
+          {
+            label: "Puntos de ataque",
+            value: attackStatsFromEvents(filtered).kills,
+          },
+          {
+            label: "Puntos de bloqueo",
+            value: filtered.filter((event) => event.point_type === "block").length,
+          },
+          {
+            label: "Puntos de saque",
+            value: serveStatsFromEvents(filtered).aces,
+          },
           { label: "Errores", value: totals.errors },
-          { label: "Aces", value: totals.aces },
           {
             label: "Eff. ataque",
             value: formatAttackEfficiency(attackStatsFromEvents(filtered).efficiency),

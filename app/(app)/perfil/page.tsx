@@ -6,7 +6,6 @@ import { AvatarUpload } from "@/components/profile/avatar-upload";
 import { NotificationToggle } from "@/components/profile/notification-toggle";
 import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
 import { AttendanceCard } from "@/components/stats/stat-summary";
-import { StatGrid } from "@/components/stats/stat-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -208,11 +207,6 @@ export default async function ProfilePage() {
             played={new Set(skillEvents.map((event) => event.match_id)).size}
             teamMatches={teamMatches}
           />
-
-          <div>
-            <h2 className="mb-3 text-lg font-semibold">Mis estadísticas</h2>
-            <StatGrid stats={player} />
-          </div>
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
