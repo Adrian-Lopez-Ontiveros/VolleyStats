@@ -1,35 +1,27 @@
-import { isScoringAction, scoresForActingTeam } from "@/lib/volleyball";
+import { isScoringAction } from "@/lib/volleyball";
 import type { PointType } from "@/lib/types";
-
-export type RallyPhase = "serve" | "receive" | "block_def" | "attack";
-
-export type RallyPadState = {
-  phase: RallyPhase;
-  serveLocked: boolean;
-};
 
 type RallyEvent = {
   point_type: PointType;
   acting_team_id: string;
   set_number: number;
   created_at: string;
-  scoring_team_id?: string | null;
 };
 
 const SERVE_TYPES: PointType[] = ["ace", "serve_in", "serve_error"];
-const RECEPTION_KEEP: PointType[] = ["reception_good", "reception_medium", "reception_bad"];
-const DEFENSE_KEEP: PointType[] = ["defense_good", "defense_medium", "defense_bad"];
-const BLOCK_KEEP: PointType[] = ["block_touch", "block_continuation"];
+const RECEPTION_TYPES: PointType[] = [
+  "reception_good",
+  "reception_medium",
+  "reception_bad",
+  "reception_error",
+];
 
-export const RALLY_PHASE_LABEL: Record<RallyPhase, string> = {
-  serve: "Saque",
-  receive: "Recepción",
-  block_def: "Bloqueo",
-  attack: "Ataque",
-};
-
-function isServeType(type: PointType) {
+export function isServeType(type: PointType) {
   return SERVE_TYPES.includes(type);
+}
+
+export function isReceptionType(type: PointType) {
+  return RECEPTION_TYPES.includes(type);
 }
 
 export function eventsInCurrentRally<T extends RallyEvent>(events: T[], currentSet: number): T[] {
@@ -44,66 +36,19 @@ export function eventsInCurrentRally<T extends RallyEvent>(events: T[], currentS
   return inSet.slice(start);
 }
 
-export function rallyPadState(
+export function rallyLocks(
   events: RallyEvent[],
   currentSet: number,
   teamId: string,
   serving: boolean
-): RallyPadState {
+) {
   const rally = eventsInCurrentRally(events, currentSet);
-  let phase: RallyPhase = serving ? "serve" : "receive";
-  let serveLocked = false;
-
-  for (const event of rally) {
-    if (isServeType(event.point_type)) {
-      serveLocked = true;
-      if (event.point_type === "serve_in") {
-        phase = serving ? "block_def" : "receive";
-      }
-      continue;
-    }
-    if (RECEPTION_KEEP.includes(event.point_type)) {
-      phase = event.acting_team_id === teamId ? "attack" : "block_def";
-      continue;
-    }
-    if (DEFENSE_KEEP.includes(event.point_type)) {
-      phase = event.acting_team_id === teamId ? "attack" : "block_def";
-      continue;
-    }
-    if (event.point_type === "attack_continuation") {
-      phase = "block_def";
-      continue;
-    }
-    if (BLOCK_KEEP.includes(event.point_type)) {
-      phase = "block_def";
-    }
-  }
-
-  return { phase, serveLocked };
-}
-
-export function nextRallyFromAction(
-  current: RallyPadState,
-  pointType: PointType,
-  serving: boolean
-): RallyPadState {
-  if (isScoringAction(pointType)) {
-    const weWon = scoresForActingTeam(pointType);
-    return { phase: weWon ? "serve" : "receive", serveLocked: false };
-  }
-
-  const serveLocked = current.serveLocked || isServeType(pointType);
-  if (isServeType(pointType)) {
-    return {
-      phase: pointType === "serve_in" ? (serving ? "block_def" : "receive") : current.phase,
-      serveLocked,
-    };
-  }
-  if (RECEPTION_KEEP.includes(pointType) || DEFENSE_KEEP.includes(pointType)) {
-    return { phase: "attack", serveLocked };
-  }
-  if (pointType === "attack_continuation" || BLOCK_KEEP.includes(pointType)) {
-    return { phase: "block_def", serveLocked };
-  }
-  return { ...current, serveLocked };
+  const serveUsed = rally.some((event) => isServeType(event.point_type));
+  const receptionUsed = rally.some(
+    (event) => isReceptionType(event.point_type) && event.acting_team_id === teamId
+  );
+  return {
+    serveLocked: !serving || serveUsed,
+    receptionLocked: serving || receptionUsed,
+  };
 }

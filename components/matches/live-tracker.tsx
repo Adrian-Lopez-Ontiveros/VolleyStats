@@ -19,7 +19,7 @@ import {
   subscribeQueue,
   type QueuedPoint,
 } from "@/lib/offline-queue";
-import { rallyPadState } from "@/lib/live-rally";
+import { rallyLocks } from "@/lib/live-rally";
 import { inferNextRotations, inferNextServer } from "@/lib/volleyball-stats";
 import { computeMatchState, resolveScoringTeam, setsToWinOf } from "@/lib/volleyball";
 import { cn, formatJersey, initials } from "@/lib/utils";
@@ -634,16 +634,15 @@ export function LiveTracker({
     awayCourtSlots,
     awayOnCourt.length > 0 ? awayOnCourt : awayOnCourtIds ? [] : awayPlayers
   );
-  const homeRally = useMemo(
-    () => rallyPadState(mergedEvents, displayMatch.current_set, match.home_team_id, homeServing),
+  const homeLocks = useMemo(
+    () => rallyLocks(mergedEvents, displayMatch.current_set, match.home_team_id, homeServing),
     [mergedEvents, displayMatch.current_set, match.home_team_id, homeServing]
   );
-  const awayRally = useMemo(
-    () => rallyPadState(mergedEvents, displayMatch.current_set, match.away_team_id, awayServing),
+  const awayLocks = useMemo(
+    () => rallyLocks(mergedEvents, displayMatch.current_set, match.away_team_id, awayServing),
     [mergedEvents, displayMatch.current_set, match.away_team_id, awayServing]
   );
-  const padRally = padSide === "home" ? homeRally : awayRally;
-  const padRallyKey = `${padSide}:${displayMatch.current_set}:${mergedEvents.length}:${mergedEvents.at(-1)?.id ?? ""}`;
+  const padLocks = padSide === "home" ? homeLocks : awayLocks;
   const padServerPlayerId =
     padSide === "home"
       ? homeServing
@@ -782,10 +781,9 @@ export function LiveTracker({
             serving={padSide === "home" ? homeServing : awayServing}
             players={padSide === "home" ? padHomePlayers : padAwayPlayers}
             disabled={finished}
-            phase={padRally.phase}
-            serveLocked={padRally.serveLocked}
+            serveLocked={padLocks.serveLocked}
+            receptionLocked={padLocks.receptionLocked}
             serverPlayerId={padServerPlayerId}
-            rallyKey={padRallyKey}
             onAction={(player, pointType) =>
               recordAction(
                 padSide === "home" ? match.home_team_id : match.away_team_id,

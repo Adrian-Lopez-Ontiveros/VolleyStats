@@ -1,9 +1,9 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { POSITION_LABELS } from "@/lib/constants";
-import { RALLY_PHASE_LABEL, nextRallyFromAction, type RallyPhase } from "@/lib/live-rally";
+import { isReceptionType, isServeType } from "@/lib/live-rally";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import type { Player, PointType } from "@/lib/types";
 
@@ -87,21 +87,9 @@ const TONE_CLASS: Record<SkillOption["tone"], string> = {
   error: "border-rose-200 bg-rose-50 text-rose-800",
 };
 
-function skillOrder(phase: RallyPhase, isLibero: boolean): SkillId[] {
-  if (isLibero) {
-    if (phase === "receive") return ["rec", "def"];
-    return ["def", "rec"];
-  }
-  switch (phase) {
-    case "serve":
-      return ["saq", "ata", "blo", "def", "rec"];
-    case "receive":
-      return ["rec", "ata", "blo", "def", "saq"];
-    case "block_def":
-      return ["blo", "def", "ata", "rec", "saq"];
-    case "attack":
-      return ["ata", "blo", "def", "rec", "saq"];
-  }
+function skillOrder(serving: boolean, isLibero: boolean): SkillId[] {
+  if (isLibero) return serving ? ["def", "rec"] : ["rec", "def"];
+  return serving ? ["saq", "ata", "blo", "def", "rec"] : ["rec", "saq", "ata", "blo", "def"];
 }
 
 export function LiveStatPad({
@@ -109,36 +97,36 @@ export function LiveStatPad({
   serving,
   players,
   disabled,
-  phase,
   serveLocked,
+  receptionLocked,
   serverPlayerId,
-  rallyKey,
   onAction,
 }: {
   teamName: string;
   serving: boolean;
   players: PadPlayer[];
   disabled?: boolean;
-  phase: RallyPhase;
   serveLocked: boolean;
+  receptionLocked: boolean;
   serverPlayerId: string | null;
-  rallyKey: string;
   onAction: (player: PadPlayer, pointType: PointType) => void;
 }) {
   const [flash, setFlash] = useState<{ playerId: string; type: PointType } | null>(null);
-  const [rally, setRally] = useState({ phase, serveLocked });
+  const [localServeLocked, setLocalServeLocked] = useState(serveLocked);
+  const [localRecLocked, setLocalRecLocked] = useState(receptionLocked);
 
   useEffect(() => {
-    setRally({ phase, serveLocked });
-  }, [rallyKey, phase, serveLocked]);
+    setLocalServeLocked(serveLocked);
+    setLocalRecLocked(receptionLocked);
+  }, [serveLocked, receptionLocked, serving]);
 
-  const teamSkills = useMemo(() => skillOrder(rally.phase, false), [rally.phase]);
+  const teamSkills = useMemo(() => skillOrder(serving, false), [serving]);
   const orderedPlayers = useMemo(() => {
-    if (!serverPlayerId || rally.phase !== "serve") return players;
+    if (!serving || !serverPlayerId) return players;
     const server = players.find((player) => player.id === serverPlayerId);
     if (!server) return players;
     return [server, ...players.filter((player) => player.id !== serverPlayerId)];
-  }, [players, serverPlayerId, rally.phase]);
+  }, [players, serverPlayerId, serving]);
 
   if (players.length === 0) {
     return (
@@ -149,24 +137,49 @@ export function LiveStatPad({
   }
 
   function canUseServe(player: PadPlayer) {
-    if (disabled || !serving || rally.serveLocked) return false;
+    if (disabled || !serving || localServeLocked) return false;
     if (player.position === "libero") return false;
     if (serverPlayerId && player.id !== serverPlayerId) return false;
     return true;
   }
 
+  function canUseReception() {
+    if (disabled || serving || localRecLocked) return false;
+    return true;
+  }
+
+  function skillBlocked(skillId: SkillId, player: PadPlayer) {
+    if (skillId === "saq") return !canUseServe(player);
+    if (skillId === "rec") return !canUseReception();
+    return false;
+  }
+
+  function blockReason(skillId: SkillId, player: PadPlayer) {
+    if (skillId === "saq") {
+      if (!serving) return "El saque solo se anota cuando este equipo saca";
+      if (localServeLocked) return "El saque de este punto ya está anotado";
+      if (player.position === "libero") return "La líbero no saca";
+      if (serverPlayerId && player.id !== serverPlayerId) {
+        return "Solo puede sacar quien está en zona 1";
+      }
+    }
+    if (skillId === "rec") {
+      if (serving) return "La recepción solo se anota cuando este equipo recibe";
+      if (localRecLocked) return "La recepción de este punto ya está anotada";
+    }
+    return "";
+  }
+
   function tap(player: PadPlayer, skillId: SkillId, option: SkillOption) {
-    if (disabled) return;
-    if (skillId === "saq" && !canUseServe(player)) return;
-    setRally((current) => nextRallyFromAction(current, option.type, serving));
+    if (disabled || skillBlocked(skillId, player)) return;
+    if (isServeType(option.type)) setLocalServeLocked(true);
+    if (isReceptionType(option.type)) setLocalRecLocked(true);
     setFlash({ playerId: player.id, type: option.type });
     window.setTimeout(() => setFlash(null), 220);
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
       navigator.vibrate?.(8);
     }
-    startTransition(() => {
-      onAction(player, option.type);
-    });
+    onAction(player, option.type);
   }
 
   return (
@@ -175,19 +188,19 @@ export function LiveStatPad({
         <div className="min-w-0">
           <p className="text-sm font-semibold leading-tight">{teamName}</p>
           <p className="text-[11px] text-muted-foreground">
-            {serving ? "Saca" : "Recibe"} · ahora {RALLY_PHASE_LABEL[rally.phase].toLowerCase()}
+            {serving
+              ? "Saca · el saque solo lo anota quien está en zona 1"
+              : "Recibe · una recepción por punto"}
           </p>
         </div>
-        <Badge variant={rally.phase === "serve" || rally.phase === "attack" ? "accent" : "default"}>
-          {RALLY_PHASE_LABEL[rally.phase]}
-        </Badge>
+        <Badge variant={serving ? "accent" : "secondary"}>{serving ? "Saque" : "Recepción"}</Badge>
       </div>
       <ul>
         {orderedPlayers.map((player) => {
           const libero = player.position === "libero";
-          const skills = skillOrder(rally.phase, libero);
+          const skills = skillOrder(serving, libero);
           const name = player.full_name;
-          const isServer = Boolean(serverPlayerId && player.id === serverPlayerId);
+          const isServer = Boolean(serving && serverPlayerId && player.id === serverPlayerId);
           return (
             <li key={player.id} className="border-b last:border-b-0">
               <div className="flex items-center gap-3 px-3 pt-3">
@@ -201,11 +214,11 @@ export function LiveStatPad({
                   <p className="text-xs text-muted-foreground">
                     {formatJersey(player.jersey_number)}
                     {player.position ? ` · ${POSITION_LABELS[player.position]}` : ""}
-                    {isServer && serving ? " · Saca" : ""}
+                    {isServer ? " · Saca" : ""}
                   </p>
                 </div>
                 {libero ? <Badge variant="secondary">Líbero</Badge> : null}
-                {isServer && rally.phase === "serve" ? <Badge variant="accent">Saca</Badge> : null}
+                {isServer ? <Badge variant="accent">Saca</Badge> : null}
               </div>
               <div
                 className={cn(
@@ -213,11 +226,11 @@ export function LiveStatPad({
                   skills.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-5"
                 )}
               >
-                {(libero ? skills : teamSkills).map((skillId) => {
+                {skills.map((skillId) => {
                   const skill = SKILLS[skillId];
-                  const serveBlocked = skillId === "saq" && !canUseServe(player);
+                  const blocked = skillBlocked(skillId, player);
                   return (
-                    <div key={skillId} className={cn("min-w-0", serveBlocked && "opacity-40")}>
+                    <div key={skillId} className={cn("min-w-0", blocked && "opacity-40")}>
                       <div
                         className={cn(
                           "mb-1 rounded-lg px-1 py-1 text-center text-[11px] font-bold tracking-wide",
@@ -234,14 +247,8 @@ export function LiveStatPad({
                             <button
                               key={option.type}
                               type="button"
-                              disabled={disabled || serveBlocked}
-                              title={
-                                serveBlocked
-                                  ? rally.serveLocked
-                                    ? "El saque de este punto ya está anotado"
-                                    : "Solo puede sacar quien está en zona 1"
-                                  : `${skill.label}: ${option.label}`
-                              }
+                              disabled={disabled || blocked}
+                              title={blocked ? blockReason(skillId, player) : `${skill.label}: ${option.label}`}
                               aria-label={`${name} · ${skill.label} ${option.label}`}
                               onClick={() => tap(player, skillId, option)}
                               className={cn(
