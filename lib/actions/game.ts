@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
-import { MATCH_LIST_SELECT, USER_PROGRESS_SELECT } from "@/lib/constants";
+import { MATCH_LIST_SELECT, MATCH_LIST_SELECT_BASE, USER_PROGRESS_SELECT } from "@/lib/constants";
 import { involvesClubTeam } from "@/lib/federation/leagues";
 import { jornadaKeyFromIso, jornadaRangeLabel, nearestJornadaKey } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
@@ -129,7 +129,16 @@ export async function loadGamePageData() {
     supabase
       .from("matches")
       .select(MATCH_LIST_SELECT as "*")
-      .order("scheduled_at", { ascending: true }),
+      .order("scheduled_at", { ascending: true })
+      .then(async (result) => {
+        if (result.error && /sets_to_win/i.test(result.error.message)) {
+          return supabase
+            .from("matches")
+            .select(MATCH_LIST_SELECT_BASE as "*")
+            .order("scheduled_at", { ascending: true });
+        }
+        return result;
+      }),
     supabase
       .from("match_predictions")
       .select("id, user_id, match_id, predicted_winner_id, created_at, updated_at, resolved_at, is_correct, xp_awarded")

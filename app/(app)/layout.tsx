@@ -10,7 +10,14 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const { user, isAdmin, isCoach, isGuest } = await requireViewer();
-  const checkin = user ? await claimDailyCheckin() : null;
+  let checkin = null;
+  if (user) {
+    try {
+      checkin = await claimDailyCheckin();
+    } catch {
+      checkin = null;
+    }
+  }
 
   return (
     <div className="min-h-dvh">

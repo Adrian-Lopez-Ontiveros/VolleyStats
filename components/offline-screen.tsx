@@ -8,14 +8,13 @@ import { APP_NAME } from "@/lib/constants";
 async function hasInternet() {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
   try {
-    const response = await fetch(`/noticias?online=${Date.now()}`, {
+    const response = await fetch(`/api/health?t=${Date.now()}`, {
       method: "GET",
       cache: "no-store",
-      headers: { "X-Online-Check": "1" },
     });
     if (!response.ok) return false;
-    if (response.url.includes("/offline")) return false;
-    return true;
+    const body = (await response.json().catch(() => null)) as { ok?: boolean } | null;
+    return body?.ok === true;
   } catch {
     return false;
   }
