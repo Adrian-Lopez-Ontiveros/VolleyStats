@@ -127,12 +127,7 @@ export function LiveStatPad({
   const recIsLocked = receptionLocked || tappedRec;
 
   const teamSkills = useMemo(() => skillOrder(serving, false), [serving]);
-  const orderedPlayers = useMemo(() => {
-    if (!serving || !serverPlayerId) return players;
-    const server = players.find((player) => player.id === serverPlayerId);
-    if (!server) return players;
-    return [server, ...players.filter((player) => player.id !== serverPlayerId)];
-  }, [players, serverPlayerId, serving]);
+  const orderedPlayers = players;
 
   if (players.length === 0) {
     return (

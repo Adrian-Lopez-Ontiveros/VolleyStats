@@ -84,10 +84,14 @@ export default function OfflinePage() {
               fetch("/api/health?t=" + Date.now(), { cache: "no-store" })
                 .then(function (res) { return res.ok ? res.json() : Promise.reject(); })
                 .then(function (body) {
-                  if (body && body.ok) location.replace("/");
+                  if (body && body.ok === true) location.replace("/");
                   else throw 0;
                 })
                 .catch(function () {
+                  if (location.pathname !== "/offline.html") {
+                    location.replace("/offline.html");
+                    return;
+                  }
                   btn.disabled = false;
                   btn.textContent = "Reintentar";
                   still.style.display = "block";

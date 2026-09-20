@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/actualizar-password",
   "/auth",
   "/offline",
+  "/offline.html",
 ];
 
 const ADMIN_ONLY_PREFIXES = ["/admin"];
@@ -100,7 +101,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/icons") ||
     pathname === "/sw.js" ||
     pathname === "/manifest.webmanifest" ||
-    pathname === "/offline"
+    pathname === "/offline" ||
+    pathname === "/offline.html"
   ) {
     return supabaseResponse;
   }

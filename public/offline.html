@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B1F3A" />
+    <title>No hay internet · FuenlaStats</title>
+    <style>
+      html, body { margin: 0; min-height: 100dvh; background: #F8FAFC; color: #0B1F3A; font-family: system-ui, sans-serif; }
+      main { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; text-align: center; }
+      .icon { width: 64px; height: 64px; border-radius: 16px; background: #FEF3C7; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 28px; }
+      .brand { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #EA580C; }
+      h1 { margin: 8px 0 0; font-size: 28px; }
+      p { margin: 12px 0 0; max-width: 340px; font-size: 14px; line-height: 1.5; color: #64748B; }
+      #still { display: none; font-weight: 700; color: #92400E; }
+      button { margin-top: 28px; border: 0; border-radius: 12px; background: #EA580C; color: #fff; font-weight: 700; font-size: 16px; padding: 14px 22px; min-width: 220px; }
+      button:disabled { opacity: .7; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="icon">⚠</div>
+      <p class="brand">FuenlaStats</p>
+      <h1>No hay internet</h1>
+      <p>El fallo no es de la app: este móvil no tiene conexión. Activa el Wi‑Fi o los datos móviles y vuelve a entrar.</p>
+      <p id="still">Sigue sin internet. Comprueba el Wi‑Fi o los datos y prueba otra vez.</p>
+      <button id="retry" type="button">Reintentar</button>
+    </main>
+    <script>
+      document.getElementById("retry").addEventListener("click", function () {
+        var btn = document.getElementById("retry");
+        var still = document.getElementById("still");
+        btn.disabled = true;
+        btn.textContent = "Comprobando...";
+        still.style.display = "none";
+        var ctrl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined;
+        fetch("/api/health?t=" + Date.now(), { cache: "no-store", signal: ctrl })
+          .then(function (res) { return res.ok ? res.json() : Promise.reject(); })
+          .then(function (body) {
+            if (body && body.ok === true) {
+              location.replace("/");
+              return;
+            }
+            throw new Error("offline");
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.textContent = "Reintentar";
+            still.style.display = "block";
+          });
+      });
+    </script>
+  </body>
+</html>

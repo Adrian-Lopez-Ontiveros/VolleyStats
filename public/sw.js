@@ -1,6 +1,6 @@
-const CACHE_NAME = "fuelastats-v10";
-const OFFLINE_URL = "/offline";
-const PRECACHE = ["/", "/offline", "/logo.png"];
+const CACHE_NAME = "fuelastats-v11";
+const OFFLINE_URL = "/offline.html";
+const PRECACHE = ["/offline.html", "/logo.png"];
 
 function isDynamicRequest(request, url) {
   if (request.headers.get("RSC") === "1") return true;

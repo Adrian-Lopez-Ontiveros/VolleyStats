@@ -107,7 +107,16 @@ function orderedPadPlayers(slots: CourtSlots, onCourt: Player[]): Player[] {
   for (const player of onCourt) {
     if (!used.has(player.id)) ordered.push(player);
   }
-  return ordered;
+  return ordered.sort((a, b) => {
+    const aLibero = a.position === "libero" ? 1 : 0;
+    const bLibero = b.position === "libero" ? 1 : 0;
+    if (aLibero !== bLibero) return aLibero - bLibero;
+    const aHas = a.jersey_number != null;
+    const bHas = b.jersey_number != null;
+    if (aHas && bHas) return a.jersey_number! - b.jersey_number!;
+    if (aHas !== bHas) return aHas ? -1 : 1;
+    return a.full_name.localeCompare(b.full_name, "es");
+  });
 }
 
 export function LiveTracker({

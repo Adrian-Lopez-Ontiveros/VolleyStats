@@ -4,36 +4,51 @@ export const OFFLINE_FALLBACK_SCRIPT = `
   window.__offlineFallback = true;
   var shown = false;
 
+  function isOfflinePage() {
+    return location.pathname === "/offline.html" || location.pathname === "/offline";
+  }
+
+  function stayOffline() {
+    if (isOfflinePage()) {
+      var btn = document.getElementById("offline-retry") || document.getElementById("retry");
+      var still = document.getElementById("offline-still") || document.getElementById("still");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Reintentar";
+      }
+      if (still) still.style.display = "block";
+      return;
+    }
+    location.replace("/offline.html");
+  }
+
   function retry() {
-    var btn = document.getElementById("offline-retry");
-    var still = document.getElementById("offline-still");
+    var btn = document.getElementById("offline-retry") || document.getElementById("retry");
+    var still = document.getElementById("offline-still") || document.getElementById("still");
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Comprobando...";
     }
     if (still) still.style.display = "none";
-    fetch("/api/health?t=" + Date.now(), { cache: "no-store" })
+    var ctrl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined;
+    fetch("/api/health?t=" + Date.now(), { cache: "no-store", signal: ctrl })
       .then(function (res) {
         return res.ok ? res.json() : Promise.reject();
       })
       .then(function (body) {
-        if (body && body.ok) {
+        if (body && body.ok === true) {
           location.replace("/");
           return;
         }
         throw new Error("offline");
       })
       .catch(function () {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = "Reintentar";
-        }
-        if (still) still.style.display = "block";
+        stayOffline();
       });
   }
 
   function show() {
-    if (shown) return;
+    if (shown || isOfflinePage()) return;
     shown = true;
     document.documentElement.classList.add("app-ready");
     var splash = document.getElementById("app-splash");
@@ -51,21 +66,24 @@ export const OFFLINE_FALLBACK_SCRIPT = `
     if (btn) btn.addEventListener("click", retry);
   }
 
+  function looksLikeAppError() {
+    var text = (document.body && document.body.innerText) || "";
+    return /Application error|client-side exception|server-side exception/i.test(text);
+  }
+
   function fatal(event) {
+    if (looksLikeAppError() || !navigator.onLine) {
+      show();
+      return;
+    }
     var msg = "";
     if (event) {
       if (event.message) msg += event.message;
       if (event.reason) msg += " " + (event.reason.message || event.reason);
     }
-    var text = (document.body && document.body.innerText) || "";
     if (
-      !navigator.onLine ||
-      /ChunkLoadError|Loading chunk|Failed to fetch|NetworkError|client-side exception|server-side exception|Application error/i.test(
-        msg + " " + text
-      ) ||
-      (event &&
-        event.target &&
-        (event.target.tagName === "SCRIPT" || event.target.tagName === "LINK"))
+      /ChunkLoadError|Loading chunk|Failed to fetch|NetworkError|client-side exception|server-side exception|Application error/i.test(msg) ||
+      (event && event.target && (event.target.tagName === "SCRIPT" || event.target.tagName === "LINK"))
     ) {
       show();
     }
@@ -77,26 +95,20 @@ export const OFFLINE_FALLBACK_SCRIPT = `
 
   function watch() {
     if (!document.body) return;
+    if (looksLikeAppError()) show();
     var obs = new MutationObserver(function () {
-      if (
-        /Application error|client-side exception|server-side exception/i.test(
-          document.body.innerText || ""
-        )
-      ) {
-        show();
-      }
+      if (looksLikeAppError()) show();
     });
     obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    setInterval(function () {
+      if (!shown && looksLikeAppError()) show();
+    }, 250);
   }
   if (document.body) watch();
   else document.addEventListener("DOMContentLoaded", watch);
 
-  if (
-    typeof navigator !== "undefined" &&
-    navigator.onLine === false &&
-    !/\\/seguimiento/.test(location.pathname)
-  ) {
-    window.setTimeout(show, 400);
+  if (!navigator.onLine && !/\\/seguimiento/.test(location.pathname)) {
+    window.setTimeout(show, 200);
   }
 })();
 `;

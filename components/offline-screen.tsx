@@ -29,6 +29,10 @@ export function OfflineScreen({ onContinue }: { onContinue?: () => void }) {
     setStillOffline(false);
     const online = await hasInternet();
     if (!online) {
+      if (window.location.pathname !== "/offline.html") {
+        window.location.replace("/offline.html");
+        return;
+      }
       setPending(false);
       setStillOffline(true);
       return;
