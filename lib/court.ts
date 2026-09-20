@@ -145,7 +145,14 @@ export function applyPhaseLibero(
   const phaseId = phaseLiberoId(serving, receptionId, defenseId);
   const otherId = phaseId === receptionId ? defenseId : receptionId;
   if (otherId && otherId !== phaseId && !inSlot.has(otherId)) next.delete(otherId);
-  if (phaseId) next.add(phaseId);
+  if (phaseId) {
+    next.add(phaseId);
+    const offCourt: CourtPosition[] = serving ? [5, 6] : [1, 5, 6];
+    for (const position of offCourt) {
+      const player = slots[position];
+      if (player?.position === "central") next.delete(player.id);
+    }
+  }
   return next;
 }
 
