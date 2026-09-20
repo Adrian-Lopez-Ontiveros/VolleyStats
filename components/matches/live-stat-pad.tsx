@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { POSITION_LABELS } from "@/lib/constants";
-import { RALLY_PHASE_LABEL, type RallyPhase } from "@/lib/live-rally";
+import { RALLY_PHASE_LABEL, nextRallyFromAction, type RallyPhase } from "@/lib/live-rally";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import type { Player, PointType } from "@/lib/types";
 
@@ -37,7 +37,7 @@ const SKILLS: Record<
     header: "SAQ",
     options: [
       { type: "ace", symbol: "A", label: "Ace", tone: "point" },
-      { type: "serve_in", symbol: "+", label: "Dentro", tone: "good" },
+      { type: "serve_in", symbol: "+", label: "Dentro", tone: "mid" },
       { type: "serve_error", symbol: "−", label: "Fuera", tone: "error" },
     ],
   },
@@ -72,19 +72,19 @@ const SKILLS: Record<
 };
 
 const SKILL_HEADER: Record<SkillId, string> = {
-  rec: "bg-sky-700 text-white",
-  saq: "bg-violet-800 text-white",
-  ata: "bg-orange-600 text-white",
-  blo: "bg-emerald-800 text-white",
-  def: "bg-rose-700 text-white",
+  rec: "bg-sky-100 text-sky-800",
+  saq: "bg-violet-100 text-violet-800",
+  ata: "bg-orange-100 text-orange-800",
+  blo: "bg-cyan-100 text-cyan-800",
+  def: "bg-slate-200 text-slate-800",
 };
 
 const TONE_CLASS: Record<SkillOption["tone"], string> = {
-  point: "border-emerald-800 bg-emerald-700 text-white",
-  good: "border-sky-800 bg-sky-700 text-white",
-  mid: "border-amber-700 bg-amber-500 text-amber-950",
-  poor: "border-orange-800 bg-orange-600 text-white",
-  error: "border-rose-900 bg-rose-700 text-white",
+  point: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  good: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  mid: "border-amber-200 bg-amber-50 text-amber-900",
+  poor: "border-stone-200 bg-stone-100 text-stone-700",
+  error: "border-rose-200 bg-rose-50 text-rose-800",
 };
 
 function skillOrder(phase: RallyPhase, isLibero: boolean): SkillId[] {
@@ -112,6 +112,7 @@ export function LiveStatPad({
   phase,
   serveLocked,
   serverPlayerId,
+  rallyKey,
   onAction,
 }: {
   teamName: string;
@@ -121,16 +122,23 @@ export function LiveStatPad({
   phase: RallyPhase;
   serveLocked: boolean;
   serverPlayerId: string | null;
+  rallyKey: string;
   onAction: (player: PadPlayer, pointType: PointType) => void;
 }) {
   const [flash, setFlash] = useState<{ playerId: string; type: PointType } | null>(null);
-  const teamSkills = useMemo(() => skillOrder(phase, false), [phase]);
+  const [rally, setRally] = useState({ phase, serveLocked });
+
+  useEffect(() => {
+    setRally({ phase, serveLocked });
+  }, [rallyKey, phase, serveLocked]);
+
+  const teamSkills = useMemo(() => skillOrder(rally.phase, false), [rally.phase]);
   const orderedPlayers = useMemo(() => {
-    if (!serverPlayerId || phase !== "serve") return players;
+    if (!serverPlayerId || rally.phase !== "serve") return players;
     const server = players.find((player) => player.id === serverPlayerId);
     if (!server) return players;
     return [server, ...players.filter((player) => player.id !== serverPlayerId)];
-  }, [players, serverPlayerId, phase]);
+  }, [players, serverPlayerId, rally.phase]);
 
   if (players.length === 0) {
     return (
@@ -141,7 +149,7 @@ export function LiveStatPad({
   }
 
   function canUseServe(player: PadPlayer) {
-    if (disabled || !serving || serveLocked) return false;
+    if (disabled || !serving || rally.serveLocked) return false;
     if (player.position === "libero") return false;
     if (serverPlayerId && player.id !== serverPlayerId) return false;
     return true;
@@ -150,12 +158,15 @@ export function LiveStatPad({
   function tap(player: PadPlayer, skillId: SkillId, option: SkillOption) {
     if (disabled) return;
     if (skillId === "saq" && !canUseServe(player)) return;
+    setRally((current) => nextRallyFromAction(current, option.type, serving));
     setFlash({ playerId: player.id, type: option.type });
-    window.setTimeout(() => setFlash(null), 280);
+    window.setTimeout(() => setFlash(null), 220);
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate?.(10);
+      navigator.vibrate?.(8);
     }
-    onAction(player, option.type);
+    startTransition(() => {
+      onAction(player, option.type);
+    });
   }
 
   return (
@@ -164,17 +175,17 @@ export function LiveStatPad({
         <div className="min-w-0">
           <p className="text-sm font-semibold leading-tight">{teamName}</p>
           <p className="text-[11px] text-muted-foreground">
-            {serving ? "Saca" : "Recibe"} · ahora {RALLY_PHASE_LABEL[phase].toLowerCase()}
+            {serving ? "Saca" : "Recibe"} · ahora {RALLY_PHASE_LABEL[rally.phase].toLowerCase()}
           </p>
         </div>
-        <Badge variant={phase === "serve" || phase === "attack" ? "accent" : "default"}>
-          {RALLY_PHASE_LABEL[phase]}
+        <Badge variant={rally.phase === "serve" || rally.phase === "attack" ? "accent" : "default"}>
+          {RALLY_PHASE_LABEL[rally.phase]}
         </Badge>
       </div>
       <ul>
         {orderedPlayers.map((player) => {
           const libero = player.position === "libero";
-          const skills = skillOrder(phase, libero);
+          const skills = skillOrder(rally.phase, libero);
           const name = player.full_name;
           const isServer = Boolean(serverPlayerId && player.id === serverPlayerId);
           return (
@@ -194,7 +205,7 @@ export function LiveStatPad({
                   </p>
                 </div>
                 {libero ? <Badge variant="secondary">Líbero</Badge> : null}
-                {isServer && phase === "serve" ? <Badge variant="accent">Saca</Badge> : null}
+                {isServer && rally.phase === "serve" ? <Badge variant="accent">Saca</Badge> : null}
               </div>
               <div
                 className={cn(
@@ -206,10 +217,7 @@ export function LiveStatPad({
                   const skill = SKILLS[skillId];
                   const serveBlocked = skillId === "saq" && !canUseServe(player);
                   return (
-                    <div
-                      key={skillId}
-                      className={cn("min-w-0 transition-opacity duration-150", serveBlocked && "opacity-40")}
-                    >
+                    <div key={skillId} className={cn("min-w-0", serveBlocked && "opacity-40")}>
                       <div
                         className={cn(
                           "mb-1 rounded-lg px-1 py-1 text-center text-[11px] font-bold tracking-wide",
@@ -229,7 +237,7 @@ export function LiveStatPad({
                               disabled={disabled || serveBlocked}
                               title={
                                 serveBlocked
-                                  ? serveLocked
+                                  ? rally.serveLocked
                                     ? "El saque de este punto ya está anotado"
                                     : "Solo puede sacar quien está en zona 1"
                                   : `${skill.label}: ${option.label}`
@@ -237,13 +245,13 @@ export function LiveStatPad({
                               aria-label={`${name} · ${skill.label} ${option.label}`}
                               onClick={() => tap(player, skillId, option)}
                               className={cn(
-                                "flex h-10 flex-col items-center justify-center rounded-xl border text-sm font-black leading-none shadow-sm transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60",
+                                "flex h-10 flex-col items-center justify-center rounded-xl border text-sm font-black leading-none disabled:cursor-not-allowed disabled:opacity-60",
                                 TONE_CLASS[option.tone],
-                                active && "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30"
+                                active && "border-emerald-400 bg-emerald-100 text-emerald-900"
                               )}
                             >
                               <span>{option.symbol}</span>
-                              <span className="mt-0.5 text-[9px] font-semibold tracking-wide opacity-90">
+                              <span className="mt-0.5 text-[9px] font-semibold tracking-wide opacity-80">
                                 {option.label}
                               </span>
                             </button>

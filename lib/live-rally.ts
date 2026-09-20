@@ -1,4 +1,4 @@
-import { isScoringAction } from "@/lib/volleyball";
+import { isScoringAction, scoresForActingTeam } from "@/lib/volleyball";
 import type { PointType } from "@/lib/types";
 
 export type RallyPhase = "serve" | "receive" | "block_def" | "attack";
@@ -80,4 +80,30 @@ export function rallyPadState(
   }
 
   return { phase, serveLocked };
+}
+
+export function nextRallyFromAction(
+  current: RallyPadState,
+  pointType: PointType,
+  serving: boolean
+): RallyPadState {
+  if (isScoringAction(pointType)) {
+    const weWon = scoresForActingTeam(pointType);
+    return { phase: weWon ? "serve" : "receive", serveLocked: false };
+  }
+
+  const serveLocked = current.serveLocked || isServeType(pointType);
+  if (isServeType(pointType)) {
+    return {
+      phase: pointType === "serve_in" ? (serving ? "block_def" : "receive") : current.phase,
+      serveLocked,
+    };
+  }
+  if (RECEPTION_KEEP.includes(pointType) || DEFENSE_KEEP.includes(pointType)) {
+    return { phase: "attack", serveLocked };
+  }
+  if (pointType === "attack_continuation" || BLOCK_KEEP.includes(pointType)) {
+    return { phase: "block_def", serveLocked };
+  }
+  return { ...current, serveLocked };
 }

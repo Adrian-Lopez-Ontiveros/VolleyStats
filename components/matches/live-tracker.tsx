@@ -643,6 +643,7 @@ export function LiveTracker({
     [mergedEvents, displayMatch.current_set, match.away_team_id, awayServing]
   );
   const padRally = padSide === "home" ? homeRally : awayRally;
+  const padRallyKey = `${padSide}:${displayMatch.current_set}:${mergedEvents.length}:${mergedEvents.at(-1)?.id ?? ""}`;
   const padServerPlayerId =
     padSide === "home"
       ? homeServing
@@ -784,6 +785,7 @@ export function LiveTracker({
             phase={padRally.phase}
             serveLocked={padRally.serveLocked}
             serverPlayerId={padServerPlayerId}
+            rallyKey={padRallyKey}
             onAction={(player, pointType) =>
               recordAction(
                 padSide === "home" ? match.home_team_id : match.away_team_id,
