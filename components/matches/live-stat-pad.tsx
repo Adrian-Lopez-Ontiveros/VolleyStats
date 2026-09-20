@@ -87,9 +87,9 @@ const TONE_CLASS: Record<SkillOption["tone"], string> = {
   error: "border-rose-200 bg-rose-50 text-rose-800",
 };
 
-function skillOrder(serving: boolean, isLibero: boolean): SkillId[] {
-  if (isLibero) return serving ? ["def", "rec"] : ["rec", "def"];
-  return serving ? ["saq", "ata", "blo", "def", "rec"] : ["rec", "saq", "ata", "blo", "def"];
+function skillOrder(_serving: boolean, isLibero: boolean): SkillId[] {
+  if (isLibero) return ["def", "rec"];
+  return ["saq", "ata", "def", "blo", "rec"];
 }
 
 export function LiveStatPad({
