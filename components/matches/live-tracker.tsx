@@ -784,6 +784,7 @@ export function LiveTracker({
             serveLocked={padLocks.serveLocked}
             receptionLocked={padLocks.receptionLocked}
             serverPlayerId={padServerPlayerId}
+            rallyResetKey={`${displayMatch.current_set}:${displayMatch.home_points}-${displayMatch.away_points}:${padSide === "home" ? homeServing : awayServing}`}
             onAction={(player, pointType) =>
               recordAction(
                 padSide === "home" ? match.home_team_id : match.away_team_id,

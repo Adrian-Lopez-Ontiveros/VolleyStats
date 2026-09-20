@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { POSITION_LABELS } from "@/lib/constants";
 import { isReceptionType, isServeType } from "@/lib/live-rally";
+import { isScoringAction } from "@/lib/volleyball";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import type { Player, PointType } from "@/lib/types";
 
@@ -100,6 +101,7 @@ export function LiveStatPad({
   serveLocked,
   receptionLocked,
   serverPlayerId,
+  rallyResetKey = "",
   onAction,
 }: {
   teamName: string;
@@ -109,6 +111,7 @@ export function LiveStatPad({
   serveLocked: boolean;
   receptionLocked: boolean;
   serverPlayerId: string | null;
+  rallyResetKey?: string;
   onAction: (player: PadPlayer, pointType: PointType) => void;
 }) {
   const [flash, setFlash] = useState<{ playerId: string; type: PointType } | null>(null);
@@ -118,7 +121,7 @@ export function LiveStatPad({
   useEffect(() => {
     setTappedServe(false);
     setTappedRec(false);
-  }, [serving, serveLocked, receptionLocked]);
+  }, [serving, serveLocked, receptionLocked, rallyResetKey]);
 
   const serveIsLocked = serveLocked || tappedServe;
   const recIsLocked = receptionLocked || tappedRec;
@@ -175,8 +178,8 @@ export function LiveStatPad({
 
   function tap(player: PadPlayer, skillId: SkillId, option: SkillOption) {
     if (disabled || skillBlocked(skillId, player)) return;
-    if (isServeType(option.type)) setTappedServe(true);
-    if (isReceptionType(option.type)) setTappedRec(true);
+    if (isServeType(option.type) && !isScoringAction(option.type)) setTappedServe(true);
+    if (isReceptionType(option.type) && !isScoringAction(option.type)) setTappedRec(true);
     setFlash({ playerId: player.id, type: option.type });
     window.setTimeout(() => setFlash(null), 220);
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
