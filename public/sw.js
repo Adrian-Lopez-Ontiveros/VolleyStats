@@ -1,4 +1,4 @@
-const CACHE_NAME = "fuelastats-v8";
+const CACHE_NAME = "fuelastats-v9";
 const OFFLINE_URL = "/offline";
 const PRECACHE = ["/", "/offline", "/logo.png"];
 
@@ -61,7 +61,9 @@ self.addEventListener("fetch", (event) => {
         .then((response) => response)
         .catch(async () => {
           const cached = await caches.match(request);
-          return cached || caches.match(OFFLINE_URL);
+          if (cached) return cached;
+          if (request.mode === "navigate") return caches.match(OFFLINE_URL);
+          return Response.error();
         })
     );
     return;

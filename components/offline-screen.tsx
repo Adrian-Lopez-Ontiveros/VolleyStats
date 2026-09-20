@@ -1,22 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import { WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 
-export function OfflineScreen({
-  onRetry,
-  onContinue,
-}: {
-  onRetry?: () => void;
-  onContinue?: () => void;
-}) {
-  function retry() {
-    if (onRetry) {
-      onRetry();
+async function hasInternet() {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+  try {
+    const response = await fetch(`/noticias?online=${Date.now()}`, {
+      method: "GET",
+      cache: "no-store",
+      headers: { "X-Online-Check": "1" },
+    });
+    if (!response.ok) return false;
+    if (response.url.includes("/offline")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function OfflineScreen({ onContinue }: { onContinue?: () => void }) {
+  const [pending, setPending] = useState(false);
+  const [stillOffline, setStillOffline] = useState(false);
+
+  async function retry() {
+    setPending(true);
+    setStillOffline(false);
+    const online = await hasInternet();
+    if (!online) {
+      setPending(false);
+      setStillOffline(true);
       return;
     }
-    window.location.reload();
+    window.location.replace("/");
   }
 
   return (
@@ -30,12 +48,17 @@ export function OfflineScreen({
         El fallo no es de la app: este móvil no tiene conexión. Activa el Wi‑Fi o los
         datos móviles y vuelve a entrar.
       </p>
+      {stillOffline ? (
+        <p className="mt-3 text-sm font-semibold text-amber-800">
+          Sigue sin internet. Comprueba el Wi‑Fi o los datos y prueba otra vez.
+        </p>
+      ) : null}
       <div className="mt-8 grid w-full gap-3">
-        <Button type="button" size="lg" variant="accent" onClick={retry}>
-          Reintentar
+        <Button type="button" size="lg" variant="accent" onClick={retry} disabled={pending}>
+          {pending ? "Comprobando..." : "Reintentar"}
         </Button>
         {onContinue ? (
-          <Button type="button" size="lg" variant="outline" onClick={onContinue}>
+          <Button type="button" size="lg" variant="outline" onClick={onContinue} disabled={pending}>
             Seguir con lo guardado en el móvil
           </Button>
         ) : null}
