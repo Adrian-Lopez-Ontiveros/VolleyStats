@@ -1,5 +1,7 @@
 "use client";
 
-import ErrorPage from "@/app/error";
+import { OfflineScreen } from "@/components/offline-screen";
 
-export default ErrorPage;
+export default function AppError() {
+  return <OfflineScreen />;
+}

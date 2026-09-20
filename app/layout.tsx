@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
+import { OFFLINE_FALLBACK_SCRIPT } from "@/lib/offline-fallback";
 import "./globals.css";
 
 const font = Plus_Jakarta_Sans({
@@ -80,6 +81,7 @@ export default function RootLayout({
       </head>
       <body className={`${font.className} min-h-dvh`}>
         <script dangerouslySetInnerHTML={{ __html: splashBoot }} />
+        <script dangerouslySetInnerHTML={{ __html: OFFLINE_FALLBACK_SCRIPT }} />
         <div id="app-splash" role="status" aria-live="polite" aria-label="Cargando FuenlaStats">
           <div className="app-splash-mark">
             {/* eslint-disable-next-line @next/next/no-img-element */}
