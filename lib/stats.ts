@@ -43,8 +43,15 @@ export type PlayerMatchSample = {
   receptionGood: number;
   receptionMedium: number;
   receptionBad: number;
+  receptionErrors: number;
   receptionTotal: number;
   receptionPct: number | null;
+  defenseGood: number;
+  defenseMedium: number;
+  defenseBad: number;
+  defenseErrors: number;
+  defenseTotal: number;
+  defensePct: number | null;
 };
 
 export type MatchStandingInput = Pick<
@@ -216,8 +223,15 @@ export function emptyPlayerSample(matchId: string, date: string): PlayerMatchSam
     receptionGood: 0,
     receptionMedium: 0,
     receptionBad: 0,
+    receptionErrors: 0,
     receptionTotal: 0,
     receptionPct: null,
+    defenseGood: 0,
+    defenseMedium: 0,
+    defenseBad: 0,
+    defenseErrors: 0,
+    defenseTotal: 0,
+    defensePct: null,
   };
 }
 
@@ -270,27 +284,48 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
       sample.receptionBad += 1;
       break;
     case "reception_error":
+      sample.errors += 1;
+      sample.receptionErrors += 1;
+      break;
     case "defense_error":
       sample.errors += 1;
+      sample.defenseErrors += 1;
       break;
     case "defense_good":
+      sample.defenseGood += 1;
+      break;
     case "defense_medium":
+      sample.defenseMedium += 1;
+      break;
     case "defense_bad":
+      sample.defenseBad += 1;
+      break;
+    case "block_touch":
+    case "block_continuation":
       break;
   }
   sample.attackAttempts = sample.attackKills + sample.attackErrors + sample.attackContinuations;
   sample.attackEffPct =
     sample.attackAttempts === 0
       ? null
-      : ((sample.attackKills - sample.attackErrors) / sample.attackAttempts) * 100;
+      : ((sample.attackKills + sample.attackContinuations) / sample.attackAttempts) * 100;
   sample.serveAttempts = sample.aces + sample.serveErrors + sample.serveIn;
   sample.servePct =
     sample.serveAttempts === 0
       ? null
       : ((sample.aces + sample.serveIn) / sample.serveAttempts) * 100;
-  sample.receptionTotal = sample.receptionGood + sample.receptionMedium + sample.receptionBad;
+  sample.receptionTotal =
+    sample.receptionGood + sample.receptionMedium + sample.receptionBad + sample.receptionErrors;
   sample.receptionPct =
-    sample.receptionTotal === 0 ? null : (sample.receptionGood / sample.receptionTotal) * 100;
+    sample.receptionTotal === 0
+      ? null
+      : ((sample.receptionTotal - sample.receptionErrors) / sample.receptionTotal) * 100;
+  sample.defenseTotal =
+    sample.defenseGood + sample.defenseMedium + sample.defenseBad + sample.defenseErrors;
+  sample.defensePct =
+    sample.defenseTotal === 0
+      ? null
+      : ((sample.defenseTotal - sample.defenseErrors) / sample.defenseTotal) * 100;
   sample.efficiency = playerEfficiencyPercent(sample.points, sample.errors);
 }
 
@@ -460,6 +495,8 @@ export function emptyPointTypeCounts(): PointTypeCounts {
     defense_medium: 0,
     defense_bad: 0,
     defense_error: 0,
+    block_touch: 0,
+    block_continuation: 0,
   };
 }
 

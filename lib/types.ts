@@ -37,7 +37,9 @@ export type PointType =
   | "defense_good"
   | "defense_medium"
   | "defense_bad"
-  | "defense_error";
+  | "defense_error"
+  | "block_touch"
+  | "block_continuation";
 
 export type PlayerPosition =
   | "opuesto"
@@ -217,6 +219,7 @@ export type Match = {
   is_federation?: boolean;
   federation_match_id?: string | null;
   federation_round?: string | null;
+  sets_to_win?: number | null;
   created_at: string;
   updated_at: string;
 };

@@ -37,7 +37,9 @@ do $$ begin
     'defense_good',
     'defense_medium',
     'defense_bad',
-    'defense_error'
+    'defense_error',
+    'block_touch',
+    'block_continuation'
   );
 exception when duplicate_object then null;
 end $$;
@@ -47,6 +49,8 @@ alter type public.point_type add value if not exists 'defense_good';
 alter type public.point_type add value if not exists 'defense_medium';
 alter type public.point_type add value if not exists 'defense_bad';
 alter type public.point_type add value if not exists 'defense_error';
+alter type public.point_type add value if not exists 'block_touch';
+alter type public.point_type add value if not exists 'block_continuation';
 
 do $$ begin
   create type public.player_position as enum (
@@ -127,9 +131,11 @@ create table if not exists public.matches (
   reminder_sent_at timestamptz,
   federation_match_id text,
   federation_round text,
+  sets_to_win int not null default 3,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint matches_different_teams check (home_team_id <> away_team_id)
+  constraint matches_different_teams check (home_team_id <> away_team_id),
+  constraint matches_sets_to_win_check check (sets_to_win in (2, 3))
 );
 
 create table if not exists public.match_events (
@@ -513,7 +519,13 @@ begin
       count(*) filter (where e.point_type = 'block') as block_points,
       count(*) filter (where e.point_type = 'ace') as aces,
       count(*) filter (
-        where e.point_type in ('error', 'attack_error', 'serve_error')
+        where e.point_type in (
+          'error',
+          'attack_error',
+          'serve_error',
+          'reception_error',
+          'defense_error'
+        )
       ) as errors,
       count(*) filter (where e.point_type = 'opponent_error') as opponent_errors,
       count(*) filter (where e.point_type = 'other') as other_points,

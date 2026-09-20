@@ -8,7 +8,12 @@ import { resolvePredictionsForMatch } from "@/lib/actions/game";
 import { sendDueMatchReminders } from "@/lib/actions/notifications";
 import { requireCoach } from "@/lib/auth";
 import { parseCategory, type TeamCategory } from "@/lib/categories";
-import { matchScoreFromSets, parseLineupFromForm, parseManualSetScores } from "@/lib/match-result";
+import {
+  matchScoreFromSets,
+  parseLineupFromForm,
+  parseManualSetScores,
+  parseSetsToWin,
+} from "@/lib/match-result";
 import { datetimeLocalMadridToIso } from "@/lib/federation/schedule";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePersonName } from "@/lib/utils";
@@ -192,15 +197,16 @@ async function saveClubLineup(
 async function applyManualScores(
   formData: FormData,
   currentStatus: MatchStatus,
-  hasLiveEvents: boolean
+  hasLiveEvents: boolean,
+  setsToWin = 3
 ) {
   if (hasLiveEvents) return { update: {} as Record<string, unknown> };
 
-  const parsed = parseManualSetScores(formData);
+  const parsed = parseManualSetScores(formData, setsToWin);
   if (parsed.error) return { error: parsed.error };
   if (parsed.scores.length === 0) return { update: {} as Record<string, unknown> };
 
-  return { update: matchScoreFromSets(parsed.scores, currentStatus) };
+  return { update: matchScoreFromSets(parsed.scores, currentStatus, setsToWin) };
 }
 
 export async function createMatch(formData: FormData) {
@@ -241,7 +247,8 @@ export async function createMatch(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const scores = await applyManualScores(formData, "scheduled", false);
+  const setsToWin = parseSetsToWin(formData);
+  const scores = await applyManualScores(formData, "scheduled", false, setsToWin);
   if (scores.error) return { error: scores.error };
 
   const { data, error } = await supabase
@@ -254,12 +261,21 @@ export async function createMatch(formData: FormData) {
       notes: parsed.data.notes?.trim() || null,
       created_by: session.id,
       is_federation: false,
+      sets_to_win: setsToWin,
       ...scores.update,
     })
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (/sets_to_win/i.test(error.message)) {
+      return {
+        error:
+          "Falta ejecutar la migración supabase/migrations/031_sets_to_win_and_block_actions.sql para elegir mejor de 3 o 5.",
+      };
+    }
+    return { error: error.message };
+  }
 
   const lineup = await saveClubLineup(
     data.id,
@@ -316,7 +332,7 @@ export async function updateMatch(matchId: string, formData: FormData) {
   const supabase = await createClient();
   const { data: current } = await supabase
     .from("matches")
-    .select("id, status, home_team_id, away_team_id")
+    .select("id, status, home_team_id, away_team_id, is_federation")
     .eq("id", matchId)
     .maybeSingle();
 
@@ -330,10 +346,12 @@ export async function updateMatch(matchId: string, formData: FormData) {
     .select("id", { count: "exact", head: true })
     .eq("match_id", matchId);
 
+  const setsToWin = current.is_federation ? 3 : parseSetsToWin(formData);
   const scores = await applyManualScores(
     formData,
     current.status as MatchStatus,
-    (count ?? 0) > 0
+    (count ?? 0) > 0,
+    setsToWin
   );
   if (scores.error) return { error: scores.error };
 
@@ -348,11 +366,20 @@ export async function updateMatch(matchId: string, formData: FormData) {
       scheduled_at: datetimeLocalMadridToIso(parsed.data.scheduledAt),
       location: parsed.data.location?.trim() || null,
       notes: parsed.data.notes?.trim() || null,
+      sets_to_win: setsToWin,
       ...scores.update,
     })
     .eq("id", matchId);
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (/sets_to_win/i.test(error.message)) {
+      return {
+        error:
+          "Falta ejecutar la migración supabase/migrations/031_sets_to_win_and_block_actions.sql para elegir mejor de 3 o 5.",
+      };
+    }
+    return { error: error.message };
+  }
 
   const lineup = await saveClubLineup(matchId, nextHome, nextAway, formData);
   if (lineup.error) return { error: lineup.error };
@@ -422,6 +449,27 @@ export async function setMatchLibero(
   playerId: string | null
 ) {
   return setMatchLiberoImpl(matchId, teamId, kind, playerId);
+}
+
+export async function setLiveSetLineup(matchId: string, formData: FormData) {
+  await requireCoach();
+  const supabase = await createClient();
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id, home_team_id, away_team_id, status")
+    .eq("id", matchId)
+    .maybeSingle();
+  if (!match) return { error: "Partido no encontrado" };
+  if (match.status === "finished" || match.status === "cancelled") {
+    return { error: "No se puede cambiar la alineación de este partido." };
+  }
+
+  const lineup = await saveClubLineup(matchId, match.home_team_id, match.away_team_id, formData);
+  if (lineup.error) return { error: lineup.error };
+
+  revalidatePath(`/partidos/${matchId}`);
+  revalidatePath(`/partidos/${matchId}/seguimiento`);
+  return { success: true as const };
 }
 
 export async function activateMatchLibero(matchId: string, teamId: string, kind: LiberoKind) {

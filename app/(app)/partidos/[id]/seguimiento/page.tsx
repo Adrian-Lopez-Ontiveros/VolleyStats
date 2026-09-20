@@ -104,7 +104,7 @@ export default async function LiveMatchPage({
     <>
       <PageHeader
         title="Seguimiento en vivo"
-        description="Solo los jugadores en pista pueden anotar. Usa Cambio para las sustituciones."
+        description="Anota desde el pad de las jugadoras en pista. Al cambiar de set puedes elegir titulares de nuevo."
       />
       <LiveTracker
         match={typedMatch}

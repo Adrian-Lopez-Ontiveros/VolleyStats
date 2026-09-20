@@ -1,4 +1,4 @@
-import { SETS_TO_WIN } from "@/lib/constants";
+import { SETS_TO_WIN, maxSetsOf } from "@/lib/constants";
 import type { MatchStatus, SetScore } from "@/lib/types";
 
 export function isCompletedSetScore(home: number, away: number) {
@@ -7,13 +7,18 @@ export function isCompletedSetScore(home: number, away: number) {
   return leader !== trailer && leader >= 15 && leader - trailer >= 2;
 }
 
-export function parseManualSetScores(formData: FormData): {
+export function parseManualSetScores(
+  formData: FormData,
+  setsToWin = SETS_TO_WIN
+): {
   scores: SetScore[];
   error?: string;
 } {
   const scores: SetScore[] = [];
+  const needed = setsToWin === 2 ? 2 : SETS_TO_WIN;
+  const lastSet = maxSetsOf(needed);
 
-  for (let setNumber = 1; setNumber <= 5; setNumber += 1) {
+  for (let setNumber = 1; setNumber <= lastSet; setNumber += 1) {
     const homeRaw = String(formData.get(`set${setNumber}Home`) ?? "").trim();
     const awayRaw = String(formData.get(`set${setNumber}Away`) ?? "").trim();
 
@@ -43,7 +48,7 @@ export function parseManualSetScores(formData: FormData): {
 
     const homeSets = scores.filter((set) => set.home > set.away).length;
     const awaySets = scores.filter((set) => set.away > set.home).length;
-    if (homeSets >= SETS_TO_WIN || awaySets >= SETS_TO_WIN) {
+    if (homeSets >= needed || awaySets >= needed) {
       return {
         scores: [],
         error: "El partido ya estaba decidido. No hace falta un set extra.",
@@ -58,7 +63,8 @@ export function parseManualSetScores(formData: FormData): {
 
 export function matchScoreFromSets(
   scores: SetScore[],
-  currentStatus: MatchStatus
+  currentStatus: MatchStatus,
+  setsToWin = SETS_TO_WIN
 ): {
   set_scores: SetScore[];
   home_sets: number;
@@ -68,19 +74,24 @@ export function matchScoreFromSets(
   away_points: number;
   status: MatchStatus;
 } {
+  const needed = setsToWin === 2 ? 2 : SETS_TO_WIN;
   const homeSets = scores.filter((set) => set.home > set.away).length;
   const awaySets = scores.filter((set) => set.away > set.home).length;
-  const finished = homeSets >= SETS_TO_WIN || awaySets >= SETS_TO_WIN;
+  const finished = homeSets >= needed || awaySets >= needed;
 
   return {
     set_scores: scores,
     home_sets: homeSets,
     away_sets: awaySets,
-    current_set: finished ? Math.max(1, scores.length) : Math.min(5, scores.length + 1),
+    current_set: finished ? Math.max(1, scores.length) : Math.min(maxSetsOf(needed), scores.length + 1),
     home_points: 0,
     away_points: 0,
     status: finished ? "finished" : currentStatus === "cancelled" ? "cancelled" : currentStatus,
   };
+}
+
+export function parseSetsToWin(formData: FormData) {
+  return String(formData.get("setsToWin") ?? "") === "2" ? 2 : SETS_TO_WIN;
 }
 
 export function parseLineupFromForm(formData: FormData): {

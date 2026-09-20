@@ -154,6 +154,18 @@ export const POINT_TYPE_META: Record<
     buttonClassName:
       "border-rose-400 bg-rose-100 text-rose-950 hover:bg-rose-200",
   },
+  block_touch: {
+    label: "Toque de bloqueo",
+    short: "TB",
+    className: "bg-sky-50 text-sky-900",
+    buttonClassName: "border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100",
+  },
+  block_continuation: {
+    label: "Bloqueo continuado",
+    short: "BC",
+    className: "bg-sky-50 text-sky-900",
+    buttonClassName: "border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100",
+  },
 };
 
 export const POSITION_LABELS: Record<PlayerPosition, string> = {
@@ -204,10 +216,10 @@ export const TEAM_SUMMARY_SELECT =
   "id, name, short_name, logo_url, city, category, is_club_team, federation_team_id" as const;
 
 export const MATCH_LIST_SELECT =
-  `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, notes, is_federation, federation_round, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
+  `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, notes, is_federation, federation_round, sets_to_win, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
 
 export const MATCH_WITH_TEAMS_SELECT =
-  `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, created_at, is_federation, federation_match_id, federation_round, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
+  `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, created_at, is_federation, federation_match_id, federation_round, sets_to_win, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
 
 export const MATCH_STANDING_SELECT =
   "home_team_id, away_team_id, status, home_sets, away_sets, set_scores, is_federation" as const;
@@ -267,3 +279,12 @@ export const SETS_TO_WIN = 3;
 export const REGULAR_SET_POINTS = 25;
 export const DECIDING_SET_POINTS = 15;
 export const MIN_LEAD = 2;
+
+export function setsToWinOf(match?: { sets_to_win?: number | null; is_federation?: boolean | null } | null) {
+  if (match?.is_federation) return SETS_TO_WIN;
+  return match?.sets_to_win === 2 ? 2 : SETS_TO_WIN;
+}
+
+export function maxSetsOf(setsToWin: number) {
+  return setsToWin * 2 - 1;
+}

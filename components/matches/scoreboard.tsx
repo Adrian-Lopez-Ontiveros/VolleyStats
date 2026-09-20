@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { matchStatusMeta } from "@/lib/constants";
+import { matchStatusMeta, maxSetsOf, setsToWinOf } from "@/lib/constants";
 import { isFriendlyMatch } from "@/components/matches/match-kind";
 import { Badge } from "@/components/ui/badge";
 import { TeamLogo } from "@/components/teams/team-logo";
@@ -9,6 +9,7 @@ import type { MatchWithTeams, Team } from "@/lib/types";
 export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWithTeams }) {
   const status = matchStatusMeta(match.status);
   const friendly = isFriendlyMatch(match);
+  const setsToWin = setsToWinOf(match);
   return (
     <section
       className={cn(
@@ -23,7 +24,9 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
             friendly ? "text-orange-700" : "text-orange-200"
           )}
         >
-          {friendly ? `Amistoso · Set ${match.current_set}` : `Set ${match.current_set}`}
+          {friendly
+            ? `Amistoso · Mejor de ${maxSetsOf(setsToWin)} · Set ${match.current_set}`
+            : `Set ${match.current_set}`}
         </p>
         <Badge className={status.className}>{status.label}</Badge>
       </div>

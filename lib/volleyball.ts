@@ -3,8 +3,12 @@ import {
   MIN_LEAD,
   REGULAR_SET_POINTS,
   SETS_TO_WIN,
+  maxSetsOf,
+  setsToWinOf,
 } from "@/lib/constants";
 import type { MatchEvent, PointType, SetScore } from "@/lib/types";
+
+export { maxSetsOf, setsToWinOf };
 
 const OWN_ERROR_TYPES: PointType[] = [
   "error",
@@ -23,6 +27,8 @@ const NON_SCORING_TYPES: PointType[] = [
   "defense_good",
   "defense_medium",
   "defense_bad",
+  "block_touch",
+  "block_continuation",
 ];
 
 export function isScoringAction(pointType: PointType) {
@@ -48,12 +54,17 @@ export function resolveScoringTeam(
   return scoresForActingTeam(pointType) ? actingTeamId : opponentId;
 }
 
-export function targetPointsForSet(setNumber: number) {
-  return setNumber >= 5 ? DECIDING_SET_POINTS : REGULAR_SET_POINTS;
+export function targetPointsForSet(setNumber: number, setsToWin = SETS_TO_WIN) {
+  return setNumber >= maxSetsOf(setsToWin) ? DECIDING_SET_POINTS : REGULAR_SET_POINTS;
 }
 
-export function isSetWon(home: number, away: number, setNumber: number) {
-  const target = targetPointsForSet(setNumber);
+export function isSetWon(
+  home: number,
+  away: number,
+  setNumber: number,
+  setsToWin = SETS_TO_WIN
+) {
+  const target = targetPointsForSet(setNumber, setsToWin);
   const leader = Math.max(home, away);
   const trailer = Math.min(home, away);
   return leader >= target && leader - trailer >= MIN_LEAD;
@@ -104,8 +115,10 @@ export function annotateEventScores<
 export function computeMatchState(
   events: Pick<MatchEvent, "scoring_team_id" | "created_at">[],
   homeTeamId: string,
-  currentStatus: "scheduled" | "live" | "finished" | "cancelled"
+  currentStatus: "scheduled" | "live" | "finished" | "cancelled",
+  setsToWin = SETS_TO_WIN
 ): ComputedMatchState {
+  const needed = setsToWin === 2 ? 2 : SETS_TO_WIN;
   const ordered = [...events]
     .filter((event) => event.scoring_team_id)
     .sort(
@@ -121,12 +134,12 @@ export function computeMatchState(
   const setScores: SetScore[] = [];
 
   for (const event of ordered) {
-    if (homeSets >= SETS_TO_WIN || awaySets >= SETS_TO_WIN) break;
+    if (homeSets >= needed || awaySets >= needed) break;
 
     if (event.scoring_team_id === homeTeamId) homePoints += 1;
     else awayPoints += 1;
 
-    if (isSetWon(homePoints, awayPoints, currentSet)) {
+    if (isSetWon(homePoints, awayPoints, currentSet, needed)) {
       setScores.push({ home: homePoints, away: awayPoints });
       if (homePoints > awayPoints) homeSets += 1;
       else awaySets += 1;
@@ -136,7 +149,7 @@ export function computeMatchState(
     }
   }
 
-  const finished = homeSets >= SETS_TO_WIN || awaySets >= SETS_TO_WIN;
+  const finished = homeSets >= needed || awaySets >= needed;
 
   return {
     homeSets,

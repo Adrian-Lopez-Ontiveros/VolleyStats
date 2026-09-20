@@ -47,6 +47,7 @@ export const EVOLUTION_METRICS: EvolutionMetric[] = [
   { key: "aces", label: "Aces", color: "#059669", axis: "count" },
   { key: "errors", label: "Errores", color: COLORS.errors, axis: "count" },
   { key: "receptionPct", label: "Recepción", color: COLORS.away, axis: "pct" },
+  { key: "defensePct", label: "Defensa", color: "#7C3AED", axis: "pct" },
 ];
 
 export function PlayerEvolutionChart({
@@ -94,7 +95,7 @@ export function PlayerEvolutionChart({
             <YAxis
               yAxisId="pct"
               orientation="right"
-              domain={[-100, 100]}
+              domain={[0, 100]}
               tick={{ fill: COLORS.axis, fontSize: 11 }}
               axisLine={false}
               tickLine={false}

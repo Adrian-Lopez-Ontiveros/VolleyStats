@@ -10,7 +10,7 @@ import { requireCoach } from "@/lib/auth";
 import { applySlotSubstitutions, designatedLiberos, startingCourtByPosition } from "@/lib/court";
 import { currentOnCourtIds } from "@/lib/lineup";
 import { createClient } from "@/lib/supabase/server";
-import { computeMatchState, resolveScoringTeam, statFromPointType } from "@/lib/volleyball";
+import { computeMatchState, resolveScoringTeam, setsToWinOf, statFromPointType } from "@/lib/volleyball";
 import type { LiberoKind, MatchLineupEntry, MatchSubstitution, PointType } from "@/lib/types";
 
 const LINEUP_COURT_SELECT =
@@ -18,19 +18,24 @@ const LINEUP_COURT_SELECT =
 
 async function loadCourtState(matchId: string, teamId: string) {
   const supabase = await createClient();
-  const [{ data: lineup }, { data: substitutions }] = await Promise.all([
+  const [{ data: lineup }, { data: substitutions }, { data: match }] = await Promise.all([
     supabase.from("match_lineups").select(LINEUP_COURT_SELECT).eq("match_id", matchId),
     supabase
       .from("match_substitutions")
-      .select("player_out_id, player_in_id, team_id")
+      .select("player_out_id, player_in_id, team_id, set_number")
       .eq("match_id", matchId)
       .order("created_at", { ascending: true }),
+    supabase.from("matches").select("current_set").eq("id", matchId).maybeSingle(),
   ]);
 
   return currentOnCourtIds(
     (lineup ?? []) as MatchLineupEntry[],
-    (substitutions ?? []) as Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
-    teamId
+    (substitutions ?? []) as Pick<
+      MatchSubstitution,
+      "player_out_id" | "player_in_id" | "team_id" | "set_number"
+    >[],
+    teamId,
+    match?.current_set ?? 1
   );
 }
 
@@ -50,11 +55,17 @@ function liberoSchemaError(message?: string) {
 
 function courtSlotIds(
   lineup: MatchLineupEntry[],
-  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
-  teamId: string
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id" | "set_number">[],
+  teamId: string,
+  setNumber?: number
 ) {
   return new Set(
-    applySlotSubstitutions(startingCourtByPosition(lineup, teamId), substitutions, teamId).values()
+    applySlotSubstitutions(
+      startingCourtByPosition(lineup, teamId),
+      substitutions,
+      teamId,
+      setNumber
+    ).values()
   );
 }
 
@@ -62,10 +73,13 @@ async function loadTeamSubs(matchId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("match_substitutions")
-    .select("player_out_id, player_in_id, team_id")
+    .select("player_out_id, player_in_id, team_id, set_number")
     .eq("match_id", matchId)
     .order("created_at", { ascending: true });
-  return (data ?? []) as Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[];
+  return (data ?? []) as Pick<
+    MatchSubstitution,
+    "player_out_id" | "player_in_id" | "team_id" | "set_number"
+  >[];
 }
 
 function revalidateMatchStats(input: {
@@ -97,18 +111,22 @@ async function persistComputedMatch(
   status: "scheduled" | "live" | "finished" | "cancelled"
 ) {
   const supabase = await createClient();
-  const { data: events, error } = await supabase
-    .from("match_events")
-    .select("scoring_team_id, created_at")
-    .eq("match_id", matchId)
-    .order("created_at", { ascending: true });
+  const [{ data: events, error }, matchMeta] = await Promise.all([
+    supabase
+      .from("match_events")
+      .select("scoring_team_id, created_at")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: true }),
+    supabase.from("matches").select("sets_to_win, is_federation").eq("id", matchId).maybeSingle(),
+  ]);
 
   if (error) throw new Error(error.message);
 
   const computed = computeMatchState(
     events ?? [],
     homeTeamId,
-    status === "cancelled" ? "cancelled" : status === "finished" ? "live" : status
+    status === "cancelled" ? "cancelled" : status === "finished" ? "live" : status,
+    matchMeta.error ? 3 : setsToWinOf(matchMeta.data)
   );
 
   const nextStatus =
@@ -383,6 +401,11 @@ export async function recordPoint(input: {
         .single();
       if (fallback.error) return { error: fallback.error.message };
       inserted = fallback.data;
+    } else if (/block_touch|block_continuation/i.test(insert.error.message)) {
+      return {
+        error:
+          "Falta ejecutar la migración supabase/migrations/031_sets_to_win_and_block_actions.sql para toque y continuación de bloqueo.",
+      };
     } else {
       return { error: insert.error.message };
     }
@@ -705,7 +728,7 @@ export async function setMatchLibero(
   const supabase = await createClient();
   const { data: match } = await supabase
     .from("matches")
-    .select("id, home_team_id, away_team_id, status")
+    .select("id, home_team_id, away_team_id, status, current_set")
     .eq("id", matchId)
     .maybeSingle();
 
@@ -737,7 +760,7 @@ export async function setMatchLibero(
 
   const lineup = (rows ?? []) as MatchLineupEntry[];
   const current = designatedLiberos(lineup, teamId);
-  const slots = courtSlotIds(lineup, await loadTeamSubs(matchId), teamId);
+  const slots = courtSlotIds(lineup, await loadTeamSubs(matchId), teamId, match.current_set);
   if (playerId) {
     const alreadyLibero = playerId === current.receptionId || playerId === current.defenseId;
     const starter = lineup.find(
@@ -827,7 +850,7 @@ export async function activateMatchLibero(matchId: string, teamId: string, kind:
   }
   if (current.activeId === nextId) return { success: true };
 
-  const slots = courtSlotIds(lineup, await loadTeamSubs(matchId), teamId);
+  const slots = courtSlotIds(lineup, await loadTeamSubs(matchId), teamId, match.current_set);
   const saved = await persistTeamLiberos(
     matchId,
     teamId,

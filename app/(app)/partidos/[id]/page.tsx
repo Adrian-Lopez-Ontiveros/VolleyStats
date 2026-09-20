@@ -147,7 +147,9 @@ export default async function MatchDetailPage({
       ? typedMatch.away_team.name
       : "CV Fuenlabrada";
   const roster = (clubPlayers ?? []) as Player[];
-  const onCourtIds = clubTeamId ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId) : null;
+  const onCourtIds = clubTeamId
+    ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId, typedMatch.current_set)
+    : null;
   const activity = await getMatchActivity(id);
   const exportRows = [
     ["Partido", `${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`],

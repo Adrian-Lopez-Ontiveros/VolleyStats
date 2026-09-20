@@ -12,6 +12,7 @@ import { countChartPointTypes, topMatchScorers } from "@/lib/stats";
 import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/lib/stat-filters";
 import {
   attackStatsFromEvents,
+  defenseStatsFromEvents,
   filterTeamEvents,
   formatSkillRate,
   possessionStatsFromEvents,
@@ -61,6 +62,8 @@ export function MatchStatsPanel({
   const awayServe = serveStatsFromEvents(awayEvents);
   const homeReception = receptionStatsFromEvents(homeEvents);
   const awayReception = receptionStatsFromEvents(awayEvents);
+  const homeDefense = defenseStatsFromEvents(homeEvents);
+  const awayDefense = defenseStatsFromEvents(awayEvents);
   const homePossession = possessionStatsFromEvents(
     homeView,
     match.home_team_id,
@@ -99,7 +102,12 @@ export function MatchStatsPanel({
 
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">{homeLabel}</h3>
-        <AttackServeCards attack={homeAttack} serve={homeServe} reception={homeReception} />
+        <AttackServeCards
+          attack={homeAttack}
+          serve={homeServe}
+          reception={homeReception}
+          defense={homeDefense}
+        />
         <PossessionCards
           sideOut={homePossession.sideOut}
           breakPoint={homePossession.breakPoint}
@@ -108,7 +116,12 @@ export function MatchStatsPanel({
 
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">{awayLabel}</h3>
-        <AttackServeCards attack={awayAttack} serve={awayServe} reception={awayReception} />
+        <AttackServeCards
+          attack={awayAttack}
+          serve={awayServe}
+          reception={awayReception}
+          defense={awayDefense}
+        />
         <PossessionCards
           sideOut={awayPossession.sideOut}
           breakPoint={awayPossession.breakPoint}

@@ -3,6 +3,7 @@ import {
   formatAttackEfficiency,
   formatSkillRate,
   type AttackStats,
+  type DefenseStats,
   type PossessionStats,
   type ReceptionStats,
   type ServeStats,
@@ -34,19 +35,21 @@ export function AttackServeCards({
   attack,
   serve,
   reception,
+  defense,
 }: {
   attack: AttackStats;
   serve: ServeStats;
   reception?: ReceptionStats;
+  defense?: DefenseStats;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <StatBlock
         label="Eff. ataque"
         value={formatAttackEfficiency(attack.efficiency)}
         hint={
           attack.attempts
-            ? `(${attack.kills} − ${attack.errors}) / ${attack.attempts}`
+            ? `${attack.kills} pts · ${attack.errors} err · ${attack.attempts} int.`
             : "Sin intentos de ataque"
         }
       />
@@ -61,14 +64,23 @@ export function AttackServeCards({
       />
       {reception ? (
         <StatBlock
-          label="Recepción buena"
-          value={formatSkillRate(reception.goodRate)}
+          label="Eff. recepción"
+          value={formatSkillRate(reception.successRate)}
           hint={
             reception.total
-              ? `${reception.good} buenas · ${reception.medium} medias · ${reception.bad} malas${
-                  reception.errors ? ` · ${reception.errors} err` : ""
-                }`
+              ? `${reception.good} buenas · ${reception.medium} medias · ${reception.bad} malas · ${reception.errors} err`
               : "Sin recepciones"
+          }
+        />
+      ) : null}
+      {defense ? (
+        <StatBlock
+          label="Eff. defensa"
+          value={formatSkillRate(defense.successRate)}
+          hint={
+            defense.total
+              ? `${defense.good} buenas · ${defense.medium} medias · ${defense.bad} malas · ${defense.errors} err`
+              : "Sin defensas"
           }
         />
       ) : null}

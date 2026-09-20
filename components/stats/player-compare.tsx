@@ -10,6 +10,7 @@ import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/l
 import { formatJersey, initials } from "@/lib/utils";
 import {
   attackStatsFromEvents,
+  defenseStatsFromEvents,
   formatAttackEfficiency,
   formatSkillRate,
   receptionStatsFromEvents,
@@ -42,6 +43,7 @@ type CompareRow = {
   attackLabel: string;
   serveLabel: string;
   receptionLabel: string;
+  defenseLabel: string;
   aces: number;
   chart: {
     points: number;
@@ -49,6 +51,7 @@ type CompareRow = {
     aces: number;
     errors: number;
     reception: number;
+    defense: number;
   };
 };
 
@@ -81,6 +84,7 @@ export function PlayerCompare({
         const attack = attackStatsFromEvents(playerEvents);
         const serve = serveStatsFromEvents(playerEvents);
         const reception = receptionStatsFromEvents(playerEvents);
+        const defense = defenseStatsFromEvents(playerEvents);
         let points = 0;
         let errors = 0;
         let blocks = 0;
@@ -99,13 +103,15 @@ export function PlayerCompare({
           aces: serve.aces,
           attackLabel: formatAttackEfficiency(attack.efficiency),
           serveLabel: `${formatSkillRate(serve.successRate)} · ${serve.aces} aces`,
-          receptionLabel: formatSkillRate(reception.goodRate),
+          receptionLabel: formatSkillRate(reception.successRate),
+          defenseLabel: formatSkillRate(defense.successRate),
           chart: {
             points,
             attack: attack.efficiency === null ? 0 : Math.round(attack.efficiency * 100),
             aces: serve.aces,
             errors,
-            reception: reception.goodRate === null ? 0 : Math.round(reception.goodRate * 100),
+            reception: reception.successRate === null ? 0 : Math.round(reception.successRate * 100),
+            defense: defense.successRate === null ? 0 : Math.round(defense.successRate * 100),
           },
         } satisfies CompareRow;
       });
@@ -119,6 +125,7 @@ export function PlayerCompare({
       { key: "aces" as const, label: "Aces" },
       { key: "errors" as const, label: "Errores" },
       { key: "reception" as const, label: "Rec%" },
+      { key: "defense" as const, label: "Def%" },
     ];
     return metrics.map((metric) => {
       const row: { metric: string; [name: string]: string | number } = { metric: metric.label };
@@ -140,7 +147,7 @@ export function PlayerCompare({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Elige 2 o 3 jugadores para compararlos. Las barras de ATK% y Rec% van de −100 a 100 y 0 a 100.
+        Elige 2 o 3 jugadores para compararlos. ATK%, Rec% y Def% son el porcentaje de acciones que no fueron error.
       </p>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -209,6 +216,7 @@ export function PlayerCompare({
                     <CompareLine label="Bloqueos" value={String(row.blocks)} />
                     <CompareLine label="Saque" value={row.serveLabel} />
                     <CompareLine label="Recepción" value={row.receptionLabel} />
+                    <CompareLine label="Defensa" value={row.defenseLabel} />
                   </CardContent>
                 </Card>
               </Link>
@@ -237,6 +245,7 @@ export function PlayerCompare({
                     ["Bloqueos", rows.map((row) => String(row.blocks))],
                     ["Saque", rows.map((row) => row.serveLabel)],
                     ["Recepción", rows.map((row) => row.receptionLabel)],
+                    ["Defensa", rows.map((row) => row.defenseLabel)],
                   ].map(([label, values]) => (
                     <tr key={label as string} className="border-b last:border-0">
                       <td className="px-3 py-2.5 font-medium">{label}</td>

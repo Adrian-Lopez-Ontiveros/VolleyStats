@@ -22,7 +22,7 @@ export default async function EditMatchPage({
       supabase
         .from("matches")
         .select(
-          "id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes"
+          "id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, is_federation, sets_to_win"
         )
         .eq("id", id)
         .maybeSingle(),

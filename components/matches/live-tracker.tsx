@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { addSubstitution, recordPoint, setMatchLibero, undoPoint } from "@/lib/actions/matches";
+import { LiveSetLineupPanel } from "@/components/matches/live-set-lineup-panel";
+import { LiveStatPad } from "@/components/matches/live-stat-pad";
 import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
@@ -18,7 +20,7 @@ import {
   type QueuedPoint,
 } from "@/lib/offline-queue";
 import { inferNextRotations, inferNextServer } from "@/lib/volleyball-stats";
-import { computeMatchState, resolveScoringTeam } from "@/lib/volleyball";
+import { computeMatchState, resolveScoringTeam, setsToWinOf } from "@/lib/volleyball";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ import {
   liberoKindForPhase,
   lineupHasCourtPositions,
   type CourtOccupant,
+  type CourtSlots,
 } from "@/lib/court";
 import type {
   LiberoKind,
@@ -53,7 +56,7 @@ type PendingTarget = {
   player?: Player;
 };
 
-type ActionGroup = "punto" | "ataque" | "saque" | "recepcion" | "defensa";
+type ActionGroup = "punto" | "ataque" | "saque" | "bloqueo" | "recepcion" | "defensa";
 
 const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = [
   {
@@ -72,6 +75,11 @@ const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = 
     types: ["ace", "serve_in", "serve_error"],
   },
   {
+    id: "bloqueo",
+    label: "Bloqueo",
+    types: ["block", "block_continuation", "block_touch"],
+  },
+  {
     id: "recepcion",
     label: "Recepción",
     types: ["reception_good", "reception_medium", "reception_bad", "reception_error"],
@@ -82,6 +90,24 @@ const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = 
     types: ["defense_good", "defense_medium", "defense_bad", "defense_error"],
   },
 ];
+
+function orderedPadPlayers(slots: CourtSlots, onCourt: Player[]): Player[] {
+  const byId = new Map(onCourt.map((player) => [player.id, player]));
+  const ordered: Player[] = [];
+  const used = new Set<string>();
+  for (const position of [4, 3, 2, 5, 6, 1] as const) {
+    const occupant = slots[position];
+    const full = occupant ? byId.get(occupant.id) : undefined;
+    if (full) {
+      ordered.push(full);
+      used.add(full.id);
+    }
+  }
+  for (const player of onCourt) {
+    if (!used.has(player.id)) ordered.push(player);
+  }
+  return ordered;
+}
 
 export function LiveTracker({
   match,
@@ -155,7 +181,12 @@ export function LiveTracker({
     );
   }, [liveEvents, pendingForMatch, match.home_team_id, match.away_team_id]);
   const displayMatch = useMemo(() => {
-    const computed = computeMatchState(mergedEvents, match.home_team_id, match.status);
+    const computed = computeMatchState(
+      mergedEvents,
+      match.home_team_id,
+      match.status,
+      setsToWinOf(match)
+    );
     return {
       ...match,
       home_sets: computed.homeSets,
@@ -181,6 +212,9 @@ export function LiveTracker({
   const [servingOverride, setServingOverride] = useState<string | null>(null);
   const [homeRotationOverride, setHomeRotationOverride] = useState<number | null>(null);
   const [awayRotationOverride, setAwayRotationOverride] = useState<number | null>(null);
+  const [padSide, setPadSide] = useState<"home" | "away">("home");
+  const [lineupTeams, setLineupTeams] = useState<string[]>([]);
+  const promptedSetRef = useRef(match.current_set);
   const finished = displayMatch.status === "finished";
   const inferredServer = useMemo(
     () =>
@@ -223,21 +257,49 @@ export function LiveTracker({
   );
   const homeCourtSlots = useMemo(
     () =>
-      currentCourtSlots(liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id),
-    [liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id]
+      currentCourtSlots(
+        liveLineup,
+        liveSubstitutions,
+        homePlayers,
+        homeRotation,
+        match.home_team_id,
+        displayMatch.current_set
+      ),
+    [liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id, displayMatch.current_set]
   );
   const awayCourtSlots = useMemo(
     () =>
-      currentCourtSlots(liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id),
-    [liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id]
+      currentCourtSlots(
+        liveLineup,
+        liveSubstitutions,
+        awayPlayers,
+        awayRotation,
+        match.away_team_id,
+        displayMatch.current_set
+      ),
+    [liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id, displayMatch.current_set]
   );
   const homeLiberos = useMemo(
-    () => currentLiberoPlayers(liveLineup, liveSubstitutions, homePlayers, match.home_team_id),
-    [liveLineup, liveSubstitutions, homePlayers, match.home_team_id]
+    () =>
+      currentLiberoPlayers(
+        liveLineup,
+        liveSubstitutions,
+        homePlayers,
+        match.home_team_id,
+        displayMatch.current_set
+      ),
+    [liveLineup, liveSubstitutions, homePlayers, match.home_team_id, displayMatch.current_set]
   );
   const awayLiberos = useMemo(
-    () => currentLiberoPlayers(liveLineup, liveSubstitutions, awayPlayers, match.away_team_id),
-    [liveLineup, liveSubstitutions, awayPlayers, match.away_team_id]
+    () =>
+      currentLiberoPlayers(
+        liveLineup,
+        liveSubstitutions,
+        awayPlayers,
+        match.away_team_id,
+        displayMatch.current_set
+      ),
+    [liveLineup, liveSubstitutions, awayPlayers, match.away_team_id, displayMatch.current_set]
   );
   const homeLiberoKind = liberoKindForPhase(
     homeServing,
@@ -252,7 +314,7 @@ export function LiveTracker({
   const homeOnCourtIds = useMemo(
     () =>
       applyPhaseLibero(
-        currentOnCourtIds(liveLineup, liveSubstitutions, match.home_team_id),
+        currentOnCourtIds(liveLineup, liveSubstitutions, match.home_team_id, displayMatch.current_set),
         homeCourtSlots,
         homeLiberos.reception?.id ?? null,
         homeLiberos.defense?.id ?? null,
@@ -262,6 +324,7 @@ export function LiveTracker({
       liveLineup,
       liveSubstitutions,
       match.home_team_id,
+      displayMatch.current_set,
       homeCourtSlots,
       homeLiberos.reception?.id,
       homeLiberos.defense?.id,
@@ -271,7 +334,7 @@ export function LiveTracker({
   const awayOnCourtIds = useMemo(
     () =>
       applyPhaseLibero(
-        currentOnCourtIds(liveLineup, liveSubstitutions, match.away_team_id),
+        currentOnCourtIds(liveLineup, liveSubstitutions, match.away_team_id, displayMatch.current_set),
         awayCourtSlots,
         awayLiberos.reception?.id ?? null,
         awayLiberos.defense?.id ?? null,
@@ -281,6 +344,7 @@ export function LiveTracker({
       liveLineup,
       liveSubstitutions,
       match.away_team_id,
+      displayMatch.current_set,
       awayCourtSlots,
       awayLiberos.reception?.id,
       awayLiberos.defense?.id,
@@ -378,6 +442,44 @@ export function LiveTracker({
     };
   }, [flushQueue]);
 
+  const lineupTeamQueue = useCallback(() => {
+    const clubId = match.home_team.is_club_team
+      ? match.home_team_id
+      : match.away_team.is_club_team
+        ? match.away_team_id
+        : null;
+    const ids: string[] = [];
+    const add = (teamId: string, roster: Player[]) => {
+      if (roster.length > 0 && !ids.includes(teamId)) ids.push(teamId);
+    };
+    if (clubId === match.home_team_id) add(match.home_team_id, homePlayers);
+    else if (clubId === match.away_team_id) add(match.away_team_id, awayPlayers);
+    add(match.home_team_id, homePlayers);
+    add(match.away_team_id, awayPlayers);
+    return ids;
+  }, [
+    match.home_team.is_club_team,
+    match.away_team.is_club_team,
+    match.home_team_id,
+    match.away_team_id,
+    homePlayers,
+    awayPlayers,
+  ]);
+
+  useEffect(() => {
+    if (finished) {
+      setLineupTeams([]);
+      promptedSetRef.current = displayMatch.current_set;
+      return;
+    }
+    if (displayMatch.current_set > promptedSetRef.current) {
+      setLineupTeams(lineupTeamQueue());
+    } else if (displayMatch.current_set < promptedSetRef.current) {
+      setLineupTeams([]);
+    }
+    promptedSetRef.current = displayMatch.current_set;
+  }, [displayMatch.current_set, finished, lineupTeamQueue]);
+
   const openTeam = useCallback(
     (teamId: string, teamName: string, player?: Player) => {
       if (finished) return;
@@ -387,24 +489,27 @@ export function LiveTracker({
     [finished]
   );
 
-  function submitPoint(pointType: PointType) {
-    if (!target) return;
+  function recordAction(
+    actingTeamId: string,
+    pointType: PointType,
+    player?: Pick<Player, "id" | "full_name" | "jersey_number"> | null
+  ) {
     const queuedItem: QueuedPoint = {
       id: `local-${newQueueId()}`,
       matchId: match.id,
       createdAt: new Date().toISOString(),
-      actingTeamId: target.teamId,
-      playerId: target.player?.id ?? null,
+      actingTeamId,
+      playerId: player?.id ?? null,
       pointType,
       servingTeamId,
       homeRotation,
       awayRotation,
       setNumber: displayMatch.current_set,
-      player: target.player
+      player: player
         ? {
-            id: target.player.id,
-            full_name: target.player.full_name,
-            jersey_number: target.player.jersey_number,
+            id: player.id,
+            full_name: player.full_name,
+            jersey_number: player.jersey_number,
           }
         : null,
     };
@@ -433,6 +538,11 @@ export function LiveTracker({
     addOptimistic(optimistic);
     enqueuePoint(queuedItem);
     void flushQueue();
+  }
+
+  function submitPoint(pointType: PointType) {
+    if (!target) return;
+    recordAction(target.teamId, pointType, target.player ?? null);
   }
 
   function onUndo() {
@@ -515,6 +625,23 @@ export function LiveTracker({
     liberoEdit?.kind === "defense"
       ? (liberoEdit.teamId === match.home_team_id ? homeLiberos.defense : awayLiberos.defense)?.id ?? ""
       : (liberoEdit?.teamId === match.home_team_id ? homeLiberos.reception : awayLiberos.reception)?.id ?? "";
+  const padHomePlayers = orderedPadPlayers(
+    homeCourtSlots,
+    homeOnCourt.length > 0 ? homeOnCourt : homeOnCourtIds ? [] : homePlayers
+  );
+  const padAwayPlayers = orderedPadPlayers(
+    awayCourtSlots,
+    awayOnCourt.length > 0 ? awayOnCourt : awayOnCourtIds ? [] : awayPlayers
+  );
+  const lineupTeamId = lineupTeams[0] ?? null;
+  const lineupTeam =
+    lineupTeamId === match.home_team_id
+      ? match.home_team
+      : lineupTeamId === match.away_team_id
+        ? match.away_team
+        : null;
+  const lineupPlayers = lineupTeamId === match.home_team_id ? homePlayers : awayPlayers;
+  const lineupEntries = liveLineup.filter((entry) => entry.team_id === lineupTeamId);
 
   return (
     <div className="space-y-4">
@@ -581,24 +708,105 @@ export function LiveTracker({
         <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-800">
           Partido finalizado. El marcador ya no admite más puntos.
         </p>
+      ) : lineupTeam && lineupTeamId ? (
+        <LiveSetLineupPanel
+          matchId={match.id}
+          setNumber={displayMatch.current_set}
+          teamId={lineupTeamId}
+          teamName={lineupTeam.name}
+          players={lineupPlayers}
+          lineup={lineupEntries}
+          onDone={() => {
+            setLineupTeams((current) => current.slice(1));
+            void pullEvents();
+          }}
+          onSkip={() => setLineupTeams((current) => current.slice(1))}
+        />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            size="xl"
-            className="h-20 bg-sky-700 text-white hover:bg-sky-800"
-            onClick={() => openTeam(match.home_team_id, match.home_team.name)}
-          >
-            Punto {match.home_team.short_name || "local"}
-          </Button>
-          <Button
-            size="xl"
-            variant="accent"
-            className="h-20"
-            onClick={() => openTeam(match.away_team_id, match.away_team.name)}
-          >
-            Punto {match.away_team.short_name || "visitante"}
-          </Button>
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <div className="grid flex-1 grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+              <button
+                type="button"
+                onClick={() => setPadSide("home")}
+                className={cn(
+                  "rounded-lg px-2 py-1.5 text-xs font-semibold",
+                  padSide === "home" ? "bg-card shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                {match.home_team.short_name || "Local"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPadSide("away")}
+                className={cn(
+                  "rounded-lg px-2 py-1.5 text-xs font-semibold",
+                  padSide === "away" ? "bg-card shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                {match.away_team.short_name || "Visitante"}
+              </button>
+            </div>
+            {homePlayers.length + awayPlayers.length > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setLineupTeams(lineupTeamQueue())}
+              >
+                Titulares
+              </Button>
+            ) : null}
+          </div>
+          <LiveStatPad
+            teamName={padSide === "home" ? match.home_team.name : match.away_team.name}
+            serving={padSide === "home" ? homeServing : awayServing}
+            players={padSide === "home" ? padHomePlayers : padAwayPlayers}
+            disabled={finished}
+            onAction={(player, pointType) =>
+              recordAction(
+                padSide === "home" ? match.home_team_id : match.away_team_id,
+                pointType,
+                player
+              )
+            }
+          />
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 text-xs"
+              onClick={() =>
+                recordAction(
+                  padSide === "home" ? match.home_team_id : match.away_team_id,
+                  "opponent_error"
+                )
+              }
+            >
+              Error rival
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 text-xs"
+              onClick={() =>
+                recordAction(padSide === "home" ? match.home_team_id : match.away_team_id, "other")
+              }
+            >
+              Otro punto
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 text-xs"
+              onClick={() =>
+                recordAction(padSide === "home" ? match.home_team_id : match.away_team_id, "error")
+              }
+            >
+              Error propio
+            </Button>
+          </div>
+        </>
       )}
 
       {homeHasCourt ? (
@@ -847,7 +1055,7 @@ export function LiveTracker({
               Continuación, saque dentro, recepción y defensa no cambian el marcador.
             </SheetDescription>
           </SheetHeader>
-          <div className="grid grid-cols-5 gap-1 rounded-xl bg-secondary p-1">
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-6">
             {ACTION_GROUPS.map((group) => (
               <button
                 key={group.id}

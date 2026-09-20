@@ -6,11 +6,13 @@ export function SetScoreFields({
   homeLabel = "Local",
   awayLabel = "Visitante",
   disabled = false,
+  maxSets = 5,
 }: {
   setScores?: SetScore[];
   homeLabel?: string;
   awayLabel?: string;
   disabled?: boolean;
+  maxSets?: number;
 }) {
   return (
     <div className="space-y-3">
@@ -27,7 +29,7 @@ export function SetScoreFields({
         <span />
         <span className="truncate text-center">{awayLabel}</span>
       </div>
-      {[1, 2, 3, 4, 5].map((setNumber) => {
+      {Array.from({ length: maxSets }, (_, index) => index + 1).map((setNumber) => {
         const score = setScores[setNumber - 1];
         return (
           <div

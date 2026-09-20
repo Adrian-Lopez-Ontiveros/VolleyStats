@@ -23,6 +23,7 @@ export type ReceptionStats = {
   errors: number;
   total: number;
   goodRate: number | null;
+  successRate: number | null;
 };
 
 export type DefenseStats = {
@@ -32,6 +33,7 @@ export type DefenseStats = {
   errors: number;
   total: number;
   goodRate: number | null;
+  successRate: number | null;
 };
 
 export type PossessionStats = {
@@ -91,7 +93,7 @@ export function attackStatsFromEvents(events: SkillEvent[]): AttackStats {
     errors,
     continuations,
     attempts,
-    efficiency: attempts === 0 ? null : (kills - errors) / attempts,
+    efficiency: attempts === 0 ? null : (kills + continuations) / attempts,
   };
 }
 
@@ -126,7 +128,39 @@ export function receptionStatsFromEvents(events: SkillEvent[]): ReceptionStats {
     else if (event.point_type === "reception_error") errors += 1;
   }
   const total = good + medium + bad + errors;
-  return { good, medium, bad, errors, total, goodRate: rate(good, total) };
+  return {
+    good,
+    medium,
+    bad,
+    errors,
+    total,
+    goodRate: rate(good, total),
+    successRate: rate(good + medium + bad, total),
+  };
+}
+
+export function emptyDefenseStats(): DefenseStats {
+  return {
+    good: 0,
+    medium: 0,
+    bad: 0,
+    errors: 0,
+    total: 0,
+    goodRate: null,
+    successRate: null,
+  };
+}
+
+export function emptyReceptionStats(): ReceptionStats {
+  return {
+    good: 0,
+    medium: 0,
+    bad: 0,
+    errors: 0,
+    total: 0,
+    goodRate: null,
+    successRate: null,
+  };
 }
 
 export function defenseStatsFromEvents(events: SkillEvent[]): DefenseStats {
@@ -141,7 +175,15 @@ export function defenseStatsFromEvents(events: SkillEvent[]): DefenseStats {
     else if (event.point_type === "defense_error") errors += 1;
   }
   const total = good + medium + bad + errors;
-  return { good, medium, bad, errors, total, goodRate: rate(good, total) };
+  return {
+    good,
+    medium,
+    bad,
+    errors,
+    total,
+    goodRate: rate(good, total),
+    successRate: rate(good + medium + bad, total),
+  };
 }
 
 export function formatSkillRate(value: number | null) {
@@ -150,9 +192,7 @@ export function formatSkillRate(value: number | null) {
 }
 
 export function formatAttackEfficiency(value: number | null) {
-  if (value === null) return "—";
-  const percent = Math.round(value * 100);
-  return `${percent > 0 ? "+" : ""}${percent}%`;
+  return formatSkillRate(value);
 }
 
 function emptyTeamPossession(): TeamPossessionStats {

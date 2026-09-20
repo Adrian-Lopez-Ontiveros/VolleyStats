@@ -170,13 +170,25 @@ export function startingCourtByPosition(
   return byStart;
 }
 
+function substitutionsForSet<T extends { team_id: string; set_number?: number | null }>(
+  substitutions: T[],
+  teamId?: string,
+  setNumber?: number
+) {
+  return teamEntries(substitutions, teamId).filter((item) => {
+    if (typeof setNumber !== "number") return true;
+    return (item.set_number ?? 1) === setNumber;
+  });
+}
+
 export function applySlotSubstitutions(
   slots: Map<CourtPosition, string>,
-  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
-  teamId?: string
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id" | "set_number">[],
+  teamId?: string,
+  setNumber?: number
 ) {
   const next = new Map(slots);
-  for (const sub of teamEntries(substitutions, teamId)) {
+  for (const sub of substitutionsForSet(substitutions, teamId, setNumber)) {
     for (const [position, playerId] of next) {
       if (playerId === sub.player_out_id) {
         next.set(position, sub.player_in_id);
@@ -198,12 +210,18 @@ export function currentCourtSlots(
     | "court_position"
     | "team_id"
   >[],
-  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id" | "set_number">[],
   roster: CourtOccupant[],
   rotation: number | null | undefined,
-  teamId?: string
+  teamId?: string,
+  setNumber?: number
 ): CourtSlots {
-  const occupied = applySlotSubstitutions(startingCourtByPosition(lineup, teamId), substitutions, teamId);
+  const occupied = applySlotSubstitutions(
+    startingCourtByPosition(lineup, teamId),
+    substitutions,
+    teamId,
+    setNumber
+  );
   const steps = rotationOffset(rotation);
   const byId = new Map(roster.map((player) => [player.id, player]));
   const slots: CourtSlots = {};
@@ -219,15 +237,16 @@ export function currentCourtSlots(
 
 export function currentLiberoPlayer(
   lineup: Pick<MatchLineupEntry, "player_id" | "is_libero" | "is_reception_libero" | "is_defense_libero" | "is_active_libero" | "team_id">[],
-  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id" | "set_number">[],
   roster: CourtOccupant[],
-  teamId?: string
+  teamId?: string,
+  setNumber?: number
 ): CourtOccupant | null {
   const { activeId } = designatedLiberos(lineup, teamId);
   if (!activeId) return null;
 
   let playerId = activeId;
-  for (const sub of teamEntries(substitutions, teamId)) {
+  for (const sub of substitutionsForSet(substitutions, teamId, setNumber)) {
     if (sub.player_out_id === playerId) playerId = sub.player_in_id;
   }
 
@@ -236,9 +255,10 @@ export function currentLiberoPlayer(
 
 export function currentLiberoPlayers(
   lineup: Pick<MatchLineupEntry, "player_id" | "is_libero" | "is_reception_libero" | "is_defense_libero" | "is_active_libero" | "team_id">[],
-  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id">[],
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id" | "set_number">[],
   roster: CourtOccupant[],
-  teamId?: string
+  teamId?: string,
+  setNumber?: number
 ) {
   const { receptionId, defenseId, activeKind } = designatedLiberos(lineup, teamId);
   const byId = new Map(roster.map((player) => [player.id, player]));
@@ -246,7 +266,7 @@ export function currentLiberoPlayers(
   function follow(playerId: string | null) {
     if (!playerId) return null;
     let current = playerId;
-    for (const sub of teamEntries(substitutions, teamId)) {
+    for (const sub of substitutionsForSet(substitutions, teamId, setNumber)) {
       if (sub.player_out_id === current) current = sub.player_in_id;
     }
     return byId.get(current) ?? byId.get(playerId) ?? null;

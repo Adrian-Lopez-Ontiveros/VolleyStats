@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { isoToDatetimeLocalMadrid } from "@/lib/federation/schedule";
+import { isFriendlyMatch } from "@/components/matches/match-kind";
+import { maxSetsOf, setsToWinOf } from "@/lib/constants";
 import type { Match, MatchLineupEntry, Player, Team } from "@/lib/types";
 
 const CUSTOM_TEAM = "__custom__";
@@ -79,6 +81,8 @@ export function MatchForm({
       : listedTeams.concat(oneOffTeams).find((team) => team.id === awayTeamId)?.short_name ||
         "Visitante";
   const lockTeams = Boolean(match && match.status !== "scheduled");
+  const friendly = !match || isFriendlyMatch(match);
+  const [setsToWin, setSetsToWin] = useState<2 | 3>(setsToWinOf(match) === 2 ? 2 : 3);
 
   async function onSubmit(formData: FormData) {
     setPending(true);
@@ -168,6 +172,43 @@ export function MatchForm({
           placeholder="Pabellón municipal"
         />
       </div>
+      {friendly ? (
+        <div className="space-y-2">
+          <Label>Formato</Label>
+          <input type="hidden" name="setsToWin" value={setsToWin} />
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSetsToWin(2)}
+              className={
+                setsToWin === 2
+                  ? "h-11 rounded-xl border-2 border-orange-500 bg-orange-50 text-sm font-semibold text-orange-950"
+                  : "h-11 rounded-xl border bg-card text-sm font-medium text-muted-foreground"
+              }
+            >
+              Al mejor de 3
+            </button>
+            <button
+              type="button"
+              onClick={() => setSetsToWin(3)}
+              className={
+                setsToWin === 3
+                  ? "h-11 rounded-xl border-2 border-orange-500 bg-orange-50 text-sm font-semibold text-orange-950"
+                  : "h-11 rounded-xl border bg-card text-sm font-medium text-muted-foreground"
+              }
+            >
+              Al mejor de 5
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {setsToWin === 2
+              ? "Gana el primero que se lleve 2 sets. El 3º, si hace falta, es a 15."
+              : "Gana el primero que se lleve 3 sets. El 5º, si hace falta, es a 15."}
+          </p>
+        </div>
+      ) : (
+        <input type="hidden" name="setsToWin" value={3} />
+      )}
       <div className="space-y-2">
         <Label htmlFor="notes">Notas</Label>
         <Textarea
@@ -187,6 +228,7 @@ export function MatchForm({
           setScores={match?.set_scores}
           homeLabel={homeLabel}
           awayLabel={awayLabel}
+          maxSets={maxSetsOf(setsToWin)}
         />
       )}
       {clubInMatch && clubTeam ? (

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { PlayByPlay } from "@/components/matches/play-by-play";
 import { Scoreboard } from "@/components/matches/scoreboard";
 import { useLiveMatchEvents } from "@/components/matches/use-live-match-events";
-import { computeMatchState } from "@/lib/volleyball";
+import { computeMatchState, setsToWinOf } from "@/lib/volleyball";
 import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
 
 export function LiveScoreFollow({
@@ -22,7 +22,12 @@ export function LiveScoreFollow({
     players: [],
   });
   const displayMatch = useMemo(() => {
-    const computed = computeMatchState(liveEvents, match.home_team_id, match.status);
+    const computed = computeMatchState(
+      liveEvents,
+      match.home_team_id,
+      match.status,
+      setsToWinOf(match)
+    );
     return {
       ...match,
       home_sets: computed.homeSets,

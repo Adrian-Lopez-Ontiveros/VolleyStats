@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   attackStatsFromEvents,
+  defenseStatsFromEvents,
   formatAttackEfficiency,
   receptionStatsFromEvents,
   serveStatsFromEvents,
@@ -109,6 +110,7 @@ export function PlayerEvolutionPanel({
         attack={attackStatsFromEvents(filtered)}
         serve={serveStatsFromEvents(filtered)}
         reception={receptionStatsFromEvents(filtered)}
+        defense={defenseStatsFromEvents(filtered)}
       />
 
       <section>
@@ -144,6 +146,7 @@ function MatchRow({ sample }: { sample: PlayerMatchSample }) {
         <span>{sample.aces} aces</span>
         <span>{sample.errors} err</span>
         <span>Rec {sample.receptionPct === null ? "—" : `${Math.round(sample.receptionPct)}%`}</span>
+        <span>Def {sample.defensePct === null ? "—" : `${Math.round(sample.defensePct)}%`}</span>
         <span>{formatEfficiency(sample.efficiency)}</span>
       </div>
     </Link>
