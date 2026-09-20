@@ -93,6 +93,7 @@ export function BoxScoreCard({
                     <th className="px-1 py-2 text-center">Pts</th>
                     <th className="px-1 py-2 text-center">ATK</th>
                     <th className="px-1 py-2 text-center">ACE</th>
+                    <th className="px-1 py-2 text-center">DEF</th>
                     <th className="px-1 py-2 text-center">Err</th>
                   </tr>
                 </thead>
@@ -112,6 +113,11 @@ export function BoxScoreCard({
                           : ""}
                       </td>
                       <td className="px-1 py-1.5 text-center tabular-nums">{player.aces}</td>
+                      <td className="px-1 py-1.5 text-center tabular-nums">
+                        {player.defenseTotal
+                          ? formatSkillRate(player.defenseEfficiency)
+                          : "—"}
+                      </td>
                       <td className="px-1 py-1.5 text-center tabular-nums">{player.errors}</td>
                     </tr>
                   ))}

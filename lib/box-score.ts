@@ -1,6 +1,7 @@
 import { isOwnErrorType, isScoringAction, scoresForActingTeam } from "@/lib/volleyball";
 import {
   attackStatsFromEvents,
+  defenseStatsFromEvents,
   formatAttackEfficiency,
   formatSkillRate,
   possessionStatsFromEvents,
@@ -22,6 +23,12 @@ export type BoxScorePlayer = {
   attackEfficiency: number | null;
   aces: number;
   serveErrors: number;
+  defenseGood: number;
+  defenseMedium: number;
+  defenseBad: number;
+  defenseErrors: number;
+  defenseTotal: number;
+  defenseEfficiency: number | null;
 };
 
 export type BoxScoreHighlight = {
@@ -72,6 +79,12 @@ export function buildMatchPlayerLines(events: MatchEventWithPlayer[]): BoxScoreP
           attackEfficiency: null,
           aces: 0,
           serveErrors: 0,
+          defenseGood: 0,
+          defenseMedium: 0,
+          defenseBad: 0,
+          defenseErrors: 0,
+          defenseTotal: 0,
+          defenseEfficiency: null,
         },
         types: [],
       };
@@ -93,13 +106,22 @@ export function buildMatchPlayerLines(events: MatchEventWithPlayer[]): BoxScoreP
     }
     if (event.point_type === "ace") row.line.aces += 1;
     if (event.point_type === "serve_error") row.line.serveErrors += 1;
+    if (event.point_type === "defense_good") row.line.defenseGood += 1;
+    if (event.point_type === "defense_medium") row.line.defenseMedium += 1;
+    if (event.point_type === "defense_bad") row.line.defenseBad += 1;
+    if (event.point_type === "defense_error") row.line.defenseErrors += 1;
   }
 
   return [...byPlayer.values()]
-    .map(({ line, types }) => ({
-      ...line,
-      attackEfficiency: attackStatsFromEvents(types.map((point_type) => ({ point_type }))).efficiency,
-    }))
+    .map(({ line, types }) => {
+      const defense = defenseStatsFromEvents(types.map((point_type) => ({ point_type })));
+      return {
+        ...line,
+        attackEfficiency: attackStatsFromEvents(types.map((point_type) => ({ point_type }))).efficiency,
+        defenseTotal: defense.total,
+        defenseEfficiency: defense.successRate,
+      };
+    })
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, "es"));
 }
 
@@ -123,6 +145,7 @@ export function buildBoxScore(
   const clubEvents = events.filter((event) => event.acting_team_id === clubTeamId);
   const clubAttack = attackStatsFromEvents(clubEvents);
   const clubServe = serveStatsFromEvents(clubEvents);
+  const clubDefense = defenseStatsFromEvents(clubEvents);
   const homeRotations = rotationStatsForTeam(
     events,
     match.home_team_id,
@@ -182,6 +205,13 @@ export function buildBoxScore(
     label: "Saque",
     value: formatSkillRate(clubServe.successRate),
     detail: `${clubServe.aces} aces · ${clubServe.errors} err`,
+  });
+  highlights.push({
+    label: "Eff. defensa",
+    value: formatSkillRate(clubDefense.successRate),
+    detail: clubDefense.total
+      ? `${clubDefense.good} buenas · ${clubDefense.medium} medias · ${clubDefense.bad} malas · ${clubDefense.errors} err`
+      : clubLabel,
   });
 
   return {
