@@ -1,4 +1,4 @@
-const CACHE_NAME = "fuelastats-v7";
+const CACHE_NAME = "fuelastats-v8";
 const OFFLINE_URL = "/offline";
 const PRECACHE = ["/", "/offline", "/logo.png"];
 
