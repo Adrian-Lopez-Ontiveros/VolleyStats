@@ -163,7 +163,9 @@ export function computeMatchState(
   let setScores: SetScore[] = [];
 
   for (const event of ordered) {
-    if (homeSets >= needed || awaySets >= needed) break;
+    // Keep counting extra sets that were actually played (e.g. a 3rd set in a
+    // best-of-3 after 2-0). While the match is still live, stop at the winner.
+    if (!awardOpenSet && (homeSets >= needed || awaySets >= needed)) break;
 
     if (event.scoring_team_id === homeTeamId) homePoints += 1;
     else awayPoints += 1;
@@ -187,7 +189,8 @@ export function computeMatchState(
     setScores = closed.setScores;
   }
 
-  const finished = homeSets >= needed || awaySets >= needed || awardOpenSet;
+  const reachedLimit = homeSets >= needed || awaySets >= needed;
+  const finished = awardOpenSet || reachedLimit;
 
   return {
     homeSets,
@@ -215,12 +218,37 @@ export function overlayFinishedMatchScore<
   },
 >(match: T, events: Pick<MatchEvent, "scoring_team_id" | "created_at">[]): T {
   if (match.status !== "finished") return match;
-  const computed = computeMatchState(
+  let computed = computeMatchState(
     events,
     match.home_team_id,
     "finished",
     setsToWinOf(match)
   );
+
+  const storedHome = match.home_points ?? 0;
+  const storedAway = match.away_points ?? 0;
+  const alreadyStored = computed.setScores.some(
+    (set) => set.home === storedHome && set.away === storedAway
+  );
+  if (
+    (storedHome > 0 || storedAway > 0) &&
+    !alreadyStored &&
+    computed.setScores.length < Math.max(match.current_set ?? 0, computed.setScores.length + 1)
+  ) {
+    const closed = closeOpenSet({
+      homeSets: computed.homeSets,
+      awaySets: computed.awaySets,
+      homePoints: storedHome,
+      awayPoints: storedAway,
+      setScores: computed.setScores,
+    });
+    computed = {
+      ...computed,
+      ...closed,
+      currentSet: Math.max(1, closed.setScores.length),
+    };
+  }
+
   if (computed.setScores.length === 0) return match;
   return {
     ...match,

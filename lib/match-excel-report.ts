@@ -3,10 +3,10 @@ import { getCategoryMeta, isTeamCategory } from "@/lib/categories";
 import { formatMatchWhen, stripFmvScheduleNote } from "@/lib/federation/schedule";
 import {
   annotateEventScores,
-  computeMatchState,
   isOwnErrorType,
   isScoringAction,
   isSetWon,
+  overlayFinishedMatchScore,
   scoresForActingTeam,
   setsToWinOf,
 } from "@/lib/volleyball";
@@ -624,18 +624,10 @@ export function buildMatchExcelReport(
   const clubTeamId = clubIsHome ? match.home_team_id : match.away_team_id;
   const clubLabel = clubIsHome ? homeLabel : awayLabel;
   const opponentLabel = clubIsHome ? awayLabel : homeLabel;
-  const computed = computeMatchState(
-    events,
-    match.home_team_id,
-    match.status,
-    setsToWinOf(match)
-  );
-  const setScores =
-    match.status === "finished" && computed.setScores.length > 0
-      ? computed.setScores
-      : match.set_scores ?? [];
-  const homeSets = match.status === "finished" ? computed.homeSets : match.home_sets;
-  const awaySets = match.status === "finished" ? computed.awaySets : match.away_sets;
+  const scoredMatch = overlayFinishedMatchScore(match, events);
+  const setScores = scoredMatch.set_scores ?? [];
+  const homeSets = scoredMatch.home_sets;
+  const awaySets = scoredMatch.away_sets;
   const homeSetPoints = setScores.reduce((sum, set) => sum + set.home, 0);
   const awaySetPoints = setScores.reduce((sum, set) => sum + set.away, 0);
   const home = teamSkillsFromEvents(

@@ -265,6 +265,18 @@ function fileNameFor(report: MatchExcelReport) {
   return `${APP_NAME}-${home}-vs-${away}.xlsx`;
 }
 
+function clubPlayers(report: MatchExcelReport) {
+  return report.clubIsHome ? report.homePlayers : report.awayPlayers;
+}
+
+function clubSkills(report: MatchExcelReport) {
+  return report.clubIsHome ? report.home : report.away;
+}
+
+function clubRotations(report: MatchExcelReport) {
+  return report.clubIsHome ? report.homeRotations : report.awayRotations;
+}
+
 function writeMatchBanner(sheet: Worksheet, report: MatchExcelReport, lastCol = 12) {
   merge(sheet, 1, 1, 1, lastCol);
   paint(sheet, 1, 1, APP_NAME.toUpperCase(), {
@@ -575,29 +587,28 @@ function writePlayerTable(
   return row;
 }
 
-function teamMetricRows(report: MatchExcelReport) {
-  const home = report.home;
-  const away = report.away;
+function clubMetricRows(report: MatchExcelReport) {
+  const club = clubSkills(report);
   return [
-    ["Puntos de set", home.setPoints, away.setPoints],
-    ["Puntos de ataque", home.origins.attack, away.origins.attack],
-    ["Puntos de bloqueo", home.origins.block, away.origins.block],
-    ["Aces", home.origins.ace, away.origins.ace],
-    ["Puntos por error rival", home.origins.opponentError, away.origins.opponentError],
-    ["Otros puntos", home.origins.other, away.origins.other],
-    ["Errores propios", home.ownErrors, away.ownErrors],
-    ["Eff. ataque", home.attack.efficiency, away.attack.efficiency, "pct"],
-    ["Intentos de ataque", home.attack.attempts, away.attack.attempts],
-    ["Acierto saque", home.serve.successRate, away.serve.successRate, "pct"],
-    ["Aces (saque)", home.serve.aces, away.serve.aces],
-    ["Errores de saque", home.serve.errors, away.serve.errors],
-    ["Eff. recepción", home.reception.successRate, away.reception.successRate, "pct"],
-    ["Media recepción (0-3)", home.receptionAverage, away.receptionAverage, "avg"],
-    ["Eff. defensa", home.defense.successRate, away.defense.successRate, "pct"],
-    ["Media defensa (0-3)", home.defenseAverage, away.defenseAverage, "avg"],
-    ["Puntos recibiendo", home.possession.sideOut.rate, away.possession.sideOut.rate, "pct"],
-    ["Puntos con el saque", home.possession.breakPoint.rate, away.possession.breakPoint.rate, "pct"],
-  ] as [string, number | null, number | null, string?][];
+    ["Puntos de set", club.setPoints],
+    ["Puntos de ataque", club.origins.attack],
+    ["Puntos de bloqueo", club.origins.block],
+    ["Aces", club.origins.ace],
+    ["Puntos por error rival", club.origins.opponentError],
+    ["Otros puntos", club.origins.other],
+    ["Errores propios", club.ownErrors],
+    ["Eff. ataque", club.attack.efficiency, "pct"],
+    ["Intentos de ataque", club.attack.attempts],
+    ["Acierto saque", club.serve.successRate, "pct"],
+    ["Aces (saque)", club.serve.aces],
+    ["Errores de saque", club.serve.errors],
+    ["Eff. recepción", club.reception.successRate, "pct"],
+    ["Media recepción (0-3)", club.receptionAverage, "avg"],
+    ["Eff. defensa", club.defense.successRate, "pct"],
+    ["Media defensa (0-3)", club.defenseAverage, "avg"],
+    ["Puntos recibiendo", club.possession.sideOut.rate, "pct"],
+    ["Puntos con el saque", club.possession.breakPoint.rate, "pct"],
+  ] as [string, number | null, string?][];
 }
 
 function writeResumen(workbook: Workbook, report: MatchExcelReport, charts: ChartPng[]) {
@@ -654,52 +665,21 @@ function writeResumen(workbook: Workbook, report: MatchExcelReport, charts: Char
   }
 
   row += 1;
-  paint(sheet, row, 1, "Comparativa de equipos", {
+  paint(sheet, row, 1, `Estadísticas · ${report.clubLabel}`, {
     fill: NAVY,
     color: WHITE,
     bold: true,
     align: "left",
   });
-  merge(sheet, row, 1, row, 4);
-  paint(sheet, row, 2, report.homeLabel, { fill: NAVY, color: WHITE, bold: true });
-  paint(sheet, row, 3, report.awayLabel, { fill: NAVY, color: WHITE, bold: true });
-  paint(sheet, row, 4, "Ventaja", { fill: NAVY, color: WHITE, bold: true });
+  merge(sheet, row, 1, row, 2);
+  paint(sheet, row, 2, "Valor", { fill: NAVY, color: WHITE, bold: true });
   row += 1;
-  for (const [label, homeVal, awayVal, kind] of teamMetricRows(report)) {
-    const homeBetter =
-      kind === "pct" || kind === "avg"
-        ? (homeVal ?? -1) > (awayVal ?? -1)
-        : label.includes("Errores")
-          ? (homeVal ?? 0) < (awayVal ?? 0)
-          : (homeVal ?? 0) > (awayVal ?? 0);
-    const awayBetter =
-      kind === "pct" || kind === "avg"
-        ? (awayVal ?? -1) > (homeVal ?? -1)
-        : label.includes("Errores")
-          ? (awayVal ?? 0) < (homeVal ?? 0)
-          : (awayVal ?? 0) > (homeVal ?? 0);
+  for (const [label, value, kind] of clubMetricRows(report)) {
     paint(sheet, row, 1, label, { fill: SLATE_100, align: "left", bold: true, size: 10 });
-    paint(sheet, row, 2, kind === "pct" ? rateValue(homeVal) : homeVal ?? "", {
-      fill: homeBetter ? EMERALD_SOFT : WHITE,
-      bold: homeBetter,
+    paint(sheet, row, 2, kind === "pct" ? rateValue(value) : value ?? "", {
+      fill: kind === "pct" ? rateFill(value) : WHITE,
+      bold: true,
       numFmt: kind === "pct" ? "0%" : kind === "avg" ? "0.0" : undefined,
-    });
-    paint(sheet, row, 3, kind === "pct" ? rateValue(awayVal) : awayVal ?? "", {
-      fill: awayBetter ? EMERALD_SOFT : WHITE,
-      bold: awayBetter,
-      numFmt: kind === "pct" ? "0%" : kind === "avg" ? "0.0" : undefined,
-    });
-    const edge =
-      homeVal == null && awayVal == null
-        ? ""
-        : homeBetter
-          ? report.homeLabel
-          : awayBetter
-            ? report.awayLabel
-            : "Igual";
-    paint(sheet, row, 4, edge, {
-      fill: edge === "Igual" ? SLATE_50 : EMERALD_SOFT,
-      size: 9,
     });
     row += 1;
   }
@@ -794,36 +774,28 @@ function writeSetsSheet(workbook: Workbook, report: MatchExcelReport) {
   });
 
   const rows: { label: string; pick: (skills: TeamSkillTotals) => number | null; pct?: boolean }[] = [
-    { label: `${report.homeLabel} · puntos`, pick: (s) => s.setPoints },
-    { label: `${report.awayLabel} · puntos`, pick: (s) => s.setPoints },
-    { label: `${report.homeLabel} · ataque`, pick: (s) => s.attack.efficiency, pct: true },
-    { label: `${report.awayLabel} · ataque`, pick: (s) => s.attack.efficiency, pct: true },
-    { label: `${report.homeLabel} · saque`, pick: (s) => s.serve.successRate, pct: true },
-    { label: `${report.awayLabel} · saque`, pick: (s) => s.serve.successRate, pct: true },
-    { label: `${report.homeLabel} · recepción`, pick: (s) => s.reception.successRate, pct: true },
-    { label: `${report.awayLabel} · recepción`, pick: (s) => s.reception.successRate, pct: true },
-    { label: `${report.homeLabel} · defensa`, pick: (s) => s.defense.successRate, pct: true },
-    { label: `${report.awayLabel} · defensa`, pick: (s) => s.defense.successRate, pct: true },
-    { label: `${report.homeLabel} · recibiendo`, pick: (s) => s.possession.sideOut.rate, pct: true },
-    { label: `${report.awayLabel} · con saque`, pick: (s) => s.possession.breakPoint.rate, pct: true },
-    { label: `${report.homeLabel} · errores`, pick: (s) => s.ownErrors },
-    { label: `${report.awayLabel} · errores`, pick: (s) => s.ownErrors },
+    { label: "Puntos", pick: (s) => s.setPoints },
+    { label: "Eff. ataque", pick: (s) => s.attack.efficiency, pct: true },
+    { label: "Acierto saque", pick: (s) => s.serve.successRate, pct: true },
+    { label: "Eff. recepción", pick: (s) => s.reception.successRate, pct: true },
+    { label: "Eff. defensa", pick: (s) => s.defense.successRate, pct: true },
+    { label: "Puntos recibiendo", pick: (s) => s.possession.sideOut.rate, pct: true },
+    { label: "Puntos con el saque", pick: (s) => s.possession.breakPoint.rate, pct: true },
+    { label: "Errores propios", pick: (s) => s.ownErrors },
   ];
 
   rows.forEach((item, index) => {
     const row = index + 2;
-    const isHome = item.label.startsWith(report.homeLabel);
     paint(sheet, row, 1, item.label, { fill: SLATE_100, align: "left", bold: true, size: 10 });
     report.sets.forEach((set, setIndex) => {
-      const skills = isHome ? set.homeSkills : set.awaySkills;
+      const skills = report.clubIsHome ? set.homeSkills : set.awaySkills;
       const value = item.pick(skills);
       paint(sheet, row, setIndex + 2, item.pct ? rateValue(value) : value ?? "", {
         numFmt: item.pct ? "0%" : undefined,
         fill: item.pct ? rateFill(value) : WHITE,
       });
     });
-    const party = isHome ? report.home : report.away;
-    const value = item.pick(party);
+    const value = item.pick(clubSkills(report));
     paint(sheet, row, report.sets.length + 2, item.pct ? rateValue(value) : value ?? "", {
       numFmt: item.pct ? "0%" : undefined,
       fill: NAVY,
@@ -844,10 +816,7 @@ function writeRotationsSheet(workbook: Workbook, report: MatchExcelReport) {
     sheet.getColumn(index + 1).width = index === 0 ? 18 : 12;
   });
   let row = 2;
-  const blocks = [
-    { label: report.homeLabel, rows: report.homeRotations },
-    { label: report.awayLabel, rows: report.awayRotations },
-  ];
+  const blocks = [{ label: report.clubLabel, rows: clubRotations(report) }];
   for (const block of blocks) {
     for (const item of block.rows) {
       const active = item.pointsFor + item.pointsAgainst + item.attack.attempts + item.errors > 0;
@@ -890,7 +859,8 @@ function writeActionsSheet(workbook: Workbook, report: MatchExcelReport) {
     paint(sheet, 1, index + 1, label, { fill: NAVY, color: WHITE, bold: true, size: 10 });
     sheet.getColumn(index + 1).width = widths[index];
   });
-  report.actions.forEach((action, index) => {
+  const actions = report.actions.filter((action) => action.team === report.clubLabel);
+  actions.forEach((action, index) => {
     const row = index + 2;
     const fill = action.scoresPoint ? (row % 2 ? WHITE : SLATE_50) : SLATE_50;
     paint(sheet, row, 1, action.time, { fill, size: 9 });
@@ -903,14 +873,14 @@ function writeActionsSheet(workbook: Workbook, report: MatchExcelReport) {
       align: "left",
     });
     paint(sheet, row, 7, action.scoringTeam, {
-      fill: action.scoringTeam === report.homeLabel ? EMERALD_SOFT : action.scoringTeam ? ROSE_SOFT : fill,
+      fill: action.scoringTeam === report.clubLabel ? EMERALD_SOFT : action.scoringTeam ? ROSE_SOFT : fill,
       align: "left",
     });
   });
-  if (report.actions.length > 0) {
+  if (actions.length > 0) {
     sheet.autoFilter = {
       from: { row: 1, column: 1 },
-      to: { row: report.actions.length + 1, column: 7 },
+      to: { row: actions.length + 1, column: 7 },
     };
   }
 }
@@ -977,25 +947,24 @@ function writeChartsSheet(
   merge(sheet, row, 1, row, 4);
   row += 1;
   paint(sheet, row, 1, "Origen", { fill: SLATE_700, color: WHITE, bold: true, align: "left" });
-  paint(sheet, row, 2, report.homeLabel, { fill: SLATE_700, color: WHITE, bold: true });
-  paint(sheet, row, 3, report.awayLabel, { fill: SLATE_700, color: WHITE, bold: true });
+  paint(sheet, row, 2, report.clubLabel, { fill: SLATE_700, color: WHITE, bold: true });
   row += 1;
-  const origins: [string, number, number][] = [
-    ["Ataque", report.home.origins.attack, report.away.origins.attack],
-    ["Bloqueo", report.home.origins.block, report.away.origins.block],
-    ["Ace", report.home.origins.ace, report.away.origins.ace],
-    ["Error rival", report.home.origins.opponentError, report.away.origins.opponentError],
-    ["Otro", report.home.origins.other, report.away.origins.other],
+  const club = clubSkills(report);
+  const origins: [string, number][] = [
+    ["Ataque", club.origins.attack],
+    ["Bloqueo", club.origins.block],
+    ["Ace", club.origins.ace],
+    ["Error rival", club.origins.opponentError],
+    ["Otro", club.origins.other],
   ];
-  for (const [label, home, away] of origins) {
+  for (const [label, value] of origins) {
     paint(sheet, row, 1, label, { align: "left", fill: SLATE_50 });
-    paint(sheet, row, 2, home);
-    paint(sheet, row, 3, away);
+    paint(sheet, row, 2, value);
     row += 1;
   }
 
   row += 2;
-  const clubPlayers = report.clubIsHome ? report.homePlayers : report.awayPlayers;
+  const players = clubPlayers(report);
   paint(sheet, row, 1, `Puntos por jugador · ${report.clubLabel}`, {
     fill: ORANGE,
     color: NAVY,
@@ -1008,7 +977,7 @@ function writeChartsSheet(
     paint(sheet, row, index + 1, label, { fill: SLATE_700, color: WHITE, bold: true });
   });
   row += 1;
-  const top = [...clubPlayers].sort((a, b) => b.points - a.points).slice(0, 12);
+  const top = [...players].sort((a, b) => b.points - a.points).slice(0, 12);
   const dataStart = row;
   for (const player of top) {
     paint(sheet, row, 1, player.name, { align: "left" });
@@ -1039,21 +1008,16 @@ function writeChartsSheet(
     paint(sheet, row, index + 1, label, { fill: SLATE_700, color: WHITE, bold: true });
   });
   row += 1;
-  for (const [label, skills] of [
-    [report.homeLabel, report.home],
-    [report.awayLabel, report.away],
-  ] as const) {
-    paint(sheet, row, 1, label, { align: "left", fill: SLATE_50 });
-    paint(sheet, row, 2, skills.reception.good, { fill: EMERALD_SOFT });
-    paint(sheet, row, 3, skills.reception.medium, { fill: AMBER_SOFT });
-    paint(sheet, row, 4, skills.reception.bad, { fill: ORANGE_SOFT });
-    paint(sheet, row, 5, skills.reception.errors, { fill: ROSE_SOFT });
-    paint(sheet, row, 6, rateValue(skills.reception.successRate), {
-      numFmt: "0%",
-      fill: rateFill(skills.reception.successRate),
-    });
-    row += 1;
-  }
+  paint(sheet, row, 1, report.clubLabel, { align: "left", fill: SLATE_50 });
+  paint(sheet, row, 2, club.reception.good, { fill: EMERALD_SOFT });
+  paint(sheet, row, 3, club.reception.medium, { fill: AMBER_SOFT });
+  paint(sheet, row, 4, club.reception.bad, { fill: ORANGE_SOFT });
+  paint(sheet, row, 5, club.reception.errors, { fill: ROSE_SOFT });
+  paint(sheet, row, 6, rateValue(club.reception.successRate), {
+    numFmt: "0%",
+    fill: rateFill(club.reception.successRate),
+  });
+  row += 1;
 
   if (charts.length) {
     let anchor = 2;
@@ -1310,37 +1274,27 @@ function renderCharts(report: MatchExcelReport): ChartPng[] {
     ],
   });
   if (setChart) charts.push(setChart);
+  const club = clubSkills(report);
   const originChart = groupedBarChart({
-    title: "Origen de los puntos",
+    title: `Origen de los puntos · ${report.clubLabel}`,
     categories: ["Ataque", "Bloqueo", "Ace", "Error rival", "Otro"],
     series: [
       {
-        label: report.homeLabel,
+        label: report.clubLabel,
         values: [
-          report.home.origins.attack,
-          report.home.origins.block,
-          report.home.origins.ace,
-          report.home.origins.opponentError,
-          report.home.origins.other,
+          club.origins.attack,
+          club.origins.block,
+          club.origins.ace,
+          club.origins.opponentError,
+          club.origins.other,
         ],
         color: "#0B1F3A",
-      },
-      {
-        label: report.awayLabel,
-        values: [
-          report.away.origins.attack,
-          report.away.origins.block,
-          report.away.origins.ace,
-          report.away.origins.opponentError,
-          report.away.origins.other,
-        ],
-        color: "#F97316",
       },
     ],
   });
   if (originChart) charts.push(originChart);
-  const clubPlayers = report.clubIsHome ? report.homePlayers : report.awayPlayers;
-  const top = [...clubPlayers].filter((player) => player.points > 0).sort((a, b) => b.points - a.points).slice(0, 8);
+  const players = clubPlayers(report);
+  const top = [...players].filter((player) => player.points > 0).sort((a, b) => b.points - a.points).slice(0, 8);
   if (top.length) {
     const pointsChart = horizontalBarChart({
       title: `Puntos · ${report.clubLabel}`,
@@ -1351,35 +1305,19 @@ function renderCharts(report: MatchExcelReport): ChartPng[] {
     if (pointsChart) charts.push(pointsChart);
   }
   const recChart = stackedBarChart({
-    title: "Calidad de recepción",
-    categories: [report.homeLabel, report.awayLabel],
+    title: `Calidad de recepción · ${report.clubLabel}`,
+    categories: [report.clubLabel],
     series: [
-      {
-        label: "Buena",
-        values: [report.home.reception.good, report.away.reception.good],
-        color: "#059669",
-      },
-      {
-        label: "Media",
-        values: [report.home.reception.medium, report.away.reception.medium],
-        color: "#F59E0B",
-      },
-      {
-        label: "Mala",
-        values: [report.home.reception.bad, report.away.reception.bad],
-        color: "#FB923C",
-      },
-      {
-        label: "Error",
-        values: [report.home.reception.errors, report.away.reception.errors],
-        color: "#E11D48",
-      },
+      { label: "Buena", values: [club.reception.good], color: "#059669" },
+      { label: "Media", values: [club.reception.medium], color: "#F59E0B" },
+      { label: "Mala", values: [club.reception.bad], color: "#FB923C" },
+      { label: "Error", values: [club.reception.errors], color: "#E11D48" },
     ],
   });
   if (recChart) charts.push(recChart);
 
-  const clubRotations = report.clubIsHome ? report.homeRotations : report.awayRotations;
-  const activeRots = clubRotations.filter(
+  const rotations = clubRotations(report);
+  const activeRots = rotations.filter(
     (row) => row.pointsFor + row.pointsAgainst > 0
   );
   if (activeRots.length) {
@@ -1428,8 +1366,7 @@ export async function buildMatchExcelWorkbook(report: MatchExcelReport) {
 
   const charts = renderCharts(report);
   writeResumen(workbook, report, charts);
-  writeTeamPlayersSheet(workbook, report, "home");
-  writeTeamPlayersSheet(workbook, report, "away");
+  writeTeamPlayersSheet(workbook, report, report.clubIsHome ? "home" : "away");
   writeChartsSheet(workbook, report, charts);
   writeSetsSheet(workbook, report);
   writeRotationsSheet(workbook, report);
