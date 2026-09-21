@@ -133,29 +133,25 @@ export function MatchesBrowser({
         </button>
       </div>
 
-      {view === "calendar" ? (
-        filtered.length === 0 ? (
-          <EmptyState
-            icon={Trophy}
-            title="Sin partidos"
-            description="No hay partidos en esta categoría."
-          />
-        ) : (
-          <SeasonCalendar matches={filtered} />
-        )
-      ) : (
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="all">Todos</TabsTrigger>
           <TabsTrigger value="live">En vivo</TabsTrigger>
-          <TabsTrigger value="upcoming">Próximos</TabsTrigger>
-          <TabsTrigger value="past">Pasados</TabsTrigger>
+          <TabsTrigger value="upcoming">Próximo</TabsTrigger>
+          <TabsTrigger value="past">Pasado</TabsTrigger>
         </TabsList>
         <TabsContent value={tab}>
-          <MatchList matches={active.matches} empty={active.empty} />
+          {view === "calendar" ? (
+            active.matches.length === 0 ? (
+              <EmptyState icon={Trophy} title="Sin partidos" description={active.empty} />
+            ) : (
+              <SeasonCalendar matches={active.matches} />
+            )
+          ) : (
+            <MatchList matches={active.matches} empty={active.empty} />
+          )}
         </TabsContent>
       </Tabs>
-      )}
     </>
   );
 }

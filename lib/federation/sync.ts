@@ -99,18 +99,23 @@ export async function runScheduledFederationSync(
     };
   }
 
+  const settled = await Promise.allSettled(
+    groups.map((group) => importFederationGroup(supabase, group.groupId, group.category))
+  );
+
   const synced: FederationSyncReport[] = [];
   const errors: string[] = [];
 
-  for (const group of groups) {
-    try {
-      const report = await importFederationGroup(supabase, group.groupId, group.category);
-      report.groupName = group.path;
-      synced.push(report);
-    } catch (error) {
-      errors.push(`${group.path}: ${error instanceof Error ? error.message : "Error FMV"}`);
+  settled.forEach((result, index) => {
+    const group = groups[index];
+    if (result.status === "fulfilled") {
+      result.value.groupName = group.path;
+      synced.push(result.value);
+      return;
     }
-  }
+    const reason = result.reason;
+    errors.push(`${group.path}: ${reason instanceof Error ? reason.message : "Error FMV"}`);
+  });
 
   return { kind, synced, errors };
 }

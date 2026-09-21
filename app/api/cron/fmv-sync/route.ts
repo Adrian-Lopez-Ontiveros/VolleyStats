@@ -3,7 +3,7 @@ import { runScheduledFederationSync, type ScheduledFederationSyncKind } from "@/
 import { createServiceClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function isAuthorized(request: Request) {
   const secret = process.env.CRON_SECRET;

@@ -289,9 +289,22 @@ export async function fetchFmvTeams(groupId: string): Promise<FmvTeam[]> {
 }
 
 export async function fetchFmvMatches(groupId: string): Promise<FmvMatch[]> {
+  const calendar = asArray(await fmvGet("competiciones/getJornadasCalendario", { grupoId: groupId }));
+  const fromCalendar = calendar
+    .flatMap((roundItem) => {
+      const round = asRecord(roundItem);
+      const roundName = formatRoundName(round);
+      const roundFecha = pickString(round, ["fecha"]);
+      return asArray(round.partidos).map((item) =>
+        normalizeMatch(asRecord(item), roundName, roundFecha)
+      );
+    })
+    .filter((item) => item.id && item.homeName && item.awayName);
+  if (fromCalendar.length) return fromCalendar;
+
   const rounds = asArray(await fmvGet("competiciones/getJornadasGrupo", { grupoId: groupId }));
   const fromRounds = (
-    await mapPool(rounds, 4, async (roundItem) => {
+    await mapPool(rounds, 8, async (roundItem) => {
       const round = asRecord(roundItem);
       const roundId = pickString(round, ["id", "idJornada", "jornadaId"]);
       const roundName = formatRoundName(round);
@@ -303,21 +316,7 @@ export async function fetchFmvMatches(groupId: string): Promise<FmvMatch[]> {
     })
   ).flat();
 
-  if (fromRounds.length) {
-    return fromRounds.filter((item) => item.id && item.homeName && item.awayName);
-  }
-
-  const calendar = asArray(await fmvGet("competiciones/getJornadasCalendario", { grupoId: groupId }));
-  return calendar
-    .flatMap((roundItem) => {
-      const round = asRecord(roundItem);
-      const roundName = formatRoundName(round);
-      const roundFecha = pickString(round, ["fecha"]);
-      return asArray(round.partidos).map((item) =>
-        normalizeMatch(asRecord(item), roundName, roundFecha)
-      );
-    })
-    .filter((item) => item.id && item.homeName && item.awayName);
+  return fromRounds.filter((item) => item.id && item.homeName && item.awayName);
 }
 
 export async function resolveFmvTestLeague(): Promise<FmvCatalogPath> {
@@ -394,11 +393,13 @@ export async function resolveClubFmvGroups(): Promise<ClubFmvGroup[]> {
     if (groups.length === 0) continue;
 
     let picked = findOption(groups, ["unico"]) ?? groups[0];
-    for (const group of groups) {
-      const teams = await fetchFmvTeams(group.id);
-      if (teams.some((team) => isClubTeamName(team.name))) {
-        picked = group;
-        break;
+    if (groups.length > 1) {
+      for (const group of groups) {
+        const teams = await fetchFmvTeams(group.id);
+        if (teams.some((team) => isClubTeamName(team.name))) {
+          picked = group;
+          break;
+        }
       }
     }
 
