@@ -11,6 +11,7 @@ import { requireCoach } from "@/lib/auth";
 import { buildBoxScore } from "@/lib/box-score";
 import { MATCH_EVENT_SELECT, MATCH_WITH_TEAMS_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { overlayFinishedMatchScore } from "@/lib/volleyball";
 import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Box score" };
@@ -38,8 +39,8 @@ export default async function MatchBoxScorePage({
   }
   if (!match) notFound();
 
-  const typedMatch = match as MatchWithTeams;
   const typedEvents = (events ?? []) as MatchEventWithPlayer[];
+  const typedMatch = overlayFinishedMatchScore(match as MatchWithTeams, typedEvents);
   const box = buildBoxScore(typedMatch, typedEvents);
   const fileName = `fuenlastats-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`;
 

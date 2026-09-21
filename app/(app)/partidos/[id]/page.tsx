@@ -32,7 +32,7 @@ import {
   PLAYER_LINEUP_SELECT,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
-import { isScoringAction } from "@/lib/volleyball";
+import { isScoringAction, overlayFinishedMatchScore } from "@/lib/volleyball";
 import type {
   MatchEventWithPlayer,
   MatchLineupEntry,
@@ -66,8 +66,8 @@ export default async function MatchDetailPage({
   }
   if (!match) notFound();
 
-  const typedMatch = match as MatchWithTeams;
   const typedEvents = (events ?? []) as MatchEventWithPlayer[];
+  const typedMatch = overlayFinishedMatchScore(match as MatchWithTeams, typedEvents);
   const publicEvents = typedEvents.filter((event) => isScoringAction(event.point_type));
   const notes = stripFmvScheduleNote(typedMatch.notes);
 

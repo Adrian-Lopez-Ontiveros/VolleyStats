@@ -125,14 +125,14 @@ async function persistComputedMatch(
   const computed = computeMatchState(
     events ?? [],
     homeTeamId,
-    status === "cancelled" ? "cancelled" : status === "finished" ? "live" : status,
+    status === "cancelled" ? "cancelled" : status,
     matchMeta.error ? 3 : setsToWinOf(matchMeta.data)
   );
 
   const nextStatus =
     status === "cancelled"
       ? "cancelled"
-      : computed.status === "finished"
+      : status === "finished" || computed.status === "finished"
         ? "finished"
         : status === "scheduled" && (events ?? []).length === 0
           ? "scheduled"
@@ -232,12 +232,26 @@ export async function setMatchStatus(
 ) {
   await requireCoach();
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: match, error: matchError } = await supabase
     .from("matches")
-    .update({ status })
-    .eq("id", matchId);
+    .select("id, home_team_id")
+    .eq("id", matchId)
+    .maybeSingle();
 
-  if (error) return { error: error.message };
+  if (matchError || !match) return { error: matchError?.message ?? "Partido no encontrado" };
+
+  if (status === "finished") {
+    try {
+      await persistComputedMatch(matchId, match.home_team_id, "finished");
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "No se pudo cerrar el marcador del partido.",
+      };
+    }
+  } else {
+    const { error } = await supabase.from("matches").update({ status }).eq("id", matchId);
+    if (error) return { error: error.message };
+  }
 
   await logMatchActivity(
     matchId,

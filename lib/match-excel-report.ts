@@ -1,7 +1,15 @@
 import { POINT_TYPE_META, POSITION_LABELS } from "@/lib/constants";
 import { getCategoryMeta, isTeamCategory } from "@/lib/categories";
 import { formatMatchWhen, stripFmvScheduleNote } from "@/lib/federation/schedule";
-import { isOwnErrorType, isScoringAction, scoresForActingTeam, annotateEventScores } from "@/lib/volleyball";
+import {
+  annotateEventScores,
+  computeMatchState,
+  isOwnErrorType,
+  isScoringAction,
+  isSetWon,
+  scoresForActingTeam,
+  setsToWinOf,
+} from "@/lib/volleyball";
 import {
   attackStatsFromEvents,
   bestAndWorstRotations,
@@ -333,6 +341,7 @@ function buildNarrative(input: {
   clubSets: number;
   oppSets: number;
   setScores: { home: number; away: number }[];
+  setsToWin: number;
   clubIsHome: boolean;
   club: TeamSkillTotals;
   opp: TeamSkillTotals;
@@ -359,6 +368,23 @@ function buildNarrative(input: {
       const opp = input.clubIsHome ? set.away : set.home;
       return { index: index + 1, club, opp, diff: Math.abs(club - opp), won: club > opp };
     });
+    const early = labeled.filter((set, index) => {
+      const raw = input.setScores[index];
+      return !isSetWon(raw.home, raw.away, set.index, input.setsToWin);
+    });
+    if (early.length > 0) {
+      lines.push(
+        `El partido se cerró antes de los 25: ${early
+          .map((set) => {
+            if (set.club === set.opp) {
+              return `set ${set.index} ${set.club}-${set.opp} (empate, no se otorga)`;
+            }
+            const winner = set.won ? input.clubLabel : input.opponentLabel;
+            return `set ${set.index} ${set.club}-${set.opp} para ${winner}`;
+          })
+          .join("; ")}.`
+      );
+    }
     const closest = [...labeled].sort((a, b) => a.diff - b.diff || a.index - b.index)[0];
     const widest = [...labeled].sort((a, b) => b.diff - a.diff || a.index - b.index)[0];
     if (closest && closest.diff <= 4) {
@@ -598,8 +624,20 @@ export function buildMatchExcelReport(
   const clubTeamId = clubIsHome ? match.home_team_id : match.away_team_id;
   const clubLabel = clubIsHome ? homeLabel : awayLabel;
   const opponentLabel = clubIsHome ? awayLabel : homeLabel;
-  const homeSetPoints = match.set_scores.reduce((sum, set) => sum + set.home, 0);
-  const awaySetPoints = match.set_scores.reduce((sum, set) => sum + set.away, 0);
+  const computed = computeMatchState(
+    events,
+    match.home_team_id,
+    match.status,
+    setsToWinOf(match)
+  );
+  const setScores =
+    match.status === "finished" && computed.setScores.length > 0
+      ? computed.setScores
+      : match.set_scores ?? [];
+  const homeSets = match.status === "finished" ? computed.homeSets : match.home_sets;
+  const awaySets = match.status === "finished" ? computed.awaySets : match.away_sets;
+  const homeSetPoints = setScores.reduce((sum, set) => sum + set.home, 0);
+  const awaySetPoints = setScores.reduce((sum, set) => sum + set.away, 0);
   const home = teamSkillsFromEvents(
     events,
     match.home_team_id,
@@ -663,11 +701,11 @@ export function buildMatchExcelReport(
   const clubRotations = clubIsHome ? homeRotations : awayRotations;
   const result = resultLabel(
     match.status,
-    clubIsHome ? match.home_sets : match.away_sets,
-    clubIsHome ? match.away_sets : match.home_sets
+    clubIsHome ? homeSets : awaySets,
+    clubIsHome ? awaySets : homeSets
   );
 
-  const sets: MatchExcelSetRow[] = match.set_scores.map((set, index) => {
+  const sets: MatchExcelSetRow[] = setScores.map((set, index) => {
     const setNumber = index + 1;
     const setEvents = events.filter((event) => event.set_number === setNumber);
     return {
@@ -747,16 +785,17 @@ export function buildMatchExcelReport(
     clubLabel,
     opponentLabel,
     clubIsHome,
-    homeSets: match.home_sets,
-    awaySets: match.away_sets,
-    setScores: match.set_scores.map((set) => ({ home: set.home, away: set.away })),
+    homeSets,
+    awaySets,
+    setScores: setScores.map((set) => ({ home: set.home, away: set.away })),
     narrative: buildNarrative({
       clubLabel,
       opponentLabel,
       result,
-      clubSets: clubIsHome ? match.home_sets : match.away_sets,
-      oppSets: clubIsHome ? match.away_sets : match.home_sets,
-      setScores: match.set_scores,
+      clubSets: clubIsHome ? homeSets : awaySets,
+      oppSets: clubIsHome ? awaySets : homeSets,
+      setScores,
+      setsToWin: setsToWinOf(match),
       clubIsHome,
       club,
       opp,

@@ -112,13 +112,42 @@ export function annotateEventScores<
   return annotated;
 }
 
+export type ComputeMatchStateOptions = {
+  /** Close the current set and award it to the team that's ahead (amistoso finished early). */
+  awardOpenSet?: boolean;
+};
+
+function closeOpenSet(state: {
+  homeSets: number;
+  awaySets: number;
+  homePoints: number;
+  awayPoints: number;
+  setScores: SetScore[];
+}) {
+  if (state.homePoints === 0 && state.awayPoints === 0) return state;
+  const setScores = [...state.setScores, { home: state.homePoints, away: state.awayPoints }];
+  let homeSets = state.homeSets;
+  let awaySets = state.awaySets;
+  if (state.homePoints > state.awayPoints) homeSets += 1;
+  else if (state.awayPoints > state.homePoints) awaySets += 1;
+  return {
+    homeSets,
+    awaySets,
+    homePoints: 0,
+    awayPoints: 0,
+    setScores,
+  };
+}
+
 export function computeMatchState(
   events: Pick<MatchEvent, "scoring_team_id" | "created_at">[],
   homeTeamId: string,
   currentStatus: "scheduled" | "live" | "finished" | "cancelled",
-  setsToWin = SETS_TO_WIN
+  setsToWin = SETS_TO_WIN,
+  options?: ComputeMatchStateOptions
 ): ComputedMatchState {
   const needed = setsToWin === 2 ? 2 : SETS_TO_WIN;
+  const awardOpenSet = Boolean(options?.awardOpenSet) || currentStatus === "finished";
   const ordered = [...events]
     .filter((event) => event.scoring_team_id)
     .sort(
@@ -131,7 +160,7 @@ export function computeMatchState(
   let currentSet = 1;
   let homePoints = 0;
   let awayPoints = 0;
-  const setScores: SetScore[] = [];
+  let setScores: SetScore[] = [];
 
   for (const event of ordered) {
     if (homeSets >= needed || awaySets >= needed) break;
@@ -149,16 +178,58 @@ export function computeMatchState(
     }
   }
 
-  const finished = homeSets >= needed || awaySets >= needed;
+  if (awardOpenSet) {
+    const closed = closeOpenSet({ homeSets, awaySets, homePoints, awayPoints, setScores });
+    homeSets = closed.homeSets;
+    awaySets = closed.awaySets;
+    homePoints = closed.homePoints;
+    awayPoints = closed.awayPoints;
+    setScores = closed.setScores;
+  }
+
+  const finished = homeSets >= needed || awaySets >= needed || awardOpenSet;
 
   return {
     homeSets,
     awaySets,
-    currentSet: finished ? Math.max(1, currentSet - 1) : currentSet,
+    currentSet: finished ? Math.max(1, setScores.length || currentSet) : currentSet,
     homePoints: finished ? 0 : homePoints,
     awayPoints: finished ? 0 : awayPoints,
     setScores,
     status: finished ? "finished" : currentStatus === "scheduled" ? "live" : "live",
+  };
+}
+
+export function overlayFinishedMatchScore<
+  T extends {
+    status: string;
+    home_team_id: string;
+    home_sets: number;
+    away_sets: number;
+    home_points: number;
+    away_points: number;
+    current_set: number;
+    set_scores: SetScore[];
+    sets_to_win?: number | null;
+    is_federation?: boolean | null;
+  },
+>(match: T, events: Pick<MatchEvent, "scoring_team_id" | "created_at">[]): T {
+  if (match.status !== "finished") return match;
+  const computed = computeMatchState(
+    events,
+    match.home_team_id,
+    "finished",
+    setsToWinOf(match)
+  );
+  if (computed.setScores.length === 0) return match;
+  return {
+    ...match,
+    home_sets: computed.homeSets,
+    away_sets: computed.awaySets,
+    home_points: 0,
+    away_points: 0,
+    current_set: computed.currentSet,
+    set_scores: computed.setScores,
   };
 }
 
