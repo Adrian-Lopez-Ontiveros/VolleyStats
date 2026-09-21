@@ -1,4 +1,5 @@
 import { fmvCrestUrl } from "@/lib/federation/crests";
+import { isClubTeamName } from "@/lib/federation/leagues";
 import { parseFmvSchedule, type FmvSchedulePrecision } from "@/lib/federation/schedule";
 
 const FMV_API = "https://intranet.fmvoley.com/api";
@@ -64,6 +65,30 @@ export const FMV_TEST_LEAGUE = {
   phaseIncludes: ["regular"],
   groupIncludes: ["unico"],
 } as const;
+
+export const FMV_CLUB_LEAGUES = [
+  {
+    category: "cadete_femenino" as const,
+    competitionIncludes: ["cadete", "fem"],
+    divisionIncludes: ["preferente"],
+  },
+  {
+    category: "senior_masculino" as const,
+    competitionIncludes: ["senior", "masc"],
+    divisionIncludes: ["preferente"],
+  },
+  {
+    category: "senior_femenino" as const,
+    competitionIncludes: ["senior", "fem"],
+    divisionIncludes: ["preferente"],
+  },
+] as const;
+
+export type ClubFmvGroup = {
+  category: (typeof FMV_CLUB_LEAGUES)[number]["category"];
+  groupId: string;
+  path: string;
+};
 
 async function fmvGet<T>(path: string, params?: Record<string, string | number>): Promise<T> {
   const url = new URL(`${FMV_API}/${path.replace(/^\//, "")}`);
@@ -338,6 +363,53 @@ export async function resolveFmvTestLeague(): Promise<FmvCatalogPath> {
     groupId: group.id,
     groupName: group.name,
   };
+}
+
+/** Find the FMV groups where a CV Fuenlabrada team plays, one per club category. */
+export async function resolveClubFmvGroups(): Promise<ClubFmvGroup[]> {
+  const types = await fetchFmvCompetitionTypes();
+  const type =
+    types.find((item) => foldFmvText(item.name).includes("federad")) ?? types[0];
+  if (!type) throw new Error("FMV no devolvió tipos de competición.");
+
+  const competitions = await fetchFmvCompetitions(type.id);
+  const found: ClubFmvGroup[] = [];
+
+  for (const spec of FMV_CLUB_LEAGUES) {
+    const competition = findOption(competitions, spec.competitionIncludes);
+    if (!competition) continue;
+
+    const divisions = await fetchFmvDivisions(competition.id);
+    const division =
+      findOption(divisions, spec.divisionIncludes) ??
+      findOption(divisions, ["1", "preferente"]) ??
+      divisions[0];
+    if (!division) continue;
+
+    const phases = await fetchFmvPhases(division.id);
+    const phase = findOption(phases, ["regular"]) ?? phases[0];
+    if (!phase) continue;
+
+    const groups = await fetchFmvGroupOptions(phase.id);
+    if (groups.length === 0) continue;
+
+    let picked = findOption(groups, ["unico"]) ?? groups[0];
+    for (const group of groups) {
+      const teams = await fetchFmvTeams(group.id);
+      if (teams.some((team) => isClubTeamName(team.name))) {
+        picked = group;
+        break;
+      }
+    }
+
+    found.push({
+      category: spec.category,
+      groupId: picked.id,
+      path: `${competition.name} · ${division.name} · ${phase.name} · ${picked.name}`,
+    });
+  }
+
+  return found;
 }
 
 function toFmvTeam(id: string, name: string): FmvTeam | null {

@@ -191,6 +191,11 @@ export function FederationSync() {
             partidos) por la nueva. No borra el equipo del club ni partidos con
             seguimiento en vivo.
           </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Además, FMV se refresca solo: los miércoles ~10:00 (horarios de la
+            jornada) y los domingo ~22:00 (resultados), hora de Madrid en
+            invierno. No pisa partidos que ya tengan estadísticas.
+          </p>
         </div>
 
         <Button

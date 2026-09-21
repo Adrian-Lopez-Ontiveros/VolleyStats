@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/match-reminders",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/fmv-sync?kind=schedules",
+      "schedule": "0 9 * * 3"
+    },
+    {
+      "path": "/api/cron/fmv-sync?kind=results",
+      "schedule": "0 21 * * 0"
     }
   ]
 }
