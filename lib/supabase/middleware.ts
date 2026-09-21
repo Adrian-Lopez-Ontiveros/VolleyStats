@@ -99,6 +99,8 @@ export async function updateSession(request: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/icons") ||
+    pathname.startsWith("/api/cron") ||
+    pathname === "/api/health" ||
     pathname === "/sw.js" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/offline" ||
