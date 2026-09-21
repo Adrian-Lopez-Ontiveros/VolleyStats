@@ -277,7 +277,12 @@ export type MatchEvent = {
 };
 
 export type MatchEventWithPlayer = MatchEvent & {
-  player: Pick<Player, "id" | "full_name" | "jersey_number"> | null;
+  player:
+    | (Pick<Player, "id" | "full_name" | "jersey_number"> & {
+        position?: PlayerPosition | null;
+        team_id?: string | null;
+      })
+    | null;
 };
 
 export type SessionUser = {

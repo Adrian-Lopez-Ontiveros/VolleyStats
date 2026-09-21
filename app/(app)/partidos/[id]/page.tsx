@@ -16,14 +16,13 @@ import { SubstitutionPanel } from "@/components/matches/substitution-panel";
 import { BackButton } from "@/components/back-button";
 import { PageHeader } from "@/components/page-header";
 import { ActivityLog } from "@/components/matches/activity-log";
-import { ExportCsvButton } from "@/components/export-csv-button";
+import { ExportMatchExcelButton } from "@/components/export-match-excel-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { getMatchActivity } from "@/lib/actions/activity";
 import { requireViewer } from "@/lib/auth";
 import { canTrackLiveMatch } from "@/lib/federation/leagues";
 import { buildBoxScore } from "@/lib/box-score";
-import { POINT_TYPE_META } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
   MATCH_EVENT_SELECT,
@@ -151,27 +150,13 @@ export default async function MatchDetailPage({
     ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId, typedMatch.current_set)
     : null;
   const activity = await getMatchActivity(id);
-  const exportRows = [
-    ["Partido", `${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`],
-    ["Fecha", typedMatch.scheduled_at],
-    ["Resultado", `${typedMatch.home_sets}-${typedMatch.away_sets}`],
-    [],
-    ["Hora", "Set", "Jugador", "Equipo", "Acción", "Punto para"],
-    ...typedEvents.map((event) => [
-      event.created_at,
-      event.set_number,
-      event.player?.full_name ?? "",
-      event.acting_team_id === typedMatch.home_team_id
-        ? typedMatch.home_team.name
-        : typedMatch.away_team.name,
-      POINT_TYPE_META[event.point_type]?.label ?? event.point_type,
-      event.scoring_team_id === typedMatch.home_team_id
-        ? typedMatch.home_team.name
-        : event.scoring_team_id
-          ? typedMatch.away_team.name
-          : "",
-    ]),
-  ];
+  const excelRoster = ((clubPlayers ?? []) as Player[]).map((player) => ({
+    id: player.id,
+    full_name: player.full_name,
+    jersey_number: player.jersey_number,
+    position: player.position,
+    team_id: player.team_id,
+  }));
 
   return (
     <>
@@ -186,9 +171,10 @@ export default async function MatchDetailPage({
           isFederation: typedMatch.is_federation,
         })}
         action={
-          <ExportCsvButton
-            filename={`partido-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`}
-            rows={exportRows}
+          <ExportMatchExcelButton
+            match={typedMatch}
+            events={typedEvents}
+            roster={excelRoster}
           />
         }
       />
