@@ -34,7 +34,7 @@ export function CategoryNav({
   onChange?: (value: TeamCategory | "all") => void;
 }) {
   const items = allowAll
-    ? [{ id: "all" as const, line1: "Todos", line2: "los equipos" }, ...TEAM_CATEGORIES]
+    ? [{ id: "all" as const, line1: "Todos", line2: "las ligas" }, ...TEAM_CATEGORIES]
     : TEAM_CATEGORIES;
 
   return (

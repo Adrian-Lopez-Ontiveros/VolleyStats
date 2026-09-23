@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, List, Plus, Trophy } from "lucide-react";
-import { SeasonCalendar } from "@/components/matches/season-calendar";
+import { Plus } from "lucide-react";
 import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
-import { EmptyState } from "@/components/empty-state";
-import { MatchCard } from "@/components/matches/match-card";
+import { FmvLeagueSearch } from "@/components/matches/fmv-league-search";
+import { JornadaBar } from "@/components/matches/jornada-bar";
+import { MatchViews } from "@/components/matches/match-views";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
+import { StandingsTable } from "@/components/stats/standings-table";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { TeamCategory } from "@/lib/categories";
-import { involvesClubTeam } from "@/lib/federation/leagues";
+import { getCategoryMeta, type TeamCategory } from "@/lib/categories";
+import { federationRoundNumber, standingsThroughJornada } from "@/lib/federation/rounds";
 import type { MatchWithTeams } from "@/lib/types";
 
 export function MatchesBrowser({
@@ -29,51 +29,47 @@ export function MatchesBrowser({
   loadError?: string;
 }) {
   const [categoria, setCategoria] = useCategoryFilter(initialCategory);
-  const filtered = useMemo(
+  const [jornada, setJornada] = useState<number | null>(null);
+  const leagueCategory = categoria === "all" ? null : categoria;
+  const categoryMatches = useMemo(
     () =>
-      categoria === "all"
-        ? matches.filter(involvesClubTeam)
-        : matches.filter(
+      leagueCategory
+        ? matches.filter(
             (match) =>
-              match.home_team.category === categoria || match.away_team.category === categoria
-          ),
-    [matches, categoria]
+              match.home_team.category === leagueCategory ||
+              match.away_team.category === leagueCategory
+          )
+        : [],
+    [matches, leagueCategory]
   );
-  const live = useMemo(
-    () => filtered.filter((match) => match.status === "live"),
-    [filtered]
-  );
-  const upcoming = useMemo(
-    () => filtered.filter((match) => match.status === "scheduled"),
-    [filtered]
-  );
-  const past = useMemo(
+  const visibleMatches = useMemo(() => {
+    if (jornada == null) return categoryMatches;
+    return categoryMatches.filter(
+      (match) => federationRoundNumber(match.federation_round) === jornada
+    );
+  }, [categoryMatches, jornada]);
+  const standings = useMemo(
     () =>
-      filtered.filter(
-        (match) => match.status === "finished" || match.status === "cancelled"
-      ),
-    [filtered]
+      leagueCategory
+        ? standingsThroughJornada(categoryMatches, leagueCategory, jornada)
+        : null,
+    [categoryMatches, leagueCategory, jornada]
   );
-  const defaultTab = live.length ? "live" : upcoming.length ? "upcoming" : "all";
-  const [tab, setTab] = useState(defaultTab);
-  const [view, setView] = useState<"list" | "calendar">("list");
 
-  useEffect(() => {
-    setTab(live.length ? "live" : upcoming.length ? "upcoming" : "all");
-  }, [categoria, live.length, upcoming.length]);
-  const lists = {
-    all: { matches: filtered, empty: "Todavía no hay partidos." },
-    live: { matches: live, empty: "No hay partidos en curso." },
-    upcoming: { matches: upcoming, empty: "No hay partidos programados." },
-    past: { matches: past, empty: "Aún no hay partidos finalizados." },
-  } as const;
-  const active = lists[tab as keyof typeof lists] ?? lists.all;
+  function selectCategory(next: TeamCategory | "all") {
+    setJornada(null);
+    setCategoria(next);
+  }
+
+  const description = leagueCategory
+    ? `${getCategoryMeta(leagueCategory).label}. Sin jornada ves el calendario y la clasificación actual. Al elegir una, ves sus partidos y la tabla al terminarla.`
+    : "Busca cualquier liga de fmvoley. Las tres ligas del club siguen en sus pestañas.";
 
   return (
     <>
       <PageHeader
         title="Partidos"
-        description="Partidos de CV Fuenlabrada. En Todos solo aparecen los del club; en cada liga ves todo el calendario."
+        description={description}
         action={
           canManage ? (
             <Button asChild variant="accent" size="sm">
@@ -99,85 +95,48 @@ export function MatchesBrowser({
         </Link>
       ) : null}
 
-      <CategoryNav
-        basePath="/partidos"
-        value={categoria}
-        allowAll
-        onChange={setCategoria}
-      />
+      <CategoryNav basePath="/partidos" value={categoria} allowAll onChange={selectCategory} />
 
       {loadError ? (
         <QueryError message={`No se pudieron cargar los partidos: ${loadError}`} />
       ) : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
-        <button
-          type="button"
-          onClick={() => setView("list")}
-          className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold ${
-            view === "list" ? "bg-card shadow-sm" : "text-muted-foreground"
-          }`}
-        >
-          <List className="h-3.5 w-3.5" />
-          Lista
-        </button>
-        <button
-          type="button"
-          onClick={() => setView("calendar")}
-          className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold ${
-            view === "calendar" ? "bg-card shadow-sm" : "text-muted-foreground"
-          }`}
-        >
-          <CalendarDays className="h-3.5 w-3.5" />
-          Calendario
-        </button>
-      </div>
-
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">Todos</TabsTrigger>
-          <TabsTrigger value="live">En vivo</TabsTrigger>
-          <TabsTrigger value="upcoming">Próximo</TabsTrigger>
-          <TabsTrigger value="past">Pasado</TabsTrigger>
-        </TabsList>
-        <TabsContent value={tab}>
-          {view === "calendar" ? (
-            active.matches.length === 0 ? (
-              <EmptyState icon={Trophy} title="Sin partidos" description={active.empty} />
-            ) : (
-              <SeasonCalendar matches={active.matches} />
-            )
-          ) : (
-            <MatchList matches={active.matches} empty={active.empty} />
-          )}
-        </TabsContent>
-      </Tabs>
+      {leagueCategory ? (
+        <>
+          <JornadaBar value={jornada} onChange={setJornada} />
+          <MatchViews
+            matches={visibleMatches}
+            resetKey={`${leagueCategory}:${jornada ?? "all"}`}
+            preferAll={jornada != null}
+          />
+          {standings ? (
+            <section className="mt-6 space-y-2">
+              <h2 className="text-sm font-semibold">
+                {jornada == null
+                  ? "Clasificación actual"
+                  : `Clasificación al finalizar la jornada ${jornada}`}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {jornada == null
+                  ? "Calculada con los partidos de liga ya finalizados."
+                  : `Cuenta los partidos finalizados de la jornada 1 a la ${jornada}.`}
+                {standings.unfinished > 0
+                  ? ` Todavía ${standings.unfinished === 1 ? "queda 1 partido" : `quedan ${standings.unfinished} partidos`} sin resultado hasta este punto.`
+                  : ""}
+              </p>
+              {standings.rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Esta liga todavía no tiene partidos oficiales para calcular la tabla.
+                </p>
+              ) : (
+                <StandingsTable rows={standings.rows} />
+              )}
+            </section>
+          ) : null}
+        </>
+      ) : (
+        <FmvLeagueSearch />
+      )}
     </>
-  );
-}
-
-function MatchList({
-  matches,
-  empty = "Todavía no hay partidos.",
-}: {
-  matches: MatchWithTeams[];
-  empty?: string;
-}) {
-  if (matches.length === 0) {
-    return (
-      <EmptyState
-        icon={Trophy}
-        title="Sin partidos"
-        description={empty}
-      />
-    );
-  }
-
-  return (
-    <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-      {matches.map((match) => (
-        <MatchCard key={match.id} match={match} />
-      ))}
-    </div>
   );
 }

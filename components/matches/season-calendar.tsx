@@ -15,7 +15,13 @@ import type { MatchWithTeams } from "@/lib/types";
 import { MatchKindBadge, isFriendlyMatch } from "@/components/matches/match-kind";
 import { TeamLogo } from "@/components/teams/team-logo";
 
-export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
+export function SeasonCalendar({
+  matches,
+  linked = true,
+}: {
+  matches: MatchWithTeams[];
+  linked?: boolean;
+}) {
   const groups = new Map<string, MatchWithTeams[]>();
   const ordered = [...matches].sort(
     (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
@@ -45,7 +51,7 @@ export function SeasonCalendar({ matches }: { matches: MatchWithTeams[] }) {
                   <DayBadge day={day} matches={dayMatches} />
                   <div className="min-w-0 flex-1 space-y-2">
                     {dayMatches.map((match) => (
-                      <CalendarMatch key={match.id} match={match} />
+                      <CalendarMatch key={match.id} match={match} linked={linked} />
                     ))}
                   </div>
                 </div>
@@ -94,22 +100,19 @@ function groupByDay(matches: MatchWithTeams[]) {
   return [...map.entries()];
 }
 
-function CalendarMatch({ match }: { match: MatchWithTeams }) {
+function CalendarMatch({ match, linked }: { match: MatchWithTeams; linked: boolean }) {
   const status = matchStatusMeta(match.status);
   const today = madridCalendarKey(match.scheduled_at) === madridCalendarKey(new Date().toISOString());
-
-  return (
-    <Link
-      href={`/partidos/${match.id}`}
-      className={cn(
+  const className = cn(
         "block rounded-2xl border px-3 py-2.5",
         isFriendlyMatch(match)
           ? "border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50"
           : "border-violet-200/80 bg-card",
         match.status === "live" && "border-orange-300",
         today && match.status === "scheduled" && !isFriendlyMatch(match) && "border-sky-300"
-      )}
-    >
+  );
+  const body = (
+    <>
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="text-xs font-medium tabular-nums text-muted-foreground">
           {formatMatchWhenShort({
@@ -119,7 +122,7 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
           })}
         </span>
         <span className="flex flex-wrap justify-end gap-1">
-          <MatchKindBadge match={match} />
+          <MatchKindBadge match={match} round={match.federation_round} />
           <span
             className={cn(
               "rounded-full border px-2 py-0.5 text-[10px] font-semibold text-white",
@@ -158,6 +161,13 @@ function CalendarMatch({ match }: { match: MatchWithTeams }) {
           />
         </span>
       </div>
+    </>
+  );
+
+  if (!linked) return <div className={className}>{body}</div>;
+  return (
+    <Link href={`/partidos/${match.id}`} className={className}>
+      {body}
     </Link>
   );
 }

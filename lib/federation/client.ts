@@ -288,9 +288,9 @@ export async function fetchFmvTeams(groupId: string): Promise<FmvTeam[]> {
   );
 }
 
-export async function fetchFmvMatches(groupId: string): Promise<FmvMatch[]> {
+async function fetchCalendarMatches(groupId: string): Promise<FmvMatch[]> {
   const calendar = asArray(await fmvGet("competiciones/getJornadasCalendario", { grupoId: groupId }));
-  const fromCalendar = calendar
+  return calendar
     .flatMap((roundItem) => {
       const round = asRecord(roundItem);
       const roundName = formatRoundName(round);
@@ -300,8 +300,10 @@ export async function fetchFmvMatches(groupId: string): Promise<FmvMatch[]> {
       );
     })
     .filter((item) => item.id && item.homeName && item.awayName);
-  if (fromCalendar.length) return fromCalendar;
+}
 
+// The calendar call is one request but omits sets. Scores come from each jornada.
+async function fetchMatchesByRound(groupId: string): Promise<FmvMatch[]> {
   const rounds = asArray(await fmvGet("competiciones/getJornadasGrupo", { grupoId: groupId }));
   const fromRounds = (
     await mapPool(rounds, 8, async (roundItem) => {
@@ -317,6 +319,21 @@ export async function fetchFmvMatches(groupId: string): Promise<FmvMatch[]> {
   ).flat();
 
   return fromRounds.filter((item) => item.id && item.homeName && item.awayName);
+}
+
+export async function fetchFmvMatches(
+  groupId: string,
+  options?: { scores?: boolean }
+): Promise<FmvMatch[]> {
+  if (options?.scores) {
+    const scored = await fetchMatchesByRound(groupId);
+    if (scored.length) return scored;
+  }
+
+  const fromCalendar = await fetchCalendarMatches(groupId);
+  if (fromCalendar.length) return fromCalendar;
+  if (options?.scores) return [];
+  return fetchMatchesByRound(groupId);
 }
 
 export async function resolveFmvTestLeague(): Promise<FmvCatalogPath> {

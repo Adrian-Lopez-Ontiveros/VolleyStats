@@ -10,11 +10,15 @@ import { TeamLogo } from "@/components/teams/team-logo";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
-export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTeams }) {
+export const MatchCard = memo(function MatchCard({
+  match,
+  href,
+}: {
+  match: MatchWithTeams;
+  href?: string | null;
+}) {
   const status = matchStatusMeta(match.status);
-
-  return (
-    <Link href={`/partidos/${match.id}`} className="block h-full">
+  const card = (
       <Card className={cnMatchCard(match)}>
         <CardContent className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
@@ -26,7 +30,7 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
               })}
             </p>
             <div className="flex flex-wrap justify-end gap-1">
-              <MatchKindBadge match={match} />
+              <MatchKindBadge match={match} round={match.federation_round} />
               <Badge
                 className={
                   match.status === "live"
@@ -85,6 +89,12 @@ export const MatchCard = memo(function MatchCard({ match }: { match: MatchWithTe
           ) : null}
         </CardContent>
       </Card>
+  );
+
+  if (href === null) return <div className="block h-full">{card}</div>;
+  return (
+    <Link href={href ?? `/partidos/${match.id}`} className="block h-full">
+      {card}
     </Link>
   );
 });

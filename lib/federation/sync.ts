@@ -48,7 +48,7 @@ export async function importFederationGroup(
   supabase: SupabaseClient,
   groupId: string,
   category: TeamCategory,
-  options?: { wipe?: boolean }
+  options?: { wipe?: boolean; scores?: boolean }
 ): Promise<FederationSyncReport> {
   if (!groupId) throw new Error("Selecciona un grupo de la federación.");
   if (!TEAM_CATEGORIES.some((item) => item.id === category)) {
@@ -73,7 +73,7 @@ export async function importFederationGroup(
     if (result === "linked") report.teamsLinked += 1;
   }
 
-  const matches = await fetchFmvMatches(group.id);
+  const matches = await fetchFmvMatches(group.id, { scores: options?.scores !== false });
   for (const match of matches) {
     const result = await upsertFederationMatch(supabase, match, category);
     report[result] += 1;
@@ -100,7 +100,11 @@ export async function runScheduledFederationSync(
   }
 
   const settled = await Promise.allSettled(
-    groups.map((group) => importFederationGroup(supabase, group.groupId, group.category))
+    groups.map((group) =>
+      importFederationGroup(supabase, group.groupId, group.category, {
+        scores: kind === "results",
+      })
+    )
   );
 
   const synced: FederationSyncReport[] = [];
