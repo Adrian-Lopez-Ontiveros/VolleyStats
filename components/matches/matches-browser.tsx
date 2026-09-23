@@ -6,10 +6,10 @@ import { Plus } from "lucide-react";
 import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
 import { FmvLeagueSearch } from "@/components/matches/fmv-league-search";
 import { JornadaBar } from "@/components/matches/jornada-bar";
+import { LeagueStandings } from "@/components/matches/league-standings";
 import { MatchViews } from "@/components/matches/match-views";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
-import { StandingsTable } from "@/components/stats/standings-table";
 import { Button } from "@/components/ui/button";
 import { getCategoryMeta, type TeamCategory } from "@/lib/categories";
 import { federationRoundNumber, standingsThroughJornada } from "@/lib/federation/rounds";
@@ -29,6 +29,7 @@ export function MatchesBrowser({
   loadError?: string;
 }) {
   const [categoria, setCategoria] = useCategoryFilter(initialCategory);
+  const [panel, setPanel] = useState<"live" | "catalog">("catalog");
   const [jornada, setJornada] = useState<number | null>(null);
   const leagueCategory = categoria === "all" ? null : categoria;
   const categoryMatches = useMemo(
@@ -41,6 +42,10 @@ export function MatchesBrowser({
           )
         : [],
     [matches, leagueCategory]
+  );
+  const liveMatches = useMemo(
+    () => matches.filter((match) => match.status === "live"),
+    [matches]
   );
   const visibleMatches = useMemo(() => {
     if (jornada == null) return categoryMatches;
@@ -57,13 +62,17 @@ export function MatchesBrowser({
   );
 
   function selectCategory(next: TeamCategory | "all") {
+    setPanel("catalog");
     setJornada(null);
     setCategoria(next);
   }
 
-  const description = leagueCategory
-    ? `${getCategoryMeta(leagueCategory).label}. Sin jornada ves el calendario y la clasificación actual. Al elegir una, ves sus partidos y la tabla al terminarla.`
-    : "Busca cualquier liga de fmvoley. Las tres ligas del club siguen en sus pestañas.";
+  const description =
+    panel === "live"
+      ? "Partidos con seguimiento en vivo en la app, de cualquier liga."
+      : leagueCategory
+        ? `${getCategoryMeta(leagueCategory).label}. Sin jornada ves el calendario y la clasificación actual. Al elegir una, ves sus partidos y la tabla al terminarla.`
+        : "Elige una liga de fmvoley con los desplegables. Las tres ligas del club siguen en sus pestañas.";
 
   return (
     <>
@@ -95,43 +104,55 @@ export function MatchesBrowser({
         </Link>
       ) : null}
 
-      <CategoryNav basePath="/partidos" value={categoria} allowAll onChange={selectCategory} />
+      <button
+        type="button"
+        onClick={() => setPanel("live")}
+        className={`mb-3 w-full rounded-xl px-3 py-2.5 text-center leading-tight ${
+          panel === "live"
+            ? "bg-orange-500 text-white shadow-sm"
+            : "bg-secondary text-muted-foreground"
+        }`}
+      >
+        <span className="block text-sm font-semibold">Partido en directo</span>
+        <span className="block text-[11px] font-medium opacity-80">
+          Seguimiento en vivo de cualquier liga
+        </span>
+      </button>
+
+      <CategoryNav
+        basePath="/partidos"
+        value={categoria}
+        allowAll
+        suspended={panel === "live"}
+        onChange={selectCategory}
+      />
 
       {loadError ? (
         <QueryError message={`No se pudieron cargar los partidos: ${loadError}`} />
       ) : null}
 
-      {leagueCategory ? (
+      {panel === "live" ? (
+        <MatchViews
+          matches={liveMatches}
+          empty="Ahora mismo no hay ningún partido con seguimiento en vivo."
+        />
+      ) : leagueCategory ? (
         <>
           <JornadaBar value={jornada} onChange={setJornada} />
           <MatchViews
             matches={visibleMatches}
-            resetKey={`${leagueCategory}:${jornada ?? "all"}`}
-            preferAll={jornada != null}
+            empty={
+              jornada == null
+                ? "Todavía no hay partidos."
+                : "No hay partidos en esta jornada."
+            }
           />
           {standings ? (
-            <section className="mt-6 space-y-2">
-              <h2 className="text-sm font-semibold">
-                {jornada == null
-                  ? "Clasificación actual"
-                  : `Clasificación al finalizar la jornada ${jornada}`}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {jornada == null
-                  ? "Calculada con los partidos de liga ya finalizados."
-                  : `Cuenta los partidos finalizados de la jornada 1 a la ${jornada}.`}
-                {standings.unfinished > 0
-                  ? ` Todavía ${standings.unfinished === 1 ? "queda 1 partido" : `quedan ${standings.unfinished} partidos`} sin resultado hasta este punto.`
-                  : ""}
-              </p>
-              {standings.rows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Esta liga todavía no tiene partidos oficiales para calcular la tabla.
-                </p>
-              ) : (
-                <StandingsTable rows={standings.rows} />
-              )}
-            </section>
+            <LeagueStandings
+              jornada={jornada}
+              rows={standings.rows}
+              unfinished={standings.unfinished}
+            />
           ) : null}
         </>
       ) : (

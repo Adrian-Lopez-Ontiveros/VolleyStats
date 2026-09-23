@@ -20,24 +20,20 @@ export function isCategoryMatch(
   return match.home_team.category === category || match.away_team.category === category;
 }
 
-export function standingsThroughJornada(
+export function standingsFromLeagueMatches(
   matches: MatchWithTeams[],
-  category: TeamCategory,
   jornada: number | null
 ): { rows: StandingRow[]; unfinished: number } {
-  const league = matches.filter(
-    (match) => Boolean(match.is_federation) && isCategoryMatch(match, category)
-  );
   const teams = new Map<string, MatchWithTeams["home_team"]>();
-  for (const match of league) {
+  for (const match of matches) {
     teams.set(match.home_team.id, match.home_team);
     teams.set(match.away_team.id, match.away_team);
   }
 
   const through =
     jornada == null
-      ? league
-      : league.filter((match) => {
+      ? matches
+      : matches.filter((match) => {
           const round = federationRoundNumber(match.federation_round);
           return round != null && round <= jornada;
         });
@@ -50,4 +46,15 @@ export function standingsThroughJornada(
     rows: computeStandings([...teams.values()], through),
     unfinished,
   };
+}
+
+export function standingsThroughJornada(
+  matches: MatchWithTeams[],
+  category: TeamCategory,
+  jornada: number | null
+) {
+  const league = matches.filter(
+    (match) => Boolean(match.is_federation) && isCategoryMatch(match, category)
+  );
+  return standingsFromLeagueMatches(league, jornada);
 }

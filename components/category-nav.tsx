@@ -26,11 +26,13 @@ export function CategoryNav({
   basePath,
   value,
   allowAll = false,
+  suspended = false,
   onChange,
 }: {
   basePath: string;
   value: TeamCategory | "all";
   allowAll?: boolean;
+  suspended?: boolean;
   onChange?: (value: TeamCategory | "all") => void;
 }) {
   const items = allowAll
@@ -46,7 +48,7 @@ export function CategoryNav({
     >
       {items.map((item) => {
         const href = item.id === "all" ? basePath : `${basePath}?categoria=${item.id}`;
-        const active = value === item.id;
+        const active = !suspended && value === item.id;
         const className = cn(
           "rounded-lg px-1.5 py-2 text-center leading-tight transition-colors",
           active
