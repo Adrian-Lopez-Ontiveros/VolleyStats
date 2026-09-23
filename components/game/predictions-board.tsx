@@ -276,10 +276,10 @@ function TeamPick({
       disabled={locked}
       className={cn(
         "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-center transition-colors",
-        selected && !result && "border-orange-500 bg-orange-50",
-        result === "hit" && "border-emerald-600 bg-emerald-50",
-        result === "miss" && "border-rose-400 bg-rose-50",
-        result === "won" && "border-emerald-300 bg-emerald-50/60",
+        selected && !result && "border-orange-500 bg-orange-50 text-orange-950 dark:bg-orange-500/15 dark:text-orange-50",
+        result === "hit" && "border-emerald-600 bg-emerald-50 text-emerald-950 dark:bg-emerald-500/15 dark:text-emerald-50",
+        result === "miss" && "border-rose-400 bg-rose-50 text-rose-950 dark:bg-rose-500/15 dark:text-rose-50",
+        result === "won" && "border-emerald-300 bg-emerald-50/60 text-emerald-950 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-50",
         !selected && !result && "bg-background hover:border-orange-300",
         locked && "cursor-default"
       )}
@@ -293,7 +293,7 @@ function TeamPick({
       />
       <span className="line-clamp-2 text-xs font-semibold leading-tight">{team.name}</span>
       {percent != null ? (
-        <span className="text-[10px] text-muted-foreground">{percent}% de la afición</span>
+        <span className="text-[10px] opacity-75">{percent}% de la afición</span>
       ) : null}
     </button>
   );

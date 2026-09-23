@@ -26,7 +26,7 @@ export function GameLeaderboard({
           key={row.userId}
           className={cn(
             "flex items-center gap-3 rounded-2xl border bg-card px-3 py-2.5",
-            row.userId === userId && "border-orange-300 bg-orange-50/70"
+            row.userId === userId && "border-orange-300 bg-orange-50/70 text-orange-950 dark:border-orange-400/40 dark:bg-orange-500/15 dark:text-foreground"
           )}
         >
           <span className="w-6 text-center text-sm font-black tabular-nums text-muted-foreground">
