@@ -3,6 +3,7 @@ import { Flame } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { DesktopNav } from "@/components/layout/desktop-nav";
 import { UserMenu } from "@/components/layout/user-menu";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { APP_NAME, ROLE_LABELS } from "@/lib/constants";
 import type { SessionUser } from "@/lib/types";
@@ -37,12 +38,13 @@ export function AppHeader({
           {user ? (
             <Link
               href="/predicciones"
-              className="mr-1 hidden items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700 sm:flex"
+              className="mr-1 hidden items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-800 dark:bg-orange-500/15 dark:text-orange-200 sm:flex"
             >
               <Flame className="h-3.5 w-3.5" />
               {streak}
             </Link>
           ) : null}
+          <ThemeToggle />
           {user ? (
             <UserMenu user={user} />
           ) : (

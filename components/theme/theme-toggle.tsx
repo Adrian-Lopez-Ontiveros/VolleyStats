@@ -22,10 +22,11 @@ export function ThemeToggle() {
         applyTheme(next);
         setTheme(next);
       }}
-      className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs font-semibold shadow-sm"
+      aria-label={dark ? "Tema claro" : "Tema oscuro"}
+      title={dark ? "Tema claro" : "Tema oscuro"}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border bg-card text-foreground"
     >
-      {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-      {dark ? "Tema claro" : "Tema oscuro"}
+      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
   );
 }
