@@ -52,7 +52,7 @@ export const MatchCard = memo(function MatchCard({
               className={cn(
                 "min-w-[4.5rem] rounded-xl px-3 py-2 text-center",
                 isFriendlyMatch(match)
-                  ? "bg-orange-100 text-orange-950"
+                  ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-50"
                   : "bg-primary text-primary-foreground"
               )}
             >
@@ -68,7 +68,7 @@ export const MatchCard = memo(function MatchCard({
                   <p
                     className={cn(
                       "mt-1 text-[10px] font-semibold uppercase tracking-wide",
-                      isFriendlyMatch(match) ? "text-orange-700" : "text-orange-300"
+                      isFriendlyMatch(match) ? "text-orange-700 dark:text-orange-200" : "text-orange-300"
                     )}
                   >
                     Sets{" "}

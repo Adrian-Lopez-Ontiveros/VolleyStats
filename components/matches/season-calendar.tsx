@@ -106,7 +106,7 @@ function CalendarMatch({ match, linked }: { match: MatchWithTeams; linked: boole
   const className = cn(
         "block rounded-2xl border px-3 py-2.5",
         isFriendlyMatch(match)
-          ? "border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50"
+          ? "border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50 text-orange-950 dark:border-orange-400/40 dark:from-orange-950/45 dark:to-card dark:text-foreground"
           : "border-violet-200/80 bg-card",
         match.status === "live" && "border-orange-300",
         today && match.status === "scheduled" && !isFriendlyMatch(match) && "border-sky-300"

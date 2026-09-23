@@ -26,7 +26,7 @@ export function MatchKindBadge({
 
 export function matchSurfaceClass(match: { is_federation?: boolean | null }) {
   return isFriendlyMatch(match)
-    ? "border-2 border-dashed border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-white"
+    ? "border-2 border-dashed border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-white text-orange-950 dark:border-orange-400/40 dark:from-orange-950/50 dark:via-card dark:to-card dark:text-foreground"
     : "border-violet-200/80";
 }
 

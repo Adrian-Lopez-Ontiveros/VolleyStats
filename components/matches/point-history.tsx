@@ -168,7 +168,7 @@ export const PointHistory = memo(function PointHistory({
                     className={cn(
                       "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-2xl px-2 py-2 sm:gap-3 sm:px-3",
                       latest
-                        ? "bg-orange-50 ring-1 ring-orange-200"
+                        ? "bg-orange-50 text-orange-950 ring-1 ring-orange-200 dark:bg-orange-500/15 dark:text-foreground dark:ring-orange-400/30"
                         : scoring
                           ? "bg-secondary/40"
                           : "border border-dashed bg-background"

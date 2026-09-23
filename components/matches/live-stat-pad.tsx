@@ -73,19 +73,19 @@ const SKILLS: Record<
 };
 
 const SKILL_HEADER: Record<SkillId, string> = {
-  rec: "bg-sky-100 text-sky-800",
-  saq: "bg-violet-100 text-violet-800",
-  ata: "bg-orange-100 text-orange-800",
-  blo: "bg-cyan-100 text-cyan-800",
-  def: "bg-slate-200 text-slate-800",
+  rec: "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-100",
+  saq: "bg-violet-100 text-violet-800 dark:bg-violet-500/20 dark:text-violet-100",
+  ata: "bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-100",
+  blo: "bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-100",
+  def: "bg-slate-200 text-slate-800 dark:bg-slate-500/25 dark:text-slate-100",
 };
 
 const TONE_CLASS: Record<SkillOption["tone"], string> = {
-  point: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  good: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  mid: "border-amber-200 bg-amber-50 text-amber-900",
-  poor: "border-stone-200 bg-stone-100 text-stone-700",
-  error: "border-rose-200 bg-rose-50 text-rose-800",
+  point: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-50",
+  good: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-50",
+  mid: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-50",
+  poor: "border-stone-200 bg-stone-100 text-stone-700 dark:border-stone-400/30 dark:bg-stone-500/20 dark:text-stone-100",
+  error: "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/30 dark:bg-rose-500/15 dark:text-rose-50",
 };
 
 function skillOrder(_serving: boolean, isLibero: boolean): SkillId[] {
@@ -255,7 +255,7 @@ export function LiveStatPad({
                               className={cn(
                                 "flex h-10 flex-col items-center justify-center rounded-xl border text-sm font-black leading-none disabled:cursor-not-allowed disabled:opacity-60",
                                 TONE_CLASS[option.tone],
-                                active && "border-emerald-400 bg-emerald-100 text-emerald-900"
+                                active && "border-emerald-400 bg-emerald-100 text-emerald-900 dark:bg-emerald-500/30 dark:text-emerald-50"
                               )}
                             >
                               <span>{option.symbol}</span>

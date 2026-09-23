@@ -14,14 +14,16 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
     <section
       className={cn(
         "overflow-hidden rounded-3xl shadow-card",
-        friendly ? "bg-orange-100 text-orange-950" : "bg-primary text-primary-foreground"
+        friendly
+          ? "bg-orange-100 text-orange-950 dark:border dark:border-orange-400/35 dark:bg-orange-950/50 dark:text-orange-50"
+          : "bg-primary text-primary-foreground"
       )}
     >
       <div className="flex items-center justify-between px-4 pt-4">
         <p
           className={cn(
             "text-xs font-semibold uppercase tracking-[0.18em]",
-            friendly ? "text-orange-700" : "text-orange-200"
+            friendly ? "text-orange-700 dark:text-orange-200" : "text-orange-200"
           )}
         >
           {match.status === "finished"
@@ -53,7 +55,7 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
               <p
                 className={cn(
                   "mt-1 text-xs font-semibold uppercase tracking-wide",
-                  friendly ? "text-orange-800/80" : "text-orange-200/90"
+                  friendly ? "text-orange-800/80 dark:text-orange-200/90" : "text-orange-200/90"
                 )}
               >
                 Sets{" "}
@@ -70,7 +72,7 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
         <div
           className={cn(
             "flex flex-wrap justify-center gap-2 border-t px-4 py-3 text-xs",
-            friendly ? "border-orange-200" : "border-white/10"
+            friendly ? "border-orange-200 dark:border-orange-400/25" : "border-white/10"
           )}
         >
           {(match.set_scores ?? []).map((set, index) => (
@@ -78,7 +80,7 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
               key={`${set.home}-${set.away}-${index}`}
               className={cn(
                 "rounded-full px-2.5 py-1 font-medium tabular-nums",
-                friendly ? "bg-orange-200/80" : "bg-white/10"
+                friendly ? "bg-orange-200/80 dark:bg-orange-500/20" : "bg-white/10"
               )}
             >
               S{index + 1} {set.home}-{set.away}

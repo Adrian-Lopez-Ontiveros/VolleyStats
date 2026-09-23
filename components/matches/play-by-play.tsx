@@ -84,7 +84,9 @@ export const PlayByPlay = memo(function PlayByPlay({
                     key={event.id}
                     className={cn(
                       "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-2xl px-2 py-2 sm:gap-3 sm:px-3",
-                      latest ? "bg-orange-50 ring-1 ring-orange-200" : "bg-secondary/40"
+                      latest
+                        ? "bg-orange-50 text-orange-950 ring-1 ring-orange-200 dark:bg-orange-500/15 dark:text-foreground dark:ring-orange-400/30"
+                        : "bg-secondary/40"
                     )}
                   >
                     <div className="flex min-w-0 items-center justify-end gap-2">
@@ -123,20 +125,20 @@ export function RallyScore({
   highlight: "home" | "away" | "none";
 }) {
   return (
-    <p className="flex min-w-[4.75rem] items-baseline justify-center gap-1 rounded-xl bg-white px-2.5 py-1 text-center shadow-sm">
+    <p className="flex min-w-[4.75rem] items-baseline justify-center gap-1 rounded-xl bg-white px-2.5 py-1 text-center shadow-sm dark:bg-white/10 dark:shadow-none">
       <span
         className={cn(
           "text-lg font-black tabular-nums leading-none",
-          highlight === "home" ? "text-orange-600" : "text-slate-400"
+          highlight === "home" ? "text-orange-600 dark:text-orange-300" : "text-slate-400"
         )}
       >
         {homeScore}
       </span>
-      <span className="text-xs font-semibold text-slate-300">–</span>
+      <span className="text-xs font-semibold text-slate-300 dark:text-slate-500">–</span>
       <span
         className={cn(
           "text-lg font-black tabular-nums leading-none",
-          highlight === "away" ? "text-orange-600" : "text-slate-400"
+          highlight === "away" ? "text-orange-600 dark:text-orange-300" : "text-slate-400"
         )}
       >
         {awayScore}
