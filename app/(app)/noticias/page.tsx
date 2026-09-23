@@ -52,20 +52,20 @@ export default async function NewsPage() {
 
       <Link
         href="/predicciones"
-        className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm"
+        className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-950 dark:border-orange-400/40 dark:bg-orange-500/15 dark:text-orange-50"
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
             <Target className="h-4 w-4" />
           </span>
           <span>
-            <span className="font-semibold text-orange-800">Predice la jornada.</span>{" "}
-            <span className="text-orange-900/80">
+            <span className="font-semibold text-orange-800 dark:text-orange-100">Predice la jornada.</span>{" "}
+            <span className="text-orange-900/80 dark:text-orange-100/80">
               {isGuest ? "Entra con cuenta para elegir ganador." : "Elige ganador y suma puntos."}
             </span>
           </span>
         </span>
-        <span className="shrink-0 font-bold text-orange-700">
+        <span className="shrink-0 font-bold text-orange-700 dark:text-orange-200">
           {isGuest ? "Entrar →" : "Predecir →"}
         </span>
       </Link>
