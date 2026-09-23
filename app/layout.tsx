@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 import { OFFLINE_FALLBACK_SCRIPT } from "@/lib/offline-fallback";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const font = Plus_Jakarta_Sans({
@@ -73,6 +74,7 @@ export default function RootLayout({
     <html lang="es">
       <head>
         <link rel="preload" href="/logo.png" as="image" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <style>{`
           html:not(.app-ready),html:not(.app-ready) body{background:#0B1F3A}
           #app-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 50% at 0% 0%,rgba(249,115,22,.28),transparent 55%),radial-gradient(ellipse 60% 45% at 100% 0%,rgba(56,189,248,.14),transparent 52%),#0B1F3A;transition:opacity .4s ease,visibility .4s ease}

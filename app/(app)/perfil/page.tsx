@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { PlayerCardSection } from "@/components/players/player-card-section";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { AvatarUpload } from "@/components/profile/avatar-upload";
 import { NotificationToggle } from "@/components/profile/notification-toggle";
 import { PlayerEvolutionPanel } from "@/components/stats/player-evolution-panel";
@@ -81,6 +82,9 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <ThemeToggle />
+      </div>
       <AvatarUpload
         userId={user.id}
         name={user.profile.full_name}
