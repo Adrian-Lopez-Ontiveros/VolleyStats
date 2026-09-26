@@ -246,6 +246,7 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
       sample.attackContinuations += 1;
       break;
     case "block":
+    case "blockout":
       sample.blocks += 1;
       sample.points += 1;
       break;
@@ -270,6 +271,9 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
     case "serve_error":
       sample.errors += 1;
       sample.serveErrors += 1;
+      break;
+    case "block_error":
+      sample.errors += 1;
       break;
     case "opponent_error":
       sample.opponentErrors += 1;
@@ -302,6 +306,7 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
       break;
     case "block_touch":
     case "block_continuation":
+    case "opponent_point":
       break;
   }
   sample.attackAttempts = sample.attackKills + sample.attackErrors + sample.attackContinuations;
@@ -497,6 +502,9 @@ export function emptyPointTypeCounts(): PointTypeCounts {
     defense_error: 0,
     block_touch: 0,
     block_continuation: 0,
+    block_error: 0,
+    opponent_point: 0,
+    blockout: 0,
   };
 }
 
@@ -509,9 +517,12 @@ export function countChartPointTypes(
       event.point_type === "attack_error" ||
       event.point_type === "serve_error" ||
       event.point_type === "reception_error" ||
-      event.point_type === "defense_error"
+      event.point_type === "defense_error" ||
+      event.point_type === "block_error"
     ) {
       counts.error += 1;
+    } else if (event.point_type === "blockout") {
+      counts.block += 1;
     } else if (
       event.point_type === "attack" ||
       event.point_type === "block" ||

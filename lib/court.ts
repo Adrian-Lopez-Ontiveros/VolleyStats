@@ -1,5 +1,5 @@
 import type { LiberoKind, MatchLineupEntry, MatchSubstitution, Player } from "@/lib/types";
-import { isRotation } from "@/lib/volleyball-stats";
+import { isRotation, stepsBetweenZones } from "@/lib/volleyball-stats";
 
 export const COURT_POSITIONS = [1, 2, 3, 4, 5, 6] as const;
 export type CourtPosition = (typeof COURT_POSITIONS)[number];
@@ -37,8 +37,36 @@ export function rotatePosition(start: CourtPosition, steps: number): CourtPositi
   return CLOCKWISE[(index + offset) % 6];
 }
 
-export function rotationOffset(rotation: number | null | undefined) {
-  return isRotation(rotation) ? rotation - 1 : 0;
+export function rotationOffset(rotation: number | null | undefined, setterStart?: number | null) {
+  if (!isRotation(rotation)) return 0;
+  return stepsBetweenZones(isRotation(setterStart) ? setterStart : 1, rotation);
+}
+
+export function setterStartZone(
+  lineup: Pick<
+    MatchLineupEntry,
+    | "team_id"
+    | "player_id"
+    | "is_starter"
+    | "is_libero"
+    | "is_reception_libero"
+    | "is_defense_libero"
+    | "court_position"
+  >[],
+  roster: Pick<Player, "id" | "position">[],
+  teamId?: string
+): CourtPosition | null {
+  const setters = new Set(
+    roster.filter((player) => player.position === "colocador").map((player) => player.id)
+  );
+  if (setters.size === 0) return null;
+  for (const entry of lineup) {
+    if (teamId && entry.team_id !== teamId) continue;
+    if (!entry.is_starter || isDesignatedLibero(entry)) continue;
+    if (!setters.has(entry.player_id) || !isCourtPosition(entry.court_position)) continue;
+    return entry.court_position;
+  }
+  return null;
 }
 
 export function lineupHasCourtPositions(
@@ -221,7 +249,8 @@ export function currentCourtSlots(
   roster: CourtOccupant[],
   rotation: number | null | undefined,
   teamId?: string,
-  setNumber?: number
+  setNumber?: number,
+  setterStart?: number | null
 ): CourtSlots {
   const occupied = applySlotSubstitutions(
     startingCourtByPosition(lineup, teamId),
@@ -229,7 +258,7 @@ export function currentCourtSlots(
     teamId,
     setNumber
   );
-  const steps = rotationOffset(rotation);
+  const steps = rotationOffset(rotation, setterStart);
   const byId = new Map(roster.map((player) => [player.id, player]));
   const slots: CourtSlots = {};
 

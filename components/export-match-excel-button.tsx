@@ -5,16 +5,19 @@ import { FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { MatchExcelRosterPlayer } from "@/lib/match-excel-report";
+import type { SetterStarts } from "@/lib/volleyball-stats";
 import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
 
 export function ExportMatchExcelButton({
   match,
   events,
   roster = [],
+  setterStarts,
 }: {
   match: MatchWithTeams;
   events: MatchEventWithPlayer[];
   roster?: MatchExcelRosterPlayer[];
+  setterStarts?: SetterStarts;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -26,7 +29,7 @@ export function ExportMatchExcelButton({
         import("@/lib/match-excel-report"),
         import("@/lib/export-match-xlsx"),
       ]);
-      await downloadMatchExcel(buildMatchExcelReport(match, events, roster));
+      await downloadMatchExcel(buildMatchExcelReport(match, events, roster, setterStarts));
     } catch (error) {
       console.error(error);
       toast.error("No se pudo generar el Excel. Inténtalo de nuevo.");

@@ -1,4 +1,5 @@
 import type { PointType } from "@/lib/types";
+import { isOwnErrorType } from "@/lib/volleyball";
 
 export type AttackStats = {
   kills: number;
@@ -315,9 +316,57 @@ export function possessionStatsFromEvents(
   };
 }
 
+/**
+ * Orden en el que se mueve la colocadora al ganar el saque: 1 → 6 → 5 → 4 → 3 → 2.
+ * La rotación que se muestra es la zona en la que está ella, no un contador que empiece siempre en 1.
+ * En base de datos se guarda el paso desde la alineación inicial (1 = sin rotar).
+ */
+export const ROTATION_PLAY_ORDER = [1, 6, 5, 4, 3, 2] as const;
+
+export type SetterStarts = {
+  homeSetterStart?: number | null;
+  awaySetterStart?: number | null;
+};
+
 export function nextRotation(rotation: number) {
-  if (rotation < 1 || rotation > 6) return 1;
-  return rotation === 6 ? 1 : rotation + 1;
+  const index = ROTATION_PLAY_ORDER.indexOf(rotation as (typeof ROTATION_PLAY_ORDER)[number]);
+  if (index < 0) return 1;
+  return ROTATION_PLAY_ORDER[(index + 1) % ROTATION_PLAY_ORDER.length];
+}
+
+export function stepsBetweenZones(from: number, to: number) {
+  if (!isRotation(from) || !isRotation(to)) return 0;
+  const start = ROTATION_PLAY_ORDER.indexOf(from as (typeof ROTATION_PLAY_ORDER)[number]);
+  const end = ROTATION_PLAY_ORDER.indexOf(to as (typeof ROTATION_PLAY_ORDER)[number]);
+  if (start < 0 || end < 0) return 0;
+  return (end - start + ROTATION_PLAY_ORDER.length) % ROTATION_PLAY_ORDER.length;
+}
+
+export function zoneAfterSteps(start: number, steps: number) {
+  if (!isRotation(start)) return 1;
+  const index = ROTATION_PLAY_ORDER.indexOf(start as (typeof ROTATION_PLAY_ORDER)[number]);
+  if (index < 0) return 1;
+  const offset = ((steps % ROTATION_PLAY_ORDER.length) + ROTATION_PLAY_ORDER.length) % ROTATION_PLAY_ORDER.length;
+  return ROTATION_PLAY_ORDER[(index + offset) % ROTATION_PLAY_ORDER.length];
+}
+
+function anchorZone(setterStart: number | null | undefined) {
+  return isRotation(setterStart) ? setterStart : 1;
+}
+
+export function zoneFromStoredRotation(
+  stored: number | null | undefined,
+  setterStart?: number | null
+) {
+  const start = anchorZone(setterStart);
+  if (!isRotation(stored)) return start;
+  return zoneAfterSteps(start, stored - 1);
+}
+
+export function storedRotationFromZone(zone: number | null | undefined, setterStart?: number | null) {
+  const start = anchorZone(setterStart);
+  if (!isRotation(zone)) return null;
+  return stepsBetweenZones(start, zone) + 1;
 }
 
 export function isRotation(value: number | null | undefined): value is number {
@@ -328,7 +377,8 @@ export function inferNextRotations(
   events: SkillEvent[],
   homeTeamId: string,
   awayTeamId: string,
-  currentSet: number
+  currentSet: number,
+  setterStarts?: SetterStarts
 ) {
   const scoring = [...events]
     .filter((event) => event.scoring_team_id)
@@ -338,10 +388,15 @@ export function inferNextRotations(
     );
 
   const lastInSet = [...scoring].reverse().find((event) => event.set_number === currentSet);
-  if (!lastInSet) return { home: 1, away: 1 };
+  if (!lastInSet) {
+    return {
+      home: anchorZone(setterStarts?.homeSetterStart),
+      away: anchorZone(setterStarts?.awaySetterStart),
+    };
+  }
 
-  let home = isRotation(lastInSet.home_rotation) ? lastInSet.home_rotation : 1;
-  let away = isRotation(lastInSet.away_rotation) ? lastInSet.away_rotation : 1;
+  let home = zoneFromStoredRotation(lastInSet.home_rotation, setterStarts?.homeSetterStart);
+  let away = zoneFromStoredRotation(lastInSet.away_rotation, setterStarts?.awaySetterStart);
 
   if (
     lastInSet.scoring_team_id &&
@@ -380,17 +435,21 @@ function emptyRotationRow(rotation: number): RotationRow {
 function teamRotationOnEvent(
   event: SkillEvent,
   teamId: string,
-  homeTeamId: string
+  homeTeamId: string,
+  setterStarts?: SetterStarts
 ) {
   const value = teamId === homeTeamId ? event.home_rotation : event.away_rotation;
-  return isRotation(value) ? value : null;
+  if (!isRotation(value)) return null;
+  const setterStart = teamId === homeTeamId ? setterStarts?.homeSetterStart : setterStarts?.awaySetterStart;
+  return zoneFromStoredRotation(value, setterStart);
 }
 
 export function rotationStatsForTeam(
   events: SkillEvent[],
   teamId: string,
   homeTeamId: string,
-  awayTeamId: string
+  awayTeamId: string,
+  setterStarts?: SetterStarts
 ): RotationRow[] {
   const annotated = withInferredServe(events, homeTeamId, awayTeamId);
   const rows = new Map<number, RotationRow>();
@@ -401,7 +460,7 @@ export function rotationStatsForTeam(
   }
 
   for (const event of events) {
-    const rotation = teamRotationOnEvent(event, teamId, homeTeamId);
+    const rotation = teamRotationOnEvent(event, teamId, homeTeamId, setterStarts);
     if (!rotation) continue;
     const row = rows.get(rotation);
     if (!row) continue;
@@ -413,18 +472,12 @@ export function rotationStatsForTeam(
       const list = attackEvents.get(rotation) ?? [];
       list.push(event);
       attackEvents.set(rotation, list);
-      if (
-        event.point_type === "error" ||
-        event.point_type === "attack_error" ||
-        event.point_type === "serve_error"
-      ) {
-        row.errors += 1;
-      }
+      if (isOwnErrorType(event.point_type)) row.errors += 1;
     }
   }
 
   for (const event of annotated) {
-    const rotation = teamRotationOnEvent(event, teamId, homeTeamId);
+    const rotation = teamRotationOnEvent(event, teamId, homeTeamId, setterStarts);
     if (!rotation || !event.servingTeamId || !event.scoring_team_id) continue;
     const row = rows.get(rotation);
     if (!row) continue;
@@ -439,8 +492,9 @@ export function rotationStatsForTeam(
     }
   }
 
-  return [...rows.values()].map((row) => {
-    row.attack = attackStatsFromEvents(attackEvents.get(row.rotation) ?? []);
+  return ROTATION_PLAY_ORDER.map((rotation) => {
+    const row = rows.get(rotation) ?? emptyRotationRow(rotation);
+    row.attack = attackStatsFromEvents(attackEvents.get(rotation) ?? []);
     finalizePossession(row.sideOut);
     finalizePossession(row.breakPoint);
     return row;
@@ -448,7 +502,7 @@ export function rotationStatsForTeam(
 }
 
 export function rotationStatsAcrossMatches(
-  matches: { id: string; home_team_id: string; away_team_id: string }[],
+  matches: ({ id: string; home_team_id: string; away_team_id: string } & SetterStarts)[],
   events: (SkillEvent & { match_id: string })[],
   teamId: string
 ): RotationRow[] {
@@ -464,7 +518,11 @@ export function rotationStatsAcrossMatches(
       events.filter((event) => event.match_id === match.id),
       teamId,
       match.home_team_id,
-      match.away_team_id
+      match.away_team_id,
+      {
+        homeSetterStart: match.homeSetterStart,
+        awaySetterStart: match.awaySetterStart,
+      }
     );
     for (const row of rows) {
       const target = merged.get(row.rotation);
@@ -482,15 +540,19 @@ export function rotationStatsAcrossMatches(
   for (const event of events) {
     const match = matches.find((item) => item.id === event.match_id);
     if (!match) continue;
-    const rotation = teamRotationOnEvent(event, teamId, match.home_team_id);
+    const rotation = teamRotationOnEvent(event, teamId, match.home_team_id, {
+      homeSetterStart: match.homeSetterStart,
+      awaySetterStart: match.awaySetterStart,
+    });
     if (!rotation || event.acting_team_id !== teamId) continue;
     const list = attackEvents.get(rotation) ?? [];
     list.push(event);
     attackEvents.set(rotation, list);
   }
 
-  return [...merged.values()].map((row) => {
-    row.attack = attackStatsFromEvents(attackEvents.get(row.rotation) ?? []);
+  return ROTATION_PLAY_ORDER.map((rotation) => {
+    const row = merged.get(rotation) ?? emptyRotationRow(rotation);
+    row.attack = attackStatsFromEvents(attackEvents.get(rotation) ?? []);
     finalizePossession(row.sideOut);
     finalizePossession(row.breakPoint);
     return row;

@@ -39,7 +39,10 @@ do $$ begin
     'defense_bad',
     'defense_error',
     'block_touch',
-    'block_continuation'
+    'block_continuation',
+    'block_error',
+    'opponent_point',
+    'blockout'
   );
 exception when duplicate_object then null;
 end $$;
@@ -51,6 +54,9 @@ alter type public.point_type add value if not exists 'defense_bad';
 alter type public.point_type add value if not exists 'defense_error';
 alter type public.point_type add value if not exists 'block_touch';
 alter type public.point_type add value if not exists 'block_continuation';
+alter type public.point_type add value if not exists 'block_error';
+alter type public.point_type add value if not exists 'opponent_point';
+alter type public.point_type add value if not exists 'blockout';
 
 do $$ begin
   create type public.player_position as enum (
@@ -516,15 +522,16 @@ begin
     select
       e.player_id,
       count(*) filter (where e.point_type = 'attack') as attack_points,
-      count(*) filter (where e.point_type = 'block') as block_points,
+      count(*) filter (where e.point_type::text in ('block', 'blockout')) as block_points,
       count(*) filter (where e.point_type = 'ace') as aces,
       count(*) filter (
-        where e.point_type in (
+        where e.point_type::text in (
           'error',
           'attack_error',
           'serve_error',
           'reception_error',
-          'defense_error'
+          'defense_error',
+          'block_error'
         )
       ) as errors,
       count(*) filter (where e.point_type = 'opponent_error') as opponent_errors,

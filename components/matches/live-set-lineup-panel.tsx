@@ -45,8 +45,8 @@ export function LiveSetLineupPanel({
       <div>
         <p className="text-sm font-semibold">Titulares del set {setNumber}</p>
         <p className="text-xs text-muted-foreground">
-          Elige de nuevo las 6 de pista y las líberos de {teamName}. La rotación del set
-          empieza en R1.
+          Elige de nuevo las 6 de pista y las líberos de {teamName}. La rotación es la
+          zona de la colocadora: en el saque, el 1 (R1); recibiendo, el 2 (R2).
         </p>
       </div>
       <LineupPicker

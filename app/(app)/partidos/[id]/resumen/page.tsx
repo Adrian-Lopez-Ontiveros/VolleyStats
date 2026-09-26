@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { QueryError } from "@/components/query-error";
 import { requireCoach } from "@/lib/auth";
 import { buildBoxScore } from "@/lib/box-score";
-import { MATCH_EVENT_SELECT, MATCH_WITH_TEAMS_SELECT } from "@/lib/constants";
+import { setterStartZone } from "@/lib/court";
+import { MATCH_EVENT_SELECT, MATCH_LINEUP_SELECT, MATCH_WITH_TEAMS_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { overlayFinishedMatchScore } from "@/lib/volleyball";
-import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
+import type { MatchEventWithPlayer, MatchLineupEntry, MatchWithTeams, Player } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Box score" };
 
@@ -41,7 +42,19 @@ export default async function MatchBoxScorePage({
 
   const typedEvents = (events ?? []) as MatchEventWithPlayer[];
   const typedMatch = overlayFinishedMatchScore(match as MatchWithTeams, typedEvents);
-  const box = buildBoxScore(typedMatch, typedEvents);
+  const [{ data: lineupRows }, { data: positionRows }] = await Promise.all([
+    supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", id),
+    supabase
+      .from("players")
+      .select("id, position")
+      .in("team_id", [typedMatch.home_team_id, typedMatch.away_team_id]),
+  ]);
+  const typedLineup = (lineupRows ?? []) as MatchLineupEntry[];
+  const setterRoster = (positionRows ?? []) as Pick<Player, "id" | "position">[];
+  const box = buildBoxScore(typedMatch, typedEvents, {
+    homeSetterStart: setterStartZone(typedLineup, setterRoster, typedMatch.home_team_id),
+    awaySetterStart: setterStartZone(typedLineup, setterRoster, typedMatch.away_team_id),
+  });
   const fileName = `fuenlastats-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`;
 
   return (

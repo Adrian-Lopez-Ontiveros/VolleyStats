@@ -16,7 +16,11 @@ const OWN_ERROR_TYPES: PointType[] = [
   "serve_error",
   "reception_error",
   "defense_error",
+  "block_error",
 ];
+
+/** Punto para el rival que no es un error nuestro (no suma en errores del jugador). */
+const OPPONENT_SCORE_TYPES: PointType[] = ["opponent_point"];
 
 const NON_SCORING_TYPES: PointType[] = [
   "attack_continuation",
@@ -40,6 +44,7 @@ export function isOwnErrorType(pointType: PointType) {
 }
 
 export function scoresForActingTeam(pointType: PointType) {
+  if (OPPONENT_SCORE_TYPES.includes(pointType)) return false;
   return !isOwnErrorType(pointType);
 }
 
@@ -285,11 +290,14 @@ export function statFromPointType(pointType: PointType) {
     case "serve_error":
     case "reception_error":
     case "defense_error":
+    case "block_error":
       return "errors" as const;
     case "opponent_error":
       return "opponent_errors" as const;
     case "other":
       return "other_points" as const;
+    case "blockout":
+      return "block_points" as const;
     default:
       return null;
   }

@@ -19,6 +19,7 @@ import {
   receptionStatsFromEvents,
   rotationStatsForTeam,
   serveStatsFromEvents,
+  type SetterStarts,
 } from "@/lib/volleyball-stats";
 import type { MatchEventWithPlayer, MatchWithTeams } from "@/lib/types";
 
@@ -30,9 +31,11 @@ const PointTypeBarChart = dynamic(
 export function MatchStatsPanel({
   match,
   events,
+  setterStarts,
 }: {
   match: MatchWithTeams;
   events: MatchEventWithPlayer[];
+  setterStarts?: SetterStarts;
 }) {
   const [filter, setFilter] = useState<PhaseFilter>(DEFAULT_PHASE_FILTER);
   const bySet = useMemo(
@@ -135,7 +138,8 @@ export function MatchStatsPanel({
             homeView,
             match.home_team_id,
             match.home_team_id,
-            match.away_team_id
+            match.away_team_id,
+            setterStarts
           )}
         />
       </section>
@@ -147,7 +151,8 @@ export function MatchStatsPanel({
             awayView,
             match.away_team_id,
             match.home_team_id,
-            match.away_team_id
+            match.away_team_id,
+            setterStarts
           )}
         />
       </section>

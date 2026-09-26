@@ -420,6 +420,11 @@ export async function recordPoint(input: {
         error:
           "Falta ejecutar la migración supabase/migrations/031_sets_to_win_and_block_actions.sql para toque y continuación de bloqueo.",
       };
+    } else if (/block_error|opponent_point|blockout/i.test(insert.error.message)) {
+      return {
+        error:
+          "Falta ejecutar la migración supabase/migrations/032_block_error_rival_point_blockout.sql para error de bloqueo, punto del rival y block-out.",
+      };
     } else {
       return { error: insert.error.message };
     }

@@ -41,6 +41,7 @@ import {
   serveStatsFromEvents,
 } from "@/lib/volleyball-stats";
 import { MatchCard } from "@/components/matches/match-card";
+import { setterStartZone } from "@/lib/court";
 import { totalPlayerPoints } from "@/lib/volleyball";
 import type { MatchWithTeams, Player, PointType, Team } from "@/lib/types";
 
@@ -97,7 +98,7 @@ export default async function TeamDetailPage({
   const playerIds = typedPlayers.map((player) => player.id);
 
   const matchIds = finishedMatches.map((item) => item.id);
-  const [{ data: events }, { data: teamMatchEvents }] = await Promise.all([
+  const [{ data: events }, { data: teamMatchEvents }, { data: lineupRows }] = await Promise.all([
     canManage && playerIds.length > 0
       ? supabase
           .from("match_events")
@@ -108,6 +109,13 @@ export default async function TeamDetailPage({
       ? supabase
           .from("match_events")
           .select("match_id, point_type, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, set_number, created_at")
+          .in("match_id", matchIds)
+      : Promise.resolve({ data: [] }),
+    matchIds.length > 0
+      ? supabase
+          .from("match_lineups")
+          .select("match_id, team_id, player_id, is_starter, is_libero, is_reception_libero, is_defense_libero, court_position")
+          .eq("team_id", id)
           .in("match_id", matchIds)
       : Promise.resolve({ data: [] }),
   ]);
@@ -160,7 +168,33 @@ export default async function TeamDetailPage({
   const teamReception = receptionStatsFromEvents(teamActingEvents);
   const teamDefense = defenseStatsFromEvents(teamActingEvents);
   const teamPossession = possessionStatsForTeam(finishedMatches, typedTeamEvents, id);
-  const teamRotations = rotationStatsAcrossMatches(finishedMatches, typedTeamEvents, id);
+  const lineupByMatch = new Map<string, Parameters<typeof setterStartZone>[0]>();
+  for (const entry of (lineupRows ?? []) as {
+    match_id: string;
+    team_id: string;
+    player_id: string;
+    is_starter: boolean;
+    is_libero: boolean;
+    is_reception_libero?: boolean;
+    is_defense_libero?: boolean;
+    court_position?: number | null;
+  }[]) {
+    const list = lineupByMatch.get(entry.match_id) ?? [];
+    list.push(entry);
+    lineupByMatch.set(entry.match_id, list);
+  }
+  const teamRotations = rotationStatsAcrossMatches(
+    finishedMatches.map((match) => {
+      const start = setterStartZone(lineupByMatch.get(match.id) ?? [], typedPlayers, id);
+      return {
+        ...match,
+        homeSetterStart: match.home_team_id === id ? start : null,
+        awaySetterStart: match.away_team_id === id ? start : null,
+      };
+    }),
+    typedTeamEvents,
+    id
+  );
 
   return (
     <>

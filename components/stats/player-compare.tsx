@@ -93,7 +93,7 @@ export function PlayerCompare({
           else if (isScoringAction(event.point_type) && scoresForActingTeam(event.point_type)) {
             points += 1;
           }
-          if (event.point_type === "block") blocks += 1;
+          if (event.point_type === "block" || event.point_type === "blockout") blocks += 1;
         }
         return {
           player,

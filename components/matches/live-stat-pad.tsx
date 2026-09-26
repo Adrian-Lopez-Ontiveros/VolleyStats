@@ -58,6 +58,7 @@ const SKILLS: Record<
       { type: "block", symbol: "+", label: "Punto", tone: "point" },
       { type: "block_continuation", symbol: "=", label: "Continuado", tone: "mid" },
       { type: "block_touch", symbol: "T", label: "Toque", tone: "poor" },
+      { type: "block_error", symbol: "−", label: "Error", tone: "error" },
     ],
   },
   def: {

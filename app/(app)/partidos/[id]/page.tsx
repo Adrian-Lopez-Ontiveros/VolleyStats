@@ -23,6 +23,7 @@ import { getMatchActivity } from "@/lib/actions/activity";
 import { requireViewer } from "@/lib/auth";
 import { canTrackLiveMatch } from "@/lib/federation/leagues";
 import { buildBoxScore } from "@/lib/box-score";
+import { setterStartZone } from "@/lib/court";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
   MATCH_EVENT_SELECT,
@@ -112,7 +113,8 @@ export default async function MatchDetailPage({
       ? typedMatch.away_team_id
       : null;
 
-  const [{ data: lineupRows }, { data: subRows }, { data: clubPlayers }] = await Promise.all([
+  const [{ data: lineupRows }, { data: subRows }, { data: clubPlayers }, { data: positionRows }] =
+    await Promise.all([
     supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", id),
     supabase
       .from("match_substitutions")
@@ -126,6 +128,10 @@ export default async function MatchDetailPage({
           .eq("team_id", clubTeamId)
           .order("jersey_number", { ascending: true, nullsFirst: false })
       : Promise.resolve({ data: [] as Player[] }),
+    supabase
+      .from("players")
+      .select("id, position")
+      .in("team_id", [typedMatch.home_team_id, typedMatch.away_team_id]),
   ]);
 
   const playersById = new Map(((clubPlayers ?? []) as Player[]).map((player) => [player.id, player]));
@@ -150,6 +156,11 @@ export default async function MatchDetailPage({
     ? currentOnCourtIds(typedLineup, typedSubs, clubTeamId, typedMatch.current_set)
     : null;
   const activity = await getMatchActivity(id);
+  const setterRoster = (positionRows ?? []) as Pick<Player, "id" | "position">[];
+  const setterStarts = {
+    homeSetterStart: setterStartZone(typedLineup, setterRoster, typedMatch.home_team_id),
+    awaySetterStart: setterStartZone(typedLineup, setterRoster, typedMatch.away_team_id),
+  };
   const excelRoster = ((clubPlayers ?? []) as Player[]).map((player) => ({
     id: player.id,
     full_name: player.full_name,
@@ -175,6 +186,7 @@ export default async function MatchDetailPage({
             match={typedMatch}
             events={typedEvents}
             roster={excelRoster}
+            setterStarts={setterStarts}
           />
         }
       />
@@ -203,7 +215,7 @@ export default async function MatchDetailPage({
               captureId="match-box-score"
               fileName={`fuenlastats-${typedMatch.home_team.short_name || "local"}-${typedMatch.away_team.short_name || "visitante"}`}
             />
-            <BoxScoreCard data={buildBoxScore(typedMatch, typedEvents)} captureId="match-box-score" />
+            <BoxScoreCard data={buildBoxScore(typedMatch, typedEvents, setterStarts)} captureId="match-box-score" />
           </BoxScoreReveal>
         ) : null}
 
@@ -230,7 +242,7 @@ export default async function MatchDetailPage({
 
         <section>
           <h2 className="mb-3 text-lg font-semibold">Resumen estadístico</h2>
-          <MatchStatsPanel match={typedMatch} events={typedEvents} />
+          <MatchStatsPanel match={typedMatch} events={typedEvents} setterStarts={setterStarts} />
         </section>
 
         <PointHistory

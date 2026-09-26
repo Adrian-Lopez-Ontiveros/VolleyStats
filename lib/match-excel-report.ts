@@ -23,6 +23,7 @@ import {
   possessionStatsFromEvents,
   receptionStatsFromEvents,
   rotationStatsForTeam,
+  type SetterStarts,
   serveStatsFromEvents,
   type AttackStats,
   type DefenseStats,
@@ -183,12 +184,16 @@ function originsFromEvents(
   const origins = emptyOrigins();
   for (const event of events) {
     if (event.scoring_team_id !== teamId) continue;
+    if (event.point_type === "opponent_point") {
+      origins.other += 1;
+      continue;
+    }
     if (event.acting_team_id !== teamId) {
       origins.opponentError += 1;
       continue;
     }
     if (event.point_type === "attack") origins.attack += 1;
-    else if (event.point_type === "block") origins.block += 1;
+    else if (event.point_type === "block" || event.point_type === "blockout") origins.block += 1;
     else if (event.point_type === "ace") origins.ace += 1;
     else if (event.point_type === "opponent_error") origins.opponentError += 1;
     else origins.other += 1;
@@ -201,7 +206,7 @@ function blockCounts(events: { point_type: PointType }[]) {
   let touches = 0;
   let continuations = 0;
   for (const event of events) {
-    if (event.point_type === "block") points += 1;
+    if (event.point_type === "block" || event.point_type === "blockout") points += 1;
     else if (event.point_type === "block_touch") touches += 1;
     else if (event.point_type === "block_continuation") continuations += 1;
   }
@@ -616,7 +621,8 @@ function formatActionTime(iso: string) {
 export function buildMatchExcelReport(
   match: MatchWithTeams,
   events: MatchEventWithPlayer[],
-  roster: MatchExcelRosterPlayer[] = []
+  roster: MatchExcelRosterPlayer[] = [],
+  setterStarts?: SetterStarts
 ): MatchExcelReport {
   const homeLabel = match.home_team.short_name || match.home_team.name;
   const awayLabel = match.away_team.short_name || match.away_team.name;
@@ -681,13 +687,15 @@ export function buildMatchExcelReport(
     events,
     match.home_team_id,
     match.home_team_id,
-    match.away_team_id
+    match.away_team_id,
+    setterStarts
   );
   const awayRotations = rotationStatsForTeam(
     events,
     match.away_team_id,
     match.home_team_id,
-    match.away_team_id
+    match.away_team_id,
+    setterStarts
   );
   const clubPlayers = sortPlayerRows(clubIsHome ? homePlayers : awayPlayers);
   const clubRotations = clubIsHome ? homeRotations : awayRotations;
@@ -818,11 +826,12 @@ export function buildMatchExcelReport(
 const GLOSSARY: MatchExcelGlossaryRow[] = [
   {
     term: "Puntos",
-    meaning: "Acciones que suman para el equipo: ataque, bloqueo, ace, error rival u otro punto.",
+    meaning: "Acciones que suman para el equipo: ataque, bloqueo, block-out, ace o error del rival.",
   },
   {
     term: "Errores",
-    meaning: "Errores propios que regalan el punto al rival (ataque, saque, recepción, defensa u error general).",
+    meaning:
+      "Errores propios que regalan el punto al rival (ataque, saque, bloqueo, recepción, defensa u error general).",
   },
   {
     term: "Balance",
@@ -845,8 +854,9 @@ const GLOSSARY: MatchExcelGlossaryRow[] = [
     meaning: "Saque directo a punto.",
   },
   {
-    term: "Bloqueo (punto / toque / cont.)",
-    meaning: "Punto de bloqueo, toque que no cierra el punto, o bloqueo que continúa la jugada.",
+    term: "Bloqueo (punto / toque / cont. / error)",
+    meaning:
+      "Punto de bloqueo, toque que no cierra el punto, bloqueo que sigue en juego, o error de bloqueo (el punto es del rival). El block-out cuenta como punto de bloqueo.",
   },
   {
     term: "Recepción / defensa (B-M-M-E)",
@@ -866,7 +876,8 @@ const GLOSSARY: MatchExcelGlossaryRow[] = [
   },
   {
     term: "Rotación R1–R6",
-    meaning: "Rendimiento según qué jugador saca. PF-PC es puntos a favor y en contra en esa rotación.",
+    meaning:
+      "Zona de la colocadora. Si empieza en el 2, el set es R2 y al ganar el saque pasa a R1 y luego a R6. PF-PC es puntos a favor y en contra en esa rotación.",
   },
 ];
 

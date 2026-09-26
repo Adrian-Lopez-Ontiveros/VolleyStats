@@ -166,6 +166,26 @@ export const POINT_TYPE_META: Record<
     className: "bg-sky-50 text-sky-900",
     buttonClassName: "border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100",
   },
+  block_error: {
+    label: "Error de bloqueo",
+    short: "EBL",
+    className: "bg-rose-100 text-rose-950",
+    buttonClassName:
+      "border-rose-400 bg-rose-100 text-rose-950 hover:bg-rose-200",
+  },
+  opponent_point: {
+    label: "Punto del rival",
+    short: "PRV",
+    className: "bg-slate-200 text-slate-950",
+    buttonClassName:
+      "border-slate-400 bg-slate-200 text-slate-950 hover:bg-slate-300",
+  },
+  blockout: {
+    label: "Block-out",
+    short: "BO",
+    className: "bg-sky-100 text-sky-950",
+    buttonClassName: "border-sky-400 bg-sky-100 text-sky-950 hover:bg-sky-200",
+  },
 };
 
 export const POSITION_LABELS: Record<PlayerPosition, string> = {

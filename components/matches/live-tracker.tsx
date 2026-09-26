@@ -20,7 +20,12 @@ import {
   type QueuedPoint,
 } from "@/lib/offline-queue";
 import { rallyLocks } from "@/lib/live-rally";
-import { inferNextRotations, inferNextServer } from "@/lib/volleyball-stats";
+import {
+  inferNextRotations,
+  inferNextServer,
+  ROTATION_PLAY_ORDER,
+  storedRotationFromZone,
+} from "@/lib/volleyball-stats";
 import { computeMatchState, resolveScoringTeam, setsToWinOf } from "@/lib/volleyball";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,6 +43,7 @@ import {
   currentLiberoPlayers,
   liberoKindForPhase,
   lineupHasCourtPositions,
+  setterStartZone,
   type CourtOccupant,
   type CourtSlots,
 } from "@/lib/court";
@@ -63,7 +69,7 @@ const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = 
   {
     id: "punto",
     label: "Punto",
-    types: ["attack", "block", "ace", "error", "opponent_error", "other"],
+    types: ["attack", "block", "ace", "blockout", "opponent_error", "opponent_point", "error"],
   },
   {
     id: "ataque",
@@ -78,7 +84,7 @@ const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = 
   {
     id: "bloqueo",
     label: "Bloqueo",
-    types: ["block", "block_continuation", "block_touch"],
+    types: ["block", "block_continuation", "block_touch", "block_error"],
   },
   {
     id: "recepcion",
@@ -236,15 +242,31 @@ export function LiveTracker({
       ),
     [mergedEvents, displayMatch.home_team_id, displayMatch.away_team_id, displayMatch.current_set]
   );
+  const homeSetterStart = useMemo(
+    () => setterStartZone(liveLineup, homePlayers, match.home_team_id),
+    [liveLineup, homePlayers, match.home_team_id]
+  );
+  const awaySetterStart = useMemo(
+    () => setterStartZone(liveLineup, awayPlayers, match.away_team_id),
+    [liveLineup, awayPlayers, match.away_team_id]
+  );
   const inferredRotations = useMemo(
     () =>
       inferNextRotations(
         mergedEvents,
         displayMatch.home_team_id,
         displayMatch.away_team_id,
-        displayMatch.current_set
+        displayMatch.current_set,
+        { homeSetterStart, awaySetterStart }
       ),
-    [mergedEvents, displayMatch.home_team_id, displayMatch.away_team_id, displayMatch.current_set]
+    [
+      mergedEvents,
+      displayMatch.home_team_id,
+      displayMatch.away_team_id,
+      displayMatch.current_set,
+      homeSetterStart,
+      awaySetterStart,
+    ]
   );
   const servingTeamId = servingOverride ?? inferredServer;
   const homeServing = servingTeamId === match.home_team_id;
@@ -273,9 +295,10 @@ export function LiveTracker({
         homePlayers,
         homeRotation,
         match.home_team_id,
-        displayMatch.current_set
+        displayMatch.current_set,
+        homeSetterStart
       ),
-    [liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id, displayMatch.current_set]
+    [liveLineup, liveSubstitutions, homePlayers, homeRotation, match.home_team_id, displayMatch.current_set, homeSetterStart]
   );
   const awayCourtSlots = useMemo(
     () =>
@@ -285,9 +308,10 @@ export function LiveTracker({
         awayPlayers,
         awayRotation,
         match.away_team_id,
-        displayMatch.current_set
+        displayMatch.current_set,
+        awaySetterStart
       ),
-    [liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id, displayMatch.current_set]
+    [liveLineup, liveSubstitutions, awayPlayers, awayRotation, match.away_team_id, displayMatch.current_set, awaySetterStart]
   );
   const homeLiberos = useMemo(
     () =>
@@ -512,8 +536,8 @@ export function LiveTracker({
       playerId: player?.id ?? null,
       pointType,
       servingTeamId,
-      homeRotation,
-      awayRotation,
+      homeRotation: storedRotationFromZone(homeRotation, homeSetterStart),
+      awayRotation: storedRotationFromZone(awayRotation, awaySetterStart),
       setNumber: displayMatch.current_set,
       player: player
         ? {
@@ -714,7 +738,7 @@ export function LiveTracker({
       {!finished ? (
         <div className="space-y-2 rounded-2xl border bg-card px-3 py-3">
           <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Rotación · se avanza sola al ganar el saque
+            Rotación · zona de la colocadora. Al ganar el saque: 2 → 1 → 6 → 5 → 4 → 3
           </p>
           <RotationPicker
             label={match.home_team.short_name || "Local"}
@@ -806,7 +830,30 @@ export function LiveTracker({
             <Button
               type="button"
               variant="outline"
-              className="h-11 text-xs"
+              className="h-12 px-1 text-[11px] leading-tight"
+              onClick={() =>
+                recordAction(
+                  padSide === "home" ? match.home_team_id : match.away_team_id,
+                  "opponent_point"
+                )
+              }
+            >
+              Punto del rival
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 px-1 text-[11px] leading-tight"
+              onClick={() =>
+                recordAction(padSide === "home" ? match.home_team_id : match.away_team_id, "blockout")
+              }
+            >
+              Block-out
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 px-1 text-[11px] leading-tight"
               onClick={() =>
                 recordAction(
                   padSide === "home" ? match.home_team_id : match.away_team_id,
@@ -814,27 +861,7 @@ export function LiveTracker({
                 )
               }
             >
-              Error rival
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 text-xs"
-              onClick={() =>
-                recordAction(padSide === "home" ? match.home_team_id : match.away_team_id, "other")
-              }
-            >
-              Otro punto
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 text-xs"
-              onClick={() =>
-                recordAction(padSide === "home" ? match.home_team_id : match.away_team_id, "error")
-              }
-            >
-              Error propio
+              Error del rival
             </Button>
           </div>
         </>
@@ -1082,8 +1109,8 @@ export function LiveTracker({
                 : `Punto de ${target?.teamName ?? ""}`}
             </SheetTitle>
             <SheetDescription>
-              Un error de ataque, saque, recepción o defensa suma el punto al rival.
-              Continuación, saque dentro, recepción y defensa no cambian el marcador.
+              Un error de ataque, saque, bloqueo, recepción o defensa suma el punto al rival.
+              Continuación, toque, saque dentro, recepción y defensa no cambian el marcador.
             </SheetDescription>
           </SheetHeader>
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-6">
@@ -1144,7 +1171,7 @@ function RotationPicker({
         {label}
       </span>
       <div className="grid flex-1 grid-cols-6 gap-1">
-        {[1, 2, 3, 4, 5, 6].map((rotation) => (
+        {ROTATION_PLAY_ORDER.map((rotation) => (
           <button
             key={rotation}
             type="button"

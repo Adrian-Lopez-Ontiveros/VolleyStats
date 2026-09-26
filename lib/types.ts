@@ -39,7 +39,10 @@ export type PointType =
   | "defense_bad"
   | "defense_error"
   | "block_touch"
-  | "block_continuation";
+  | "block_continuation"
+  | "block_error"
+  | "opponent_point"
+  | "blockout";
 
 export type PlayerPosition =
   | "opuesto"

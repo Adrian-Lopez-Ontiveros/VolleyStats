@@ -6,6 +6,7 @@ import {
   formatSkillRate,
   possessionStatsFromEvents,
   rotationStatsForTeam,
+  type SetterStarts,
   serveStatsFromEvents,
   type RotationRow,
 } from "@/lib/volleyball-stats";
@@ -127,7 +128,8 @@ export function buildMatchPlayerLines(events: MatchEventWithPlayer[]): BoxScoreP
 
 export function buildBoxScore(
   match: MatchWithTeams,
-  events: MatchEventWithPlayer[]
+  events: MatchEventWithPlayer[],
+  setterStarts?: SetterStarts
 ): BoxScoreModel {
   const homeLabel = match.home_team.short_name || match.home_team.name;
   const awayLabel = match.away_team.short_name || match.away_team.name;
@@ -150,13 +152,15 @@ export function buildBoxScore(
     events,
     match.home_team_id,
     match.home_team_id,
-    match.away_team_id
+    match.away_team_id,
+    setterStarts
   );
   const awayRotations = rotationStatsForTeam(
     events,
     match.away_team_id,
     match.home_team_id,
-    match.away_team_id
+    match.away_team_id,
+    setterStarts
   );
   const clubRotations = clubTeamId === match.home_team_id ? homeRotations : awayRotations;
 

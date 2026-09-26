@@ -103,7 +103,9 @@ export function PlayerEvolutionPanel({
           },
           {
             label: "Puntos de bloqueo",
-            value: filtered.filter((event) => event.point_type === "block").length,
+            value: filtered.filter(
+              (event) => event.point_type === "block" || event.point_type === "blockout"
+            ).length,
           },
           {
             label: "Puntos de saque",
