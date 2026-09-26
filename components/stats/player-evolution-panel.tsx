@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { EVOLUTION_METRICS, PlayerEvolutionChart } from "@/components/stats/charts";
-import { PhaseFilterBar } from "@/components/stats/phase-filter";
+import { ChipRow, PhaseFilterBar } from "@/components/stats/phase-filter";
 import { ErrorBreakdownSheet } from "@/components/stats/error-breakdown-sheet";
 import { AttackServeCards } from "@/components/stats/skill-stats";
 import { StatSummary } from "@/components/stats/stat-summary";
@@ -12,6 +12,7 @@ import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/l
 import {
   buildPlayerMatchSeries,
   formatEfficiency,
+  formatMatchLabel,
   summarizePlayerSeries,
   type PlayerMatchSample,
 } from "@/lib/stats";
@@ -26,14 +27,66 @@ import {
 } from "@/lib/volleyball-stats";
 import type { PointType } from "@/lib/types";
 
+export type PlayerStatEventMatch = {
+  scheduled_at?: string | null;
+  status?: string | null;
+  home_team_id?: string | null;
+  away_team_id?: string | null;
+  home_team?: { name?: string | null; short_name?: string | null } | null;
+  away_team?: { name?: string | null; short_name?: string | null } | null;
+};
+
 export type PlayerStatEvent = {
   match_id: string;
   point_type: PointType;
   created_at: string;
   set_number?: number | null;
   serving_team_id?: string | null;
-  match?: { scheduled_at?: string | null; status?: string | null } | null;
+  match?: PlayerStatEventMatch | null;
 };
+
+type MatchOption = { id: string; label: string; date: string };
+
+function teamDisplayName(
+  team?: { name?: string | null; short_name?: string | null } | null
+) {
+  return team?.short_name || team?.name || "Rival";
+}
+
+function buildMatchOptions(
+  events: PlayerStatEvent[],
+  teamId?: string | null
+): MatchOption[] {
+  const byMatch = new Map<string, MatchOption>();
+
+  for (const event of events) {
+    if (byMatch.has(event.match_id)) continue;
+    const dateIso = event.match?.scheduled_at || event.created_at;
+    const dateLabel = formatMatchLabel(dateIso);
+    const match = event.match;
+    let label = dateLabel;
+
+    if (match && teamId) {
+      const isHome = match.home_team_id === teamId;
+      const opponent = isHome ? match.away_team : match.home_team;
+      label = `vs ${teamDisplayName(opponent)} · ${dateLabel}`;
+    } else if (match?.home_team || match?.away_team) {
+      const home = teamDisplayName(match.home_team);
+      const away = teamDisplayName(match.away_team);
+      label = `${home}–${away} · ${dateLabel}`;
+    }
+
+    byMatch.set(event.match_id, {
+      id: event.match_id,
+      label,
+      date: dateIso,
+    });
+  }
+
+  return [...byMatch.values()].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+}
 
 export function PlayerEvolutionPanel({
   events,
@@ -43,12 +96,36 @@ export function PlayerEvolutionPanel({
   teamId?: string | null;
 }) {
   const [filter, setFilter] = useState<PhaseFilter>(DEFAULT_PHASE_FILTER);
+  const [selectedMatchId, setSelectedMatchId] = useState<string>("all");
   const [activeKeys, setActiveKeys] = useState<string[]>(["points", "attackEffPct", "errors"]);
   const [errorsOpen, setErrorsOpen] = useState(false);
 
+  const matchOptions = useMemo(
+    () => buildMatchOptions(events, teamId),
+    [events, teamId]
+  );
+
+  const matchChipOptions = useMemo(
+    () => [
+      { id: "all", label: "Todos los partidos" },
+      ...matchOptions.map((item) => ({ id: item.id, label: item.label })),
+    ],
+    [matchOptions]
+  );
+
+  const matchFiltered = useMemo(() => {
+    if (selectedMatchId === "all") return events;
+    return events.filter((event) => event.match_id === selectedMatchId);
+  }, [events, selectedMatchId]);
+
   const filtered = useMemo(
-    () => filterEventsByPhase(events, filter, teamId),
-    [events, filter, teamId]
+    () =>
+      filterEventsByPhase(
+        matchFiltered,
+        { sets: "all", possession: filter.possession },
+        teamId
+      ),
+    [matchFiltered, filter.possession, teamId]
   );
   const series = useMemo(() => buildPlayerMatchSeries(filtered), [filtered]);
   const totals = useMemo(() => summarizePlayerSeries(series), [series]);
@@ -66,11 +143,21 @@ export function PlayerEvolutionPanel({
 
   return (
     <div className="space-y-4">
-      <PhaseFilterBar
-        value={filter}
-        onChange={setFilter}
-        showPossession={Boolean(teamId)}
-      />
+      <div className="space-y-2">
+        {matchChipOptions.length > 1 ? (
+          <ChipRow
+            options={matchChipOptions}
+            value={selectedMatchId}
+            onChange={setSelectedMatchId}
+          />
+        ) : null}
+        <PhaseFilterBar
+          value={filter}
+          onChange={setFilter}
+          showPossession={Boolean(teamId)}
+          showSets={false}
+        />
+      </div>
 
       <div className="flex flex-wrap gap-1.5">
         {EVOLUTION_METRICS.map((metric) => {

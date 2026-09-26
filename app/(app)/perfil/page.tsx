@@ -33,14 +33,21 @@ export default async function ProfilePage() {
     created_at: string;
     set_number?: number | null;
     serving_team_id?: string | null;
-    match?: { scheduled_at?: string | null; status?: string | null } | null;
+    match?: {
+      scheduled_at?: string | null;
+      status?: string | null;
+      home_team_id?: string | null;
+      away_team_id?: string | null;
+      home_team?: { name?: string | null; short_name?: string | null } | null;
+      away_team?: { name?: string | null; short_name?: string | null } | null;
+    } | null;
   }[] = [];
 
   if (player?.id) {
     const { data: events } = await supabase
       .from("match_events")
       .select(
-        "match_id, point_type, created_at, set_number, serving_team_id, match:matches(scheduled_at, status)"
+        "match_id, point_type, created_at, set_number, serving_team_id, match:matches(scheduled_at, status, home_team_id, away_team_id, home_team:teams!matches_home_team_id_fkey(name, short_name), away_team:teams!matches_away_team_id_fkey(name, short_name))"
       )
       .eq("player_id", player.id)
       .order("created_at", { ascending: true });

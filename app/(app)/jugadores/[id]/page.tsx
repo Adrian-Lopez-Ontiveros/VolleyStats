@@ -46,7 +46,7 @@ export default async function PlayerDetailPage({
       ? supabase
           .from("match_events")
           .select(
-            "id, match_id, point_type, created_at, set_number, serving_team_id, match:matches(id, scheduled_at)" as "*"
+            "id, match_id, point_type, created_at, set_number, serving_team_id, match:matches(id, scheduled_at, status, home_team_id, away_team_id, home_team:teams!matches_home_team_id_fkey(name, short_name), away_team:teams!matches_away_team_id_fkey(name, short_name))" as "*"
           )
           .eq("player_id", id)
           .order("created_at", { ascending: false })
@@ -64,7 +64,14 @@ export default async function PlayerDetailPage({
     created_at: string;
     set_number?: number | null;
     serving_team_id?: string | null;
-    match?: { scheduled_at?: string | null } | null;
+    match?: {
+      scheduled_at?: string | null;
+      status?: string | null;
+      home_team_id?: string | null;
+      away_team_id?: string | null;
+      home_team?: { name?: string | null; short_name?: string | null } | null;
+      away_team?: { name?: string | null; short_name?: string | null } | null;
+    } | null;
   }[];
 
   return (
