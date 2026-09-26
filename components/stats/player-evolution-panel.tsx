@@ -100,7 +100,12 @@ export function PlayerEvolutionPanel({
 
       <StatSummary
         items={[
-          { label: "Puntos", value: totals.points, accent: true },
+          {
+            label: "Acciones totales",
+            value: filtered.length,
+            accent: true,
+          },
+          { label: "Puntos", value: totals.points },
           {
             label: "Puntos de ataque",
             value: attackStatsFromEvents(filtered).kills,
