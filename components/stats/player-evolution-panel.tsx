@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { EVOLUTION_METRICS, PlayerEvolutionChart } from "@/components/stats/charts";
 import { PhaseFilterBar } from "@/components/stats/phase-filter";
+import { ErrorBreakdownSheet } from "@/components/stats/error-breakdown-sheet";
 import { AttackServeCards } from "@/components/stats/skill-stats";
 import { StatSummary } from "@/components/stats/stat-summary";
 import { Card, CardContent } from "@/components/ui/card";
 import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/lib/stat-filters";
 import {
   buildPlayerMatchSeries,
+  errorBreakdownFromEvents,
   formatEfficiency,
   summarizePlayerSeries,
   type PlayerMatchSample,
@@ -42,6 +44,7 @@ export function PlayerEvolutionPanel({
 }) {
   const [filter, setFilter] = useState<PhaseFilter>(DEFAULT_PHASE_FILTER);
   const [activeKeys, setActiveKeys] = useState<string[]>(["points", "attackEffPct", "errors"]);
+  const [errorsOpen, setErrorsOpen] = useState(false);
 
   const filtered = useMemo(
     () => filterEventsByPhase(events, filter, teamId),
@@ -49,6 +52,7 @@ export function PlayerEvolutionPanel({
   );
   const series = useMemo(() => buildPlayerMatchSeries(filtered), [filtered]);
   const totals = useMemo(() => summarizePlayerSeries(series), [series]);
+  const errorBreakdown = useMemo(() => errorBreakdownFromEvents(filtered), [filtered]);
   const metrics = EVOLUTION_METRICS.filter((item) => activeKeys.includes(item.key));
 
   function toggleMetric(key: string) {
@@ -111,12 +115,23 @@ export function PlayerEvolutionPanel({
             label: "Puntos de saque",
             value: serveStatsFromEvents(filtered).aces,
           },
-          { label: "Errores", value: totals.errors },
+          {
+            label: "Errores",
+            value: totals.errors,
+            onClick: totals.errors > 0 ? () => setErrorsOpen(true) : undefined,
+          },
           {
             label: "Eff. ataque",
             value: formatAttackEfficiency(attackStatsFromEvents(filtered).efficiency),
           },
         ]}
+      />
+
+      <ErrorBreakdownSheet
+        open={errorsOpen}
+        onOpenChange={setErrorsOpen}
+        rows={errorBreakdown}
+        total={totals.errors}
       />
 
       <AttackServeCards
