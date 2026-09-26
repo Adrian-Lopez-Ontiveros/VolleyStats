@@ -34,7 +34,7 @@ export function PhaseFilterBar({
   );
 }
 
-function ChipRow<T extends string>({
+function ChipRow<T extends string | number>({
   options,
   value,
   onChange,

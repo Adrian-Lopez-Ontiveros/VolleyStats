@@ -1,4 +1,4 @@
-export type SetPhase = "all" | "early" | "late";
+export type SetPhase = "all" | 1 | 2 | 3 | 4 | 5;
 export type PossessionPhase = "all" | "serving" | "receiving";
 
 export type PhaseFilter = {
@@ -23,8 +23,7 @@ export function filterEventsByPhase<T extends FilterableEvent>(
 ): T[] {
   return events.filter((event) => {
     const setNumber = event.set_number ?? 0;
-    if (filter.sets === "early" && setNumber > 2) return false;
-    if (filter.sets === "late" && setNumber < 3) return false;
+    if (filter.sets !== "all" && setNumber !== filter.sets) return false;
 
     if (filter.possession !== "all") {
       if (!teamId || !event.serving_team_id) return false;
@@ -39,8 +38,11 @@ export function filterEventsByPhase<T extends FilterableEvent>(
 
 export const SET_PHASE_OPTIONS: { id: SetPhase; label: string }[] = [
   { id: "all", label: "Todos los sets" },
-  { id: "early", label: "Primeros sets" },
-  { id: "late", label: "Sets finales" },
+  { id: 1, label: "Set 1" },
+  { id: 2, label: "Set 2" },
+  { id: 3, label: "Set 3" },
+  { id: 4, label: "Set 4" },
+  { id: 5, label: "Set 5" },
 ];
 
 export const POSSESSION_OPTIONS: { id: PossessionPhase; label: string }[] = [
