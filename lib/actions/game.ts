@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { MATCH_LIST_SELECT, MATCH_LIST_SELECT_BASE, USER_PROGRESS_SELECT } from "@/lib/constants";
 import { involvesClubTeam } from "@/lib/federation/leagues";
-import { jornadaKeyFromIso, jornadaRangeLabel, nearestJornadaKey } from "@/lib/game";
+import { isPredictionLocked, jornadaKeyFromIso, jornadaRangeLabel, nearestJornadaKey } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CheckinResult,
@@ -63,6 +63,18 @@ export async function claimDailyCheckin(): Promise<CheckinResult | null> {
 export async function saveMatchPrediction(matchId: string, winnerId: string) {
   await requireUser();
   const supabase = await createClient();
+  const { data: match, error: matchError } = await supabase
+    .from("matches")
+    .select("id, status, scheduled_at")
+    .eq("id", matchId)
+    .maybeSingle();
+  if (matchError || !match) return { error: matchError?.message ?? "Partido no encontrado" };
+  if (match.status !== "scheduled") {
+    return { error: "Las predicciones se cierran cuando el partido empieza" };
+  }
+  if (isPredictionLocked(match.scheduled_at)) {
+    return { error: "Las predicciones se cierran 5 minutos antes del partido" };
+  }
   const { error } = await supabase.rpc("game_save_prediction", {
     p_match_id: matchId,
     p_winner_id: winnerId,
@@ -199,7 +211,9 @@ export async function loadGamePageData() {
       ? [
           {
             ...nearest,
-            canPredict: nearest.matches.some((match) => match.status === "scheduled"),
+            canPredict: nearest.matches.some(
+              (match) => match.status === "scheduled" && !isPredictionLocked(match.scheduled_at)
+            ),
           },
         ]
       : []),

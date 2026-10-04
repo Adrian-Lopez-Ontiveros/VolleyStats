@@ -196,11 +196,12 @@ export function LiveTracker({
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
   }, [liveEvents, pendingForMatch, match.home_team_id, match.away_team_id]);
+  const loggingOfficial = Boolean(match.is_federation && match.status === "finished");
   const displayMatch = useMemo(() => {
     const computed = computeMatchState(
       mergedEvents,
       match.home_team_id,
-      match.status,
+      loggingOfficial ? "live" : match.status,
       setsToWinOf(match)
     );
     return {
@@ -214,11 +215,11 @@ export function LiveTracker({
       status:
         computed.status === "finished"
           ? ("finished" as const)
-          : mergedEvents.some((event) => event.scoring_team_id)
+          : loggingOfficial || mergedEvents.some((event) => event.scoring_team_id)
             ? ("live" as const)
             : match.status,
     };
-  }, [mergedEvents, match]);
+  }, [mergedEvents, match, loggingOfficial]);
   const [target, setTarget] = useState<PendingTarget | null>(null);
   const [swapTeamId, setSwapTeamId] = useState<string | null>(null);
   const [playerOutId, setPlayerOutId] = useState("");
@@ -697,6 +698,12 @@ export function LiveTracker({
   return (
     <div className="space-y-4">
       <Scoreboard match={displayMatch} />
+      {loggingOfficial ? (
+        <p className="rounded-2xl bg-sky-50 px-4 py-3 text-center text-sm text-sky-950 dark:bg-sky-500/15 dark:text-sky-50">
+          Resultado oficial {match.home_sets}–{match.away_sets}. Lo que apuntes aquí son estadísticas y no
+          cambia el marcador de la federación.
+        </p>
+      ) : null}
       {pendingForMatch.length > 0 ? (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-900">
           {pendingForMatch.length === 1

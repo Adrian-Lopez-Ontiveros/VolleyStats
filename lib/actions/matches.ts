@@ -456,11 +456,11 @@ export async function setLiveSetLineup(matchId: string, formData: FormData) {
   const supabase = await createClient();
   const { data: match } = await supabase
     .from("matches")
-    .select("id, home_team_id, away_team_id, status")
+    .select("id, home_team_id, away_team_id, status, is_federation")
     .eq("id", matchId)
     .maybeSingle();
   if (!match) return { error: "Partido no encontrado" };
-  if (match.status === "finished" || match.status === "cancelled") {
+  if (match.status === "cancelled" || (match.status === "finished" && !match.is_federation)) {
     return { error: "No se puede cambiar la alineación de este partido." };
   }
 

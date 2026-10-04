@@ -223,6 +223,7 @@ export default async function MatchDetailPage({
           matchId={typedMatch.id}
           status={typedMatch.status}
           canTrackLive={canTrackLiveMatch(typedMatch)}
+          allowFinishedStats={Boolean(typedMatch.is_federation)}
         />
 
         {canTrackLiveMatch(typedMatch) && clubTeamId ? (

@@ -22,6 +22,7 @@ export function LiveScoreFollow({
     players: [],
   });
   const displayMatch = useMemo(() => {
+    if (match.is_federation && match.status === "finished") return match;
     const computed = computeMatchState(
       liveEvents,
       match.home_team_id,

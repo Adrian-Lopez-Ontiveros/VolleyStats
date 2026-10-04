@@ -223,6 +223,7 @@ export function overlayFinishedMatchScore<
   },
 >(match: T, events: Pick<MatchEvent, "scoring_team_id" | "created_at">[]): T {
   if (match.status !== "finished") return match;
+  if (match.is_federation) return match;
   let computed = computeMatchState(
     events,
     match.home_team_id,

@@ -7,6 +7,7 @@ export const PREDICTION_HIT_XP = 25;
 export const JORNADA_PERFECT_XP = 50;
 export const JORNADA_PERFECT_MIN = 2;
 export const JERSEY_XP = 20;
+export const PREDICTION_CUTOFF_MS = 5 * 60 * 1000;
 
 export type RewardKind = "title" | "frame" | "badge";
 
@@ -211,6 +212,18 @@ export function checkinXpForStreak(streak: number) {
   if (streak === 14) gained += 80;
   if (streak === 30) gained += 150;
   return gained;
+}
+
+export function predictionLocksAt(scheduledAt: string) {
+  const kickoff = new Date(scheduledAt).getTime();
+  if (!Number.isFinite(kickoff)) return null;
+  return kickoff - PREDICTION_CUTOFF_MS;
+}
+
+export function isPredictionLocked(scheduledAt: string, now = Date.now()) {
+  const locksAt = predictionLocksAt(scheduledAt);
+  if (locksAt == null) return true;
+  return now >= locksAt;
 }
 
 export function jornadaKeyFromIso(scheduledAt: string) {

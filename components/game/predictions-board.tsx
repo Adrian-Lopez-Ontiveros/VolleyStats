@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { saveMatchPrediction } from "@/lib/actions/game";
 import { formatMatchWhen } from "@/lib/federation/schedule";
+import { isPredictionLocked } from "@/lib/game";
 import {
   clearPredictionDraft,
   getPredictionDraft,
   setPredictionDraft,
 } from "@/lib/prediction-drafts";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ export function PredictionsBoard({
   predictions: Record<string, MatchPrediction>;
   community: Record<string, { home: number; away: number }>;
 }) {
+  const now = useClock();
   if (jornadas.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -39,9 +41,9 @@ export function PredictionsBoard({
         <section key={jornada.key} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">{jornada.label}</h3>
-            {jornada.canPredict ? (
+            {jornadaPhase(jornada, now) === "open" ? (
               <Badge className="border-sky-800 bg-sky-600 text-white">Abierta</Badge>
-            ) : jornada.open ? (
+            ) : jornadaPhase(jornada, now) === "live" ? (
               <Badge className="border-orange-800 bg-orange-500 text-white">En juego</Badge>
             ) : (
               <Badge variant="secondary">Cerrada</Badge>
@@ -55,6 +57,7 @@ export function PredictionsBoard({
                 prediction={predictions[match.id] ?? null}
                 split={community[match.id] ?? { home: 0, away: 0 }}
                 canPredict={jornada.canPredict}
+                now={now}
               />
             ))}
           </div>
@@ -64,18 +67,42 @@ export function PredictionsBoard({
   );
 }
 
+function useClock(intervalMs = 15000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+function jornadaPhase(jornada: JornadaBoard, now: number) {
+  const predictable = jornada.matches.some(
+    (match) =>
+      jornada.canPredict &&
+      match.status === "scheduled" &&
+      !isPredictionLocked(match.scheduled_at, now)
+  );
+  if (predictable) return "open" as const;
+  if (jornada.matches.some((match) => match.status === "live")) return "live" as const;
+  return "closed" as const;
+}
+
 function PredictionMatch({
   match,
   prediction,
   split,
   canPredict,
+  now,
 }: {
   match: MatchWithTeams;
   prediction: MatchPrediction | null;
   split: { home: number; away: number };
   canPredict: boolean;
+  now: number;
 }) {
-  const locked = match.status !== "scheduled" || !canPredict;
+  const timeLocked = match.status === "scheduled" && isPredictionLocked(match.scheduled_at, now);
+  const locked = match.status !== "scheduled" || !canPredict || timeLocked;
   const serverId = prediction?.predicted_winner_id ?? null;
   const [selectedId, setSelectedId] = useState(serverId);
   const desiredRef = useRef(serverId);
@@ -102,19 +129,15 @@ function PredictionMatch({
     if (!next || next === savedRef.current) return;
 
     savingRef.current = true;
-    const supabase = createClient();
-    const { error } = await supabase.rpc("game_save_prediction", {
-      p_match_id: match.id,
-      p_winner_id: next,
-    });
+    const result = await saveMatchPrediction(match.id, next);
     savingRef.current = false;
 
-    if (error) {
+    if ("error" in result && result.error) {
       if (desiredRef.current === next) {
         desiredRef.current = savedRef.current;
         setSelectedId(savedRef.current);
         clearPredictionDraft(match.id, next);
-        toast.error(error.message.replace(/^.*:\s*/, "") || "No se pudo guardar la predicción");
+        toast.error(result.error);
       }
       return;
     }
@@ -226,8 +249,14 @@ function PredictionMatch({
           </p>
         ) : match.status === "live" ? (
           <p className="text-center text-xs font-medium text-orange-700">En juego · predicción cerrada</p>
+        ) : timeLocked ? (
+          <p className="text-center text-xs text-muted-foreground">
+            Las predicciones se cierran 5 minutos antes del partido
+          </p>
         ) : canPredict ? (
-          <p className="text-center text-xs text-muted-foreground">Toca el equipo que crees que gana</p>
+          <p className="text-center text-xs text-muted-foreground">
+            Toca el equipo que crees que gana. Se cierra 5 minutos antes.
+          </p>
         ) : (
           <p className="text-center text-xs text-muted-foreground">
             Solo se predice la jornada más próxima

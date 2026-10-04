@@ -117,10 +117,15 @@ async function persistComputedMatch(
       .select("scoring_team_id, created_at")
       .eq("match_id", matchId)
       .order("created_at", { ascending: true }),
-    supabase.from("matches").select("sets_to_win, is_federation").eq("id", matchId).maybeSingle(),
+    supabase.from("matches").select("sets_to_win, is_federation, status").eq("id", matchId).maybeSingle(),
   ]);
 
   if (error) throw new Error(error.message);
+
+  const meta = matchMeta.data as { is_federation?: boolean | null; status?: string | null } | null;
+  if (status !== "cancelled" && meta?.is_federation && meta.status === "finished") {
+    return "finished";
+  }
 
   const computed = computeMatchState(
     events ?? [],
@@ -311,12 +316,13 @@ export async function recordPoint(input: {
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("id, status, home_team_id, away_team_id, current_set")
+    .select("id, status, home_team_id, away_team_id, current_set, is_federation")
     .eq("id", input.matchId)
     .single();
 
   if (matchError || !match) return { error: "Partido no encontrado" };
-  if (match.status === "finished") return { error: "El partido ya ha terminado" };
+  const keepOfficial = Boolean(match.is_federation) && match.status === "finished";
+  if (match.status === "finished" && !keepOfficial) return { error: "El partido ya ha terminado" };
   if (match.status === "cancelled") return { error: "El partido está cancelado" };
 
   if (
@@ -433,7 +439,11 @@ export async function recordPoint(input: {
   }
 
   try {
-    const nextStatus = await persistComputedMatch(match.id, match.home_team_id, "live");
+    const nextStatus = await persistComputedMatch(
+      match.id,
+      match.home_team_id,
+      keepOfficial ? "finished" : "live"
+    );
     if (!input.liveFast || nextStatus === "finished") {
       await refreshPlayerStats(input.playerId ?? null);
       revalidateMatchStats({
@@ -441,10 +451,10 @@ export async function recordPoint(input: {
         playerId: input.playerId,
         homeTeamId: match.home_team_id,
         awayTeamId: match.away_team_id,
-        finished: nextStatus === "finished",
+        finished: nextStatus === "finished" && !keepOfficial,
       });
     }
-    if (nextStatus === "finished") {
+    if (!keepOfficial && nextStatus === "finished") {
       await notifyMatchFinished(match.id);
     }
   } catch (err) {
@@ -837,12 +847,12 @@ export async function activateMatchLibero(matchId: string, teamId: string, kind:
   const supabase = await createClient();
   const { data: match } = await supabase
     .from("matches")
-    .select("id, home_team_id, away_team_id, status, current_set, home_points, away_points")
+    .select("id, home_team_id, away_team_id, status, current_set, home_points, away_points, is_federation")
     .eq("id", matchId)
     .maybeSingle();
 
   if (!match) return { error: "Partido no encontrado" };
-  if (match.status === "cancelled" || match.status === "finished") {
+  if (match.status === "cancelled" || (match.status === "finished" && !match.is_federation)) {
     return { error: "No se puede cambiar el líbero en este partido." };
   }
   if (teamId !== match.home_team_id && teamId !== match.away_team_id) {

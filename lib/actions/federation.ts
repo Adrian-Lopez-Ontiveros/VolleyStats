@@ -10,13 +10,18 @@ import {
   fetchFmvDivisions,
   fetchFmvGroupOptions,
   fetchFmvPhases,
-  resolveClubFmvGroups,
   resolveFmvTestLeague,
   type FmvCatalogPath,
   type FmvOption,
 } from "@/lib/federation/client";
 import { inferCategoryFromFmv } from "@/lib/federation/leagues";
-import { importFederationGroup, type FederationSyncReport } from "@/lib/federation/sync";
+import {
+  importFederationGroup,
+  listStoredClubLeagueTargets,
+  refreshStoredLeague,
+  type FederationSyncReport,
+  type StoredLeagueTarget,
+} from "@/lib/federation/sync";
 
 export type { FederationSyncReport };
 
@@ -98,33 +103,24 @@ export async function getFmvTestLeague(): Promise<FmvTestLeagueResult | { error:
   }
 }
 
-export type ClubLeagueRefreshTarget = {
-  category: TeamCategory;
-  groupId: string;
-  path: string;
-};
+export type { StoredLeagueTarget };
 
-/** Club leagues already tied to Fuenlabrada on FMVoley (the three preferente groups). */
-export async function listClubLeaguesForRefresh(): Promise<
-  ClubLeagueRefreshTarget[] | { error: string }
+export async function prepareStoredLeagueRefresh(): Promise<
+  { targets: StoredLeagueTarget[]; missing: string[] } | { error: string }
 > {
   await requireAdmin();
   try {
-    const groups = await resolveClubFmvGroups();
-    return groups.map((group) => ({
-      category: group.category,
-      groupId: group.groupId,
-      path: group.path,
-    }));
+    const supabase = await createClient();
+    const { targets, errors } = await listStoredClubLeagueTargets(supabase);
+    return { targets, missing: errors };
   } catch (error) {
     return { error: fmvError(error) };
   }
 }
 
-/** Pull the latest schedule and results for one club league. Keeps matches that already have stats. */
-export async function refreshClubLeague(
-  groupId: string,
-  category: TeamCategory
+export async function refreshStoredClubLeague(
+  category: TeamCategory,
+  groupId: string
 ): Promise<FederationSyncReport | { error: string }> {
   await requireAdmin();
 
@@ -135,10 +131,7 @@ export async function refreshClubLeague(
 
   try {
     const supabase = await createClient();
-    return await importFederationGroup(supabase, groupId, category, {
-      wipe: false,
-      scores: true,
-    });
+    return await refreshStoredLeague(supabase, category, groupId, { scores: true });
   } catch (error) {
     return { error: fmvError(error) };
   }

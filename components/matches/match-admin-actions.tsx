@@ -12,10 +12,12 @@ export function MatchAdminActions({
   matchId,
   status,
   canTrackLive = true,
+  allowFinishedStats = false,
 }: {
   matchId: string;
   status: MatchStatus;
   canTrackLive?: boolean;
+  allowFinishedStats?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -38,9 +40,11 @@ export function MatchAdminActions({
 
   return (
     <div className="grid gap-2">
-      {canTrackLive && status !== "finished" && status !== "cancelled" ? (
+      {canTrackLive && status !== "cancelled" && (status !== "finished" || allowFinishedStats) ? (
         <Button asChild variant="accent" className="w-full">
-          <Link href={`/partidos/${matchId}/seguimiento`}>Seguimiento en vivo</Link>
+          <Link href={`/partidos/${matchId}/seguimiento`}>
+            {status === "finished" ? "Apuntar estadísticas" : "Seguimiento en vivo"}
+          </Link>
         </Button>
       ) : null}
       {canTrackLive && status === "scheduled" ? (

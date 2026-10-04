@@ -100,11 +100,17 @@ export default async function LiveMatchPage({
     player_in: playersById.get(item.player_in_id) ?? null,
   }));
 
+  const officialStats = typedMatch.is_federation && typedMatch.status === "finished";
+
   return (
     <>
       <PageHeader
-        title="Seguimiento en vivo"
-        description="Anota desde el pad de las jugadoras en pista. Al cambiar de set puedes elegir titulares de nuevo."
+        title={officialStats ? "Estadísticas del partido" : "Seguimiento en vivo"}
+        description={
+          officialStats
+            ? "El resultado oficial se queda como está. Apunta las acciones aunque no haya conexión."
+            : "Anota desde el pad de las jugadoras en pista. Al cambiar de set puedes elegir titulares de nuevo."
+        }
       />
       <LiveTracker
         match={typedMatch}

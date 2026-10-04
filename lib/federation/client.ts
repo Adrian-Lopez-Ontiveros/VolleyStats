@@ -381,6 +381,65 @@ export async function resolveFmvTestLeague(): Promise<FmvCatalogPath> {
   };
 }
 
+/** FMV group whose standings include one of these federation team ids. */
+export async function locateFmvGroupsByTeamIds(teamIds: string[]): Promise<LocatedFmvGroup[]> {
+  const wanted = new Set(teamIds.filter(Boolean));
+  if (wanted.size === 0) return [];
+
+  const found = new Map<string, LocatedFmvGroup>();
+  const types = await fetchFmvCompetitionTypes();
+  const type =
+    types.find((item) => foldFmvText(item.name).includes("federad")) ?? types[0];
+  if (!type) return [];
+
+  const competitions = await fetchFmvCompetitions(type.id);
+  for (const competition of competitions) {
+    if (found.size === wanted.size) break;
+    const competitionName = foldFmvText(competition.name);
+    const relevant =
+      (competitionName.includes("cadete") && competitionName.includes("fem")) ||
+      (competitionName.includes("senior") &&
+        (competitionName.includes("masc") || competitionName.includes("fem")));
+    if (!relevant) continue;
+
+    const divisions = await fetchFmvDivisions(competition.id);
+    for (const division of divisions) {
+      if (found.size === wanted.size) break;
+      const phases = await fetchFmvPhases(division.id);
+      const regularPhases = phases.filter((phase) => foldFmvText(phase.name).includes("regular"));
+      for (const phase of regularPhases.length > 0 ? regularPhases : phases) {
+        if (found.size === wanted.size) break;
+        const groups = await fetchFmvGroupOptions(phase.id);
+        for (const group of groups) {
+          if (found.size === wanted.size) break;
+          let groupTeams: FmvTeam[] = [];
+          try {
+            groupTeams = await fetchFmvTeams(group.id);
+          } catch {
+            continue;
+          }
+          const hits = groupTeams.filter((team) => wanted.has(team.id));
+          if (hits.length === 0) continue;
+          const path = `${competition.name} · ${division.name} · ${phase.name} · ${group.name}`;
+          for (const team of hits) {
+            if (found.has(team.id)) continue;
+            found.set(team.id, { teamId: team.id, groupId: group.id, path, teams: groupTeams });
+          }
+        }
+      }
+    }
+  }
+
+  return [...found.values()];
+}
+
+export type LocatedFmvGroup = {
+  teamId: string;
+  groupId: string;
+  path: string;
+  teams: FmvTeam[];
+};
+
 /** Find the FMV groups where a CV Fuenlabrada team plays, one per club category. */
 export async function resolveClubFmvGroups(): Promise<ClubFmvGroup[]> {
   const types = await fetchFmvCompetitionTypes();
@@ -396,34 +455,30 @@ export async function resolveClubFmvGroups(): Promise<ClubFmvGroup[]> {
     if (!competition) continue;
 
     const divisions = await fetchFmvDivisions(competition.id);
-    const division =
-      findOption(divisions, spec.divisionIncludes) ??
-      findOption(divisions, ["1", "preferente"]) ??
-      divisions[0];
-    if (!division) continue;
+    let picked: { group: FmvOption; division: FmvOption; phase: FmvOption } | null = null;
 
-    const phases = await fetchFmvPhases(division.id);
-    const phase = findOption(phases, ["regular"]) ?? phases[0];
-    if (!phase) continue;
-
-    const groups = await fetchFmvGroupOptions(phase.id);
-    if (groups.length === 0) continue;
-
-    let picked = findOption(groups, ["unico"]) ?? groups[0];
-    if (groups.length > 1) {
-      for (const group of groups) {
-        const teams = await fetchFmvTeams(group.id);
-        if (teams.some((team) => isClubTeamName(team.name))) {
-          picked = group;
+    for (const division of divisions) {
+      const phases = await fetchFmvPhases(division.id);
+      const regularPhases = phases.filter((phase) => foldFmvText(phase.name).includes("regular"));
+      for (const phase of regularPhases.length > 0 ? regularPhases : phases) {
+        const groups = await fetchFmvGroupOptions(phase.id);
+        for (const group of groups) {
+          const teams = await fetchFmvTeams(group.id);
+          if (!teams.some((team) => isClubTeamName(team.name))) continue;
+          picked = { group, division, phase };
           break;
         }
+        if (picked) break;
       }
+      if (picked) break;
     }
+
+    if (!picked) continue;
 
     found.push({
       category: spec.category,
-      groupId: picked.id,
-      path: `${competition.name} · ${division.name} · ${phase.name} · ${picked.name}`,
+      groupId: picked.group.id,
+      path: `${competition.name} · ${picked.division.name} · ${picked.phase.name} · ${picked.group.name}`,
     });
   }
 
