@@ -11,18 +11,22 @@ export function PhaseFilterBar({
   value,
   onChange,
   showPossession = true,
+  showSets = true,
 }: {
   value: PhaseFilter;
   onChange: (next: PhaseFilter) => void;
   showPossession?: boolean;
+  showSets?: boolean;
 }) {
   return (
     <div className="space-y-2">
-      <ChipRow
-        options={SET_PHASE_OPTIONS}
-        value={value.sets}
-        onChange={(sets) => onChange({ ...value, sets })}
-      />
+      {showSets ? (
+        <ChipRow
+          options={SET_PHASE_OPTIONS}
+          value={value.sets}
+          onChange={(sets) => onChange({ ...value, sets })}
+        />
+      ) : null}
       {showPossession ? (
         <ChipRow
           options={POSSESSION_OPTIONS}
@@ -34,7 +38,7 @@ export function PhaseFilterBar({
   );
 }
 
-function ChipRow<T extends string | number>({
+export function ChipRow<T extends string | number>({
   options,
   value,
   onChange,
@@ -49,7 +53,7 @@ function ChipRow<T extends string | number>({
         const active = value === option.id;
         return (
           <button
-            key={option.id}
+            key={String(option.id)}
             type="button"
             onClick={() => onChange(option.id)}
             className={cn(
