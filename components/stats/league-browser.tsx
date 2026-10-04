@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { StandingsTable } from "@/components/stats/standings-table";
 import { ExportCsvButton } from "@/components/export-csv-button";
+import { RefreshLeaguesButton } from "@/components/stats/refresh-leagues-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCategoryMeta, parseCategory, type TeamCategory } from "@/lib/categories";
@@ -19,12 +20,14 @@ export function LeagueBrowser({
   teams,
   matches,
   canManage,
+  isAdmin,
   initialCategory,
   loadError,
 }: {
   teams: Team[];
   matches: MatchStandingInput[];
   canManage: boolean;
+  isAdmin: boolean;
   initialCategory: TeamCategory;
   loadError?: string;
 }) {
@@ -71,6 +74,7 @@ export function LeagueBrowser({
         description={`${meta.label}. Tabla calculada con los partidos finalizados de esta liga.`}
         action={
           <div className="flex flex-wrap justify-end gap-2">
+            {isAdmin ? <RefreshLeaguesButton /> : null}
             <ExportCsvButton
               filename={`clasificacion-${activeCategory}`}
               rows={[

@@ -10,6 +10,7 @@ import {
   fetchFmvDivisions,
   fetchFmvGroupOptions,
   fetchFmvPhases,
+  resolveClubFmvGroups,
   resolveFmvTestLeague,
   type FmvCatalogPath,
   type FmvOption,
@@ -92,6 +93,52 @@ export async function getFmvTestLeague(): Promise<FmvTestLeagueResult | { error:
       label: FMV_TEST_LEAGUE.label,
       category,
     };
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+export type ClubLeagueRefreshTarget = {
+  category: TeamCategory;
+  groupId: string;
+  path: string;
+};
+
+/** Club leagues already tied to Fuenlabrada on FMVoley (the three preferente groups). */
+export async function listClubLeaguesForRefresh(): Promise<
+  ClubLeagueRefreshTarget[] | { error: string }
+> {
+  await requireAdmin();
+  try {
+    const groups = await resolveClubFmvGroups();
+    return groups.map((group) => ({
+      category: group.category,
+      groupId: group.groupId,
+      path: group.path,
+    }));
+  } catch (error) {
+    return { error: fmvError(error) };
+  }
+}
+
+/** Pull the latest schedule and results for one club league. Keeps matches that already have stats. */
+export async function refreshClubLeague(
+  groupId: string,
+  category: TeamCategory
+): Promise<FederationSyncReport | { error: string }> {
+  await requireAdmin();
+
+  if (!groupId) return { error: "No hay grupo de la federación para esta liga." };
+  if (!TEAM_CATEGORIES.some((item) => item.id === category)) {
+    return { error: "La liga de destino no es válida." };
+  }
+
+  try {
+    const supabase = await createClient();
+    return await importFederationGroup(supabase, groupId, category, {
+      wipe: false,
+      scores: true,
+    });
   } catch (error) {
     return { error: fmvError(error) };
   }

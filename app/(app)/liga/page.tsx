@@ -7,6 +7,7 @@ import type { MatchStandingInput } from "@/lib/stats";
 import type { Team } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Clasificación" };
+export const maxDuration = 300;
 
 export default async function LeaguePage({
   searchParams,
@@ -14,7 +15,7 @@ export default async function LeaguePage({
   searchParams: Promise<{ categoria?: string }>;
 }) {
   const { categoria: rawCategory } = await searchParams;
-  const { canManage } = await requireViewer();
+  const { canManage, isAdmin } = await requireViewer();
   const categoria = parseCategory(rawCategory);
 
   const [{ data: teams, error: teamsError }, { data: matches, error: matchesError }] =
@@ -25,6 +26,7 @@ export default async function LeaguePage({
       teams={(teams ?? []) as Team[]}
       matches={(matches ?? []) as MatchStandingInput[]}
       canManage={canManage}
+      isAdmin={isAdmin}
       initialCategory={categoria}
       loadError={teamsError?.message ?? matchesError?.message}
     />
