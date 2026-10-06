@@ -12,6 +12,7 @@ import { countChartPointTypes, topMatchScorers } from "@/lib/stats";
 import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/lib/stat-filters";
 import {
   attackStatsFromEvents,
+  blockStatsFromEvents,
   defenseStatsFromEvents,
   filterTeamEvents,
   formatSkillRate,
@@ -108,6 +109,7 @@ export function MatchStatsPanel({
         <AttackServeCards
           attack={homeAttack}
           serve={homeServe}
+          block={blockStatsFromEvents(homeEvents)}
           reception={homeReception}
           defense={homeDefense}
         />
@@ -122,6 +124,7 @@ export function MatchStatsPanel({
         <AttackServeCards
           attack={awayAttack}
           serve={awayServe}
+          block={blockStatsFromEvents(awayEvents)}
           reception={awayReception}
           defense={awayDefense}
         />

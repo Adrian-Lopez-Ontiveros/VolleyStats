@@ -1,8 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  attackActionLine,
+  blockActionLine,
+  defenseActionLine,
   formatAttackEfficiency,
   formatSkillRate,
+  receptionActionLine,
+  serveActionLine,
   type AttackStats,
+  type BlockStats,
   type DefenseStats,
   type PossessionStats,
   type ReceptionStats,
@@ -34,55 +40,76 @@ function StatBlock({
 export function AttackServeCards({
   attack,
   serve,
+  block,
   reception,
   defense,
 }: {
   attack: AttackStats;
   serve: ServeStats;
+  block: BlockStats;
   reception?: ReceptionStats;
   defense?: DefenseStats;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <StatBlock
         label="Eff. ataque"
         value={formatAttackEfficiency(attack.efficiency)}
-        hint={
-          attack.attempts
-            ? `${attack.kills} pts · ${attack.errors} err · ${attack.attempts} int.`
-            : "Sin intentos de ataque"
-        }
+        hint={attackActionLine(attack)}
       />
       <StatBlock
         label="Acierto saque"
         value={formatSkillRate(serve.successRate)}
-        hint={
-          serve.attempts
-            ? `${serve.aces} aces · ${serve.errors} err · ${serve.attempts} int.`
-            : "Sin saques registrados"
-        }
+        hint={serveActionLine(serve)}
+      />
+      <StatBlock
+        label="Eff. bloqueo"
+        value={formatSkillRate(block.efficiency)}
+        hint={blockActionLine(block)}
       />
       {reception ? (
-        <StatBlock
-          label="Eff. recepción"
-          value={formatSkillRate(reception.successRate)}
-          hint={
-            reception.total
-              ? `${reception.good} buenas · ${reception.medium} medias · ${reception.bad} malas · ${reception.errors} err`
-              : "Sin recepciones"
-          }
-        />
+        <>
+          <StatBlock
+            label="% buenas rec"
+            value={formatSkillRate(reception.positiveRate)}
+            hint={
+              reception.total
+                ? `${reception.good} buenas · ${reception.medium} medias · ${reception.total} rec.`
+                : receptionActionLine(reception)
+            }
+          />
+          <StatBlock
+            label="% malas rec"
+            value={formatSkillRate(reception.negativeRate)}
+            hint={
+              reception.total
+                ? `${reception.bad} malas · ${reception.errors} errores · ${reception.total} rec.`
+                : receptionActionLine(reception)
+            }
+          />
+        </>
       ) : null}
       {defense ? (
-        <StatBlock
-          label="Eff. defensa"
-          value={formatSkillRate(defense.successRate)}
-          hint={
-            defense.total
-              ? `${defense.good} buenas · ${defense.medium} medias · ${defense.bad} malas · ${defense.errors} err`
-              : "Sin defensas"
-          }
-        />
+        <>
+          <StatBlock
+            label="% buenas def"
+            value={formatSkillRate(defense.positiveRate)}
+            hint={
+              defense.total
+                ? `${defense.good} buenas · ${defense.medium} medias · ${defense.total} def.`
+                : defenseActionLine(defense)
+            }
+          />
+          <StatBlock
+            label="% malas def"
+            value={formatSkillRate(defense.negativeRate)}
+            hint={
+              defense.total
+                ? `${defense.bad} malas · ${defense.errors} errores · ${defense.total} def.`
+                : defenseActionLine(defense)
+            }
+          />
+        </>
       ) : null}
     </div>
   );

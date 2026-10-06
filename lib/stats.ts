@@ -324,13 +324,13 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
   sample.receptionPct =
     sample.receptionTotal === 0
       ? null
-      : ((sample.receptionTotal - sample.receptionErrors) / sample.receptionTotal) * 100;
+      : ((sample.receptionGood + sample.receptionMedium) / sample.receptionTotal) * 100;
   sample.defenseTotal =
     sample.defenseGood + sample.defenseMedium + sample.defenseBad + sample.defenseErrors;
   sample.defensePct =
     sample.defenseTotal === 0
       ? null
-      : ((sample.defenseTotal - sample.defenseErrors) / sample.defenseTotal) * 100;
+      : ((sample.defenseGood + sample.defenseMedium) / sample.defenseTotal) * 100;
   sample.efficiency = playerEfficiencyPercent(sample.points, sample.errors);
 }
 

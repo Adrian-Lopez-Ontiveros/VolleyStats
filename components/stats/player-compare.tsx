@@ -103,15 +103,15 @@ export function PlayerCompare({
           aces: serve.aces,
           attackLabel: formatAttackEfficiency(attack.efficiency),
           serveLabel: `${formatSkillRate(serve.successRate)} · ${serve.aces} aces`,
-          receptionLabel: formatSkillRate(reception.successRate),
-          defenseLabel: formatSkillRate(defense.successRate),
+          receptionLabel: `${formatSkillRate(reception.positiveRate)} buenas`,
+          defenseLabel: `${formatSkillRate(defense.positiveRate)} buenas`,
           chart: {
             points,
             attack: attack.efficiency === null ? 0 : Math.round(attack.efficiency * 100),
             aces: serve.aces,
             errors,
-            reception: reception.successRate === null ? 0 : Math.round(reception.successRate * 100),
-            defense: defense.successRate === null ? 0 : Math.round(defense.successRate * 100),
+            reception: reception.positiveRate === null ? 0 : Math.round(reception.positiveRate * 100),
+            defense: defense.positiveRate === null ? 0 : Math.round(defense.positiveRate * 100),
           },
         } satisfies CompareRow;
       });
@@ -124,8 +124,8 @@ export function PlayerCompare({
       { key: "attack" as const, label: "ATK%" },
       { key: "aces" as const, label: "Aces" },
       { key: "errors" as const, label: "Errores" },
-      { key: "reception" as const, label: "Rec%" },
-      { key: "defense" as const, label: "Def%" },
+      { key: "reception" as const, label: "Rec buenas" },
+      { key: "defense" as const, label: "Def buenas" },
     ];
     return metrics.map((metric) => {
       const row: { metric: string; [name: string]: string | number } = { metric: metric.label };

@@ -1,12 +1,19 @@
 import { isOwnErrorType, isScoringAction, scoresForActingTeam } from "@/lib/volleyball";
 import {
+  attackActionLine,
   attackStatsFromEvents,
+  blockActionLine,
+  blockStatsFromEvents,
+  defenseActionLine,
   defenseStatsFromEvents,
   formatAttackEfficiency,
   formatSkillRate,
   possessionStatsFromEvents,
+  receptionActionLine,
+  receptionStatsFromEvents,
   rotationStatsForTeam,
   type SetterStarts,
+  serveActionLine,
   serveStatsFromEvents,
   type RotationRow,
 } from "@/lib/volleyball-stats";
@@ -120,7 +127,7 @@ export function buildMatchPlayerLines(events: MatchEventWithPlayer[]): BoxScoreP
         ...line,
         attackEfficiency: attackStatsFromEvents(types.map((point_type) => ({ point_type }))).efficiency,
         defenseTotal: defense.total,
-        defenseEfficiency: defense.successRate,
+        defenseEfficiency: defense.positiveRate,
       };
     })
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, "es"));
@@ -147,6 +154,8 @@ export function buildBoxScore(
   const clubEvents = events.filter((event) => event.acting_team_id === clubTeamId);
   const clubAttack = attackStatsFromEvents(clubEvents);
   const clubServe = serveStatsFromEvents(clubEvents);
+  const clubBlock = blockStatsFromEvents(clubEvents);
+  const clubReception = receptionStatsFromEvents(clubEvents);
   const clubDefense = defenseStatsFromEvents(clubEvents);
   const homeRotations = rotationStatsForTeam(
     events,
@@ -185,7 +194,7 @@ export function buildBoxScore(
     highlights.push({
       label: "Mejor ataque",
       value: formatAttackEfficiency(bestAttack.attackEfficiency),
-      detail: `${bestAttack.name} · ${bestAttack.kills}/${bestAttack.attackAttempts}`,
+      detail: `${bestAttack.name} · ${bestAttack.kills} puntos, ${bestAttack.attackAttempts} ataques`,
     });
   }
   highlights.push({
@@ -201,21 +210,27 @@ export function buildBoxScore(
   highlights.push({
     label: "Eff. ataque",
     value: formatAttackEfficiency(clubAttack.efficiency),
-    detail: clubAttack.attempts
-      ? `${clubAttack.kills} pts · ${clubAttack.errors} err · ${clubAttack.attempts} int.`
-      : clubLabel,
+    detail: attackActionLine(clubAttack),
   });
   highlights.push({
     label: "Saque",
     value: formatSkillRate(clubServe.successRate),
-    detail: `${clubServe.aces} aces · ${clubServe.errors} err`,
+    detail: serveActionLine(clubServe),
   });
   highlights.push({
-    label: "Eff. defensa",
-    value: formatSkillRate(clubDefense.successRate),
-    detail: clubDefense.total
-      ? `${clubDefense.good} buenas · ${clubDefense.medium} medias · ${clubDefense.bad} malas · ${clubDefense.errors} err`
-      : clubLabel,
+    label: "Bloqueo",
+    value: formatSkillRate(clubBlock.efficiency),
+    detail: blockActionLine(clubBlock),
+  });
+  highlights.push({
+    label: "% buenas rec",
+    value: formatSkillRate(clubReception.positiveRate),
+    detail: receptionActionLine(clubReception),
+  });
+  highlights.push({
+    label: "% buenas def",
+    value: formatSkillRate(clubDefense.positiveRate),
+    detail: defenseActionLine(clubDefense),
   });
 
   return {

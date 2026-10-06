@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatEfficiency } from "@/lib/stats";
@@ -36,7 +39,84 @@ function PlayerSparkline({ data }: { data: PlayerMatchSample[] }) {
   );
 }
 
+type SortKey =
+  | "points"
+  | "attack_points"
+  | "block_points"
+  | "aces"
+  | "errors"
+  | "efficiency"
+  | "attackEfficiency"
+  | "matches_played";
+
+const EFF_TITLE = "Eff: (puntos − errores) / (puntos + errores)";
+const ATK_TITLE = "Puntos y continuaciones de ataque sobre los intentos";
+
+function sortValue(player: RankedPlayer, key: SortKey): number | null {
+  if (key === "attackEfficiency") return player.attackEfficiency;
+  return player[key];
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  active,
+  direction,
+  onSort,
+  title,
+}: {
+  label: string;
+  sortKey: SortKey;
+  active: SortKey | null;
+  direction: "asc" | "desc";
+  onSort: (key: SortKey) => void;
+  title?: string;
+}) {
+  const pressed = active === sortKey;
+  return (
+    <th className="px-2 py-3 text-center" aria-sort={pressed ? (direction === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        title={title}
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-foreground"
+      >
+        {label}
+        <span className="text-[10px]" aria-hidden>
+          {pressed ? (direction === "desc" ? "▼" : "▲") : ""}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [direction, setDirection] = useState<"asc" | "desc">("desc");
+
+  function onSort(key: SortKey) {
+    if (sortKey === key) {
+      setDirection((current) => (current === "desc" ? "asc" : "desc"));
+      return;
+    }
+    setSortKey(key);
+    setDirection("desc");
+  }
+
+  const rows = useMemo(() => {
+    if (!sortKey) return players;
+    const sign = direction === "asc" ? 1 : -1;
+    return [...players].sort((a, b) => {
+      const left = sortValue(a, sortKey);
+      const right = sortValue(b, sortKey);
+      if (left === null && right === null) return a.full_name.localeCompare(b.full_name, "es");
+      if (left === null) return 1;
+      if (right === null) return -1;
+      if (left !== right) return (left - right) * sign;
+      return a.full_name.localeCompare(b.full_name, "es");
+    });
+  }, [players, sortKey, direction]);
+
   return (
     <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="overflow-x-auto">
@@ -45,19 +125,33 @@ export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
             <tr className="border-b bg-secondary/70 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-3 text-left">#</th>
               <th className="px-2 py-3 text-left">Jugador</th>
-              <th className="px-2 py-3 text-center">Pts</th>
-              <th className="px-2 py-3 text-center">ATK</th>
-              <th className="px-2 py-3 text-center">BLO</th>
-              <th className="px-2 py-3 text-center">ACE</th>
-              <th className="px-2 py-3 text-center">ERR</th>
-              <th className="px-2 py-3 text-center">Eff</th>
-              <th className="px-2 py-3 text-center">ATK%</th>
-              <th className="px-2 py-3 text-center">PJ</th>
+              <SortHeader label="Pts" sortKey="points" active={sortKey} direction={direction} onSort={onSort} />
+              <SortHeader label="ATK" sortKey="attack_points" active={sortKey} direction={direction} onSort={onSort} />
+              <SortHeader label="BLO" sortKey="block_points" active={sortKey} direction={direction} onSort={onSort} />
+              <SortHeader label="ACE" sortKey="aces" active={sortKey} direction={direction} onSort={onSort} />
+              <SortHeader label="ERR" sortKey="errors" active={sortKey} direction={direction} onSort={onSort} />
+              <SortHeader
+                label="Eff"
+                sortKey="efficiency"
+                active={sortKey}
+                direction={direction}
+                onSort={onSort}
+                title={EFF_TITLE}
+              />
+              <SortHeader
+                label="ATK%"
+                sortKey="attackEfficiency"
+                active={sortKey}
+                direction={direction}
+                onSort={onSort}
+                title={ATK_TITLE}
+              />
+              <SortHeader label="PJ" sortKey="matches_played" active={sortKey} direction={direction} onSort={onSort} />
               <th className="px-3 py-3 text-right">Evolución</th>
             </tr>
           </thead>
           <tbody>
-            {players.map((player, index) => (
+            {rows.map((player, index) => (
               <tr key={player.id} className="border-b last:border-0 even:bg-secondary/20">
                 <td className="px-3 py-2.5 text-center font-bold tabular-nums">{index + 1}</td>
                 <td className="px-2 py-2.5">
@@ -93,6 +187,9 @@ export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
           </tbody>
         </table>
       </div>
+      <p className="border-t px-3 py-2 text-xs text-muted-foreground">
+        Eff es (puntos − errores) dividido entre (puntos + errores). ATK% es los puntos y las continuaciones de ataque sobre los intentos.
+      </p>
     </div>
   );
 }

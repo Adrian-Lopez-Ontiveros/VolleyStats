@@ -46,8 +46,8 @@ export const EVOLUTION_METRICS: EvolutionMetric[] = [
   { key: "attackEffPct", label: "Eff. ataque", color: COLORS.efficiency, axis: "pct" },
   { key: "aces", label: "Aces", color: "#059669", axis: "count" },
   { key: "errors", label: "Errores", color: COLORS.errors, axis: "count" },
-  { key: "receptionPct", label: "Recepción", color: COLORS.away, axis: "pct" },
-  { key: "defensePct", label: "Defensa", color: "#7C3AED", axis: "pct" },
+  { key: "receptionPct", label: "Rec buenas", color: COLORS.away, axis: "pct" },
+  { key: "defensePct", label: "Def buenas", color: "#7C3AED", axis: "pct" },
 ];
 
 export function PlayerEvolutionChart({

@@ -74,7 +74,7 @@ export function BoxScoreCard({
                   {item.label}
                 </p>
                 <p className="text-lg font-black tabular-nums text-[#0B1F3A]">{item.value}</p>
-                <p className="truncate text-[11px] text-slate-500">{item.detail}</p>
+                <p className="text-[11px] leading-snug text-slate-500">{item.detail}</p>
               </div>
             ))}
           </div>
@@ -93,7 +93,9 @@ export function BoxScoreCard({
                     <th className="px-1 py-2 text-center">Pts</th>
                     <th className="px-1 py-2 text-center">ATK</th>
                     <th className="px-1 py-2 text-center">ACE</th>
-                    <th className="px-1 py-2 text-center">DEF</th>
+                    <th className="px-1 py-2 text-center" title="Buenas y medias sobre el total de defensas">
+                      Buenas
+                    </th>
                     <th className="px-1 py-2 text-center">Err</th>
                   </tr>
                 </thead>

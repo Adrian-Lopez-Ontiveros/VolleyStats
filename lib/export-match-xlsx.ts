@@ -7,6 +7,13 @@ import {
   type MatchExcelReport,
   type TeamSkillTotals,
 } from "@/lib/match-excel-report";
+import {
+  attackActionLine,
+  blockActionLine,
+  defenseActionLine,
+  receptionActionLine,
+  serveActionLine,
+} from "@/lib/volleyball-stats";
 
 
 type Worksheet = ExcelJS.Worksheet;
@@ -58,33 +65,38 @@ const COL = {
   srvAtt: 16,
   srvPct: 17,
   blkPt: 18,
-  blkTouch: 19,
-  blkCont: 20,
-  recG: 21,
-  recM: 22,
-  recB: 23,
-  recE: 24,
-  recT: 25,
-  recAvg: 26,
-  recPct: 27,
-  defG: 28,
-  defM: 29,
-  defB: 30,
-  defE: 31,
-  defT: 32,
-  defAvg: 33,
-  defPct: 34,
+  blkCont: 19,
+  blkTouch: 20,
+  blkErr: 21,
+  blkAtt: 22,
+  blkEff: 23,
+  recG: 24,
+  recM: 25,
+  recB: 26,
+  recE: 27,
+  recT: 28,
+  recAvg: 29,
+  recGoodPct: 30,
+  recBadPct: 31,
+  defG: 32,
+  defM: 33,
+  defB: 34,
+  defE: 35,
+  defT: 36,
+  defAvg: 37,
+  defGoodPct: 38,
+  defBadPct: 39,
 } as const;
 
-const LAST_COL = COL.defPct;
+const LAST_COL = COL.defBadPct;
 
 const GROUPS: { title: string; fill: string; font: string; start: number; end: number }[] = [
   { title: "JUGADOR", fill: NAVY, font: WHITE, start: 1, end: 7 },
   { title: "ATAQUE", fill: ORANGE, font: NAVY, start: 8, end: 12 },
   { title: "SAQUE", fill: VIOLET, font: WHITE, start: 13, end: 17 },
-  { title: "BLOQUEO", fill: CYAN, font: NAVY, start: 18, end: 20 },
-  { title: "RECEPCIÓN", fill: SKY, font: WHITE, start: 21, end: 27 },
-  { title: "DEFENSA", fill: SLATE_700, font: WHITE, start: 28, end: 34 },
+  { title: "BLOQUEO", fill: CYAN, font: NAVY, start: 18, end: 23 },
+  { title: "RECEPCIÓN", fill: SKY, font: WHITE, start: 24, end: 31 },
+  { title: "DEFENSA", fill: SLATE_700, font: WHITE, start: 32, end: 39 },
 ];
 
 const SUBHEADERS = [
@@ -106,14 +118,10 @@ const SUBHEADERS = [
   "Int",
   "%",
   "Punto",
-  "Toque",
   "Cont",
-  "Buena",
-  "Media",
-  "Mala",
+  "Toque",
   "Err",
-  "Total",
-  "Media",
+  "Int",
   "Eff %",
   "Buena",
   "Media",
@@ -121,7 +129,16 @@ const SUBHEADERS = [
   "Err",
   "Total",
   "Media",
-  "Eff %",
+  "% buenas",
+  "% malas",
+  "Buena",
+  "Media",
+  "Mala",
+  "Err",
+  "Total",
+  "Media",
+  "% buenas",
+  "% malas",
 ];
 
 function fillSolid(argb: string) {
@@ -457,30 +474,62 @@ function writePlayerRow(
     index === "pct" ? rateValue(player.serve.attempts ? player.serve.errors / player.serve.attempts : null) : player.serve.errors,
     index === "pct" ? "" : player.serve.attempts,
     rateValue(player.serve.successRate),
-    index === "pct" ? "" : player.blockPoints,
-    index === "pct" ? "" : player.blockTouches,
-    index === "pct" ? "" : player.blockContinuations,
+    index === "pct" ? rateValue(player.block.attempts ? player.block.points / player.block.attempts : null) : player.block.points,
+    index === "pct" ? rateValue(player.block.attempts ? player.block.continuations / player.block.attempts : null) : player.block.continuations,
+    index === "pct" ? rateValue(player.block.attempts ? player.block.touches / player.block.attempts : null) : player.block.touches,
+    index === "pct" ? rateValue(player.block.attempts ? player.block.errors / player.block.attempts : null) : player.block.errors,
+    index === "pct" ? "" : player.block.attempts,
+    rateValue(player.block.efficiency),
     index === "pct" ? rateValue(player.reception.total ? player.reception.good / player.reception.total : null) : player.reception.good,
     index === "pct" ? rateValue(player.reception.total ? player.reception.medium / player.reception.total : null) : player.reception.medium,
     index === "pct" ? rateValue(player.reception.total ? player.reception.bad / player.reception.total : null) : player.reception.bad,
     index === "pct" ? rateValue(player.reception.total ? player.reception.errors / player.reception.total : null) : player.reception.errors,
     index === "pct" ? "" : player.reception.total,
     index === "pct" ? "" : player.receptionAverage ?? "",
-    rateValue(player.reception.successRate),
+    rateValue(player.reception.positiveRate),
+    rateValue(player.reception.negativeRate),
     index === "pct" ? rateValue(player.defense.total ? player.defense.good / player.defense.total : null) : player.defense.good,
     index === "pct" ? rateValue(player.defense.total ? player.defense.medium / player.defense.total : null) : player.defense.medium,
     index === "pct" ? rateValue(player.defense.total ? player.defense.bad / player.defense.total : null) : player.defense.bad,
     index === "pct" ? rateValue(player.defense.total ? player.defense.errors / player.defense.total : null) : player.defense.errors,
     index === "pct" ? "" : player.defense.total,
     index === "pct" ? "" : player.defenseAverage ?? "",
-    rateValue(player.defense.successRate),
+    rateValue(player.defense.positiveRate),
+    rateValue(player.defense.negativeRate),
   ];
 
-  const pctCols = new Set([12, 17, 27, 34]);
+  const pctCols = new Set<number>([
+    COL.atkEff,
+    COL.srvPct,
+    COL.blkEff,
+    COL.recGoodPct,
+    COL.recBadPct,
+    COL.defGoodPct,
+    COL.defBadPct,
+  ]);
   if (index === "pct") {
-    [8, 9, 10, 13, 14, 15, 21, 22, 23, 24, 28, 29, 30, 31].forEach((col) => pctCols.add(col));
+    [
+      COL.atkPts,
+      COL.atkCont,
+      COL.atkErr,
+      COL.srvAce,
+      COL.srvIn,
+      COL.srvErr,
+      COL.blkPt,
+      COL.blkCont,
+      COL.blkTouch,
+      COL.blkErr,
+      COL.recG,
+      COL.recM,
+      COL.recB,
+      COL.recE,
+      COL.defG,
+      COL.defM,
+      COL.defB,
+      COL.defE,
+    ].forEach((col) => pctCols.add(col));
   }
-  const avgCols = new Set([26, 33]);
+  const avgCols = new Set<number>([COL.recAvg, COL.defAvg]);
 
   for (let col = 1; col <= LAST_COL; col += 1) {
     let fill = col === 2 ? nameFill : baseFill;
@@ -491,8 +540,15 @@ function writePlayerRow(
       if (col === COL.bal) fill = contributionFill(player.contribution);
       if (col === COL.atkEff) fill = rateFill(player.attack.efficiency);
       if (col === COL.srvPct) fill = rateFill(player.serve.successRate);
-      if (col === COL.recPct) fill = rateFill(player.reception.successRate);
-      if (col === COL.defPct) fill = rateFill(player.defense.successRate);
+      if (col === COL.blkEff) fill = rateFill(player.block.efficiency);
+      if (col === COL.recGoodPct) fill = rateFill(player.reception.positiveRate);
+      if (col === COL.recBadPct) {
+        fill = rateFill(player.reception.negativeRate === null ? null : 1 - player.reception.negativeRate);
+      }
+      if (col === COL.defGoodPct) fill = rateFill(player.defense.positiveRate);
+      if (col === COL.defBadPct) {
+        fill = rateFill(player.defense.negativeRate === null ? null : 1 - player.defense.negativeRate);
+      }
       if (col === COL.recAvg) fill = avgFill(player.receptionAverage);
       if (col === COL.defAvg) fill = avgFill(player.defenseAverage);
     }
@@ -523,12 +579,15 @@ function applyPlayerWidths(sheet: Worksheet) {
     7: 6,
   };
   for (let col = 8; col <= LAST_COL; col += 1) widths[col] = 7;
-  widths[12] = 8;
-  widths[17] = 8;
-  widths[26] = 8;
-  widths[27] = 8;
-  widths[33] = 8;
-  widths[34] = 8;
+  widths[COL.atkEff] = 8;
+  widths[COL.srvPct] = 8;
+  widths[COL.blkEff] = 8;
+  widths[COL.recAvg] = 8;
+  widths[COL.recGoodPct] = 10;
+  widths[COL.recBadPct] = 10;
+  widths[COL.defAvg] = 8;
+  widths[COL.defGoodPct] = 10;
+  widths[COL.defBadPct] = 10;
   for (const [col, width] of Object.entries(widths)) {
     sheet.getColumn(Number(col)).width = width;
   }
@@ -597,18 +656,23 @@ function clubMetricRows(report: MatchExcelReport) {
     ["Puntos por error rival", club.origins.opponentError],
     ["Otros puntos", club.origins.other],
     ["Errores propios", club.ownErrors],
+    ["Ataque", attackActionLine(club.attack), "text"],
     ["Eff. ataque", club.attack.efficiency, "pct"],
-    ["Intentos de ataque", club.attack.attempts],
+    ["Saque", serveActionLine(club.serve), "text"],
     ["Acierto saque", club.serve.successRate, "pct"],
-    ["Aces (saque)", club.serve.aces],
-    ["Errores de saque", club.serve.errors],
-    ["Eff. recepción", club.reception.successRate, "pct"],
+    ["Bloqueo", blockActionLine(club.block), "text"],
+    ["Eff. bloqueo", club.block.efficiency, "pct"],
+    ["Recepción", receptionActionLine(club.reception), "text"],
+    ["% buenas recepción", club.reception.positiveRate, "pct"],
+    ["% malas recepción", club.reception.negativeRate, "bad"],
     ["Media recepción (0-3)", club.receptionAverage, "avg"],
-    ["Eff. defensa", club.defense.successRate, "pct"],
+    ["Defensa", defenseActionLine(club.defense), "text"],
+    ["% buenas defensa", club.defense.positiveRate, "pct"],
+    ["% malas defensa", club.defense.negativeRate, "bad"],
     ["Media defensa (0-3)", club.defenseAverage, "avg"],
     ["Puntos recibiendo", club.possession.sideOut.rate, "pct"],
     ["Puntos con el saque", club.possession.breakPoint.rate, "pct"],
-  ] as [string, number | null, string?][];
+  ] as [string, number | string | null, "pct" | "bad" | "avg" | "text" | undefined][];
 }
 
 function writeResumen(workbook: Workbook, report: MatchExcelReport, charts: ChartPng[]) {
@@ -617,7 +681,7 @@ function writeResumen(workbook: Workbook, report: MatchExcelReport, charts: Char
   });
   setupSheet(sheet, 4, 0);
   sheet.getColumn(1).width = 28;
-  for (let col = 2; col <= 12; col += 1) sheet.getColumn(col).width = 12;
+  for (let col = 2; col <= 12; col += 1) sheet.getColumn(col).width = 14;
   writeMatchBanner(sheet, report, 12);
   writeSetScores(sheet, report, 6);
 
@@ -675,12 +739,23 @@ function writeResumen(workbook: Workbook, report: MatchExcelReport, charts: Char
   paint(sheet, row, 2, "Valor", { fill: NAVY, color: WHITE, bold: true });
   row += 1;
   for (const [label, value, kind] of clubMetricRows(report)) {
+    const numeric = typeof value === "number" ? value : null;
     paint(sheet, row, 1, label, { fill: SLATE_100, align: "left", bold: true, size: 10 });
-    paint(sheet, row, 2, kind === "pct" ? rateValue(value) : value ?? "", {
-      fill: kind === "pct" ? rateFill(value) : WHITE,
+    paint(sheet, row, 2, kind === "pct" || kind === "bad" ? rateValue(numeric) : value ?? "", {
+      fill:
+        kind === "pct"
+          ? rateFill(numeric)
+          : kind === "bad"
+            ? rateFill(numeric === null ? null : 1 - numeric)
+            : WHITE,
       bold: true,
-      numFmt: kind === "pct" ? "0%" : kind === "avg" ? "0.0" : undefined,
+      align: kind === "text" ? "left" : "center",
+      numFmt: kind === "pct" || kind === "bad" ? "0%" : kind === "avg" ? "0.0" : undefined,
     });
+    if (kind === "text") {
+      merge(sheet, row, 2, row, 12);
+      sheet.getRow(row).height = 36;
+    }
     row += 1;
   }
 
@@ -773,12 +848,23 @@ function writeSetsSheet(workbook: Workbook, report: MatchExcelReport) {
     paint(sheet, 1, index + 1, label, { fill: NAVY, color: WHITE, bold: true, size: 10 });
   });
 
-  const rows: { label: string; pick: (skills: TeamSkillTotals) => number | null; pct?: boolean }[] = [
+  const rows: {
+    label: string;
+    pick: (skills: TeamSkillTotals) => number | null;
+    pct?: boolean;
+    invert?: boolean;
+  }[] = [
     { label: "Puntos", pick: (s) => s.setPoints },
     { label: "Eff. ataque", pick: (s) => s.attack.efficiency, pct: true },
+    { label: "Ataques", pick: (s) => s.attack.attempts },
     { label: "Acierto saque", pick: (s) => s.serve.successRate, pct: true },
-    { label: "Eff. recepción", pick: (s) => s.reception.successRate, pct: true },
-    { label: "Eff. defensa", pick: (s) => s.defense.successRate, pct: true },
+    { label: "Saques", pick: (s) => s.serve.attempts },
+    { label: "Eff. bloqueo", pick: (s) => s.block.efficiency, pct: true },
+    { label: "Bloqueos", pick: (s) => s.block.attempts },
+    { label: "% buenas recepción", pick: (s) => s.reception.positiveRate, pct: true },
+    { label: "% malas recepción", pick: (s) => s.reception.negativeRate, pct: true, invert: true },
+    { label: "% buenas defensa", pick: (s) => s.defense.positiveRate, pct: true },
+    { label: "% malas defensa", pick: (s) => s.defense.negativeRate, pct: true, invert: true },
     { label: "Puntos recibiendo", pick: (s) => s.possession.sideOut.rate, pct: true },
     { label: "Puntos con el saque", pick: (s) => s.possession.breakPoint.rate, pct: true },
     { label: "Errores propios", pick: (s) => s.ownErrors },
@@ -792,7 +878,7 @@ function writeSetsSheet(workbook: Workbook, report: MatchExcelReport) {
       const value = item.pick(skills);
       paint(sheet, row, setIndex + 2, item.pct ? rateValue(value) : value ?? "", {
         numFmt: item.pct ? "0%" : undefined,
-        fill: item.pct ? rateFill(value) : WHITE,
+        fill: item.pct ? rateFill(item.invert && value !== null ? 1 - value : value) : WHITE,
       });
     });
     const value = item.pick(clubSkills(report));
@@ -996,15 +1082,15 @@ function writeChartsSheet(
   if (top.length) addDataBars(sheet, dataStart, row - 1, 2, ORANGE);
 
   row += 2;
-  paint(sheet, row, 1, "Calidad de recepción (buenas / medias / malas / errores)", {
+  paint(sheet, row, 1, "Calidad de recepción (buenas y medias / malas y errores)", {
     fill: ORANGE,
     color: NAVY,
     bold: true,
     align: "left",
   });
-  merge(sheet, row, 1, row, 6);
+  merge(sheet, row, 1, row, 7);
   row += 1;
-  ["Equipo", "Buena", "Media", "Mala", "Error", "Eff %"].forEach((label, index) => {
+  ["Equipo", "Buena", "Media", "Mala", "Error", "% buenas", "% malas"].forEach((label, index) => {
     paint(sheet, row, index + 1, label, { fill: SLATE_700, color: WHITE, bold: true });
   });
   row += 1;
@@ -1013,9 +1099,13 @@ function writeChartsSheet(
   paint(sheet, row, 3, club.reception.medium, { fill: AMBER_SOFT });
   paint(sheet, row, 4, club.reception.bad, { fill: ORANGE_SOFT });
   paint(sheet, row, 5, club.reception.errors, { fill: ROSE_SOFT });
-  paint(sheet, row, 6, rateValue(club.reception.successRate), {
+  paint(sheet, row, 6, rateValue(club.reception.positiveRate), {
     numFmt: "0%",
-    fill: rateFill(club.reception.successRate),
+    fill: rateFill(club.reception.positiveRate),
+  });
+  paint(sheet, row, 7, rateValue(club.reception.negativeRate), {
+    numFmt: "0%",
+    fill: rateFill(club.reception.negativeRate === null ? null : 1 - club.reception.negativeRate),
   });
   row += 1;
 

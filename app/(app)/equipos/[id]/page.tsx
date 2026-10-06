@@ -33,6 +33,7 @@ import { RotationSummaryCards, RotationTable } from "@/components/stats/rotation
 import { AttackServeCards, PossessionCards } from "@/components/stats/skill-stats";
 import {
   attackStatsFromEvents,
+  blockStatsFromEvents,
   defenseStatsFromEvents,
   filterTeamEvents,
   possessionStatsForTeam,
@@ -165,6 +166,7 @@ export default async function TeamDetailPage({
   const teamActingEvents = filterTeamEvents(typedTeamEvents, id);
   const teamAttack = attackStatsFromEvents(teamActingEvents);
   const teamServe = serveStatsFromEvents(teamActingEvents);
+  const teamBlock = blockStatsFromEvents(teamActingEvents);
   const teamReception = receptionStatsFromEvents(teamActingEvents);
   const teamDefense = defenseStatsFromEvents(teamActingEvents);
   const teamPossession = possessionStatsForTeam(finishedMatches, typedTeamEvents, id);
@@ -321,6 +323,7 @@ export default async function TeamDetailPage({
           <AttackServeCards
             attack={teamAttack}
             serve={teamServe}
+            block={teamBlock}
             reception={teamReception}
             defense={teamDefense}
           />

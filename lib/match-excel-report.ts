@@ -11,21 +11,29 @@ import {
   setsToWinOf,
 } from "@/lib/volleyball";
 import {
+  attackActionLine,
   attackStatsFromEvents,
   bestAndWorstRotations,
+  blockActionLine,
+  blockStatsFromEvents,
+  defenseActionLine,
   defenseStatsFromEvents,
   emptyAttackStats,
+  emptyBlockStats,
   emptyDefenseStats,
   emptyReceptionStats,
   filterTeamEvents,
   formatAttackEfficiency,
   formatSkillRate,
   possessionStatsFromEvents,
+  receptionActionLine,
   receptionStatsFromEvents,
   rotationStatsForTeam,
   type SetterStarts,
+  serveActionLine,
   serveStatsFromEvents,
   type AttackStats,
+  type BlockStats,
   type DefenseStats,
   type ReceptionStats,
   type RotationRow,
@@ -64,9 +72,7 @@ export type TeamSkillTotals = {
   defense: DefenseStats;
   receptionAverage: number | null;
   defenseAverage: number | null;
-  blockPoints: number;
-  blockTouches: number;
-  blockContinuations: number;
+  block: BlockStats;
   ownErrors: number;
   possession: TeamPossessionStats;
 };
@@ -84,9 +90,7 @@ export type MatchExcelPlayerRow = {
   contribution: number;
   attack: AttackStats;
   serve: ServeStats;
-  blockPoints: number;
-  blockTouches: number;
-  blockContinuations: number;
+  block: BlockStats;
   reception: ReceptionStats;
   receptionAverage: number | null;
   defense: DefenseStats;
@@ -201,18 +205,6 @@ function originsFromEvents(
   return origins;
 }
 
-function blockCounts(events: { point_type: PointType }[]) {
-  let points = 0;
-  let touches = 0;
-  let continuations = 0;
-  for (const event of events) {
-    if (event.point_type === "block" || event.point_type === "blockout") points += 1;
-    else if (event.point_type === "block_touch") touches += 1;
-    else if (event.point_type === "block_continuation") continuations += 1;
-  }
-  return { points, touches, continuations };
-}
-
 function ownErrorCount(events: { point_type: PointType }[]) {
   return events.filter((event) => isOwnErrorType(event.point_type)).length;
 }
@@ -229,7 +221,7 @@ function teamSkillsFromEvents(
   const serve = serveStatsFromEvents(teamEvents);
   const reception = receptionStatsFromEvents(teamEvents);
   const defense = defenseStatsFromEvents(teamEvents);
-  const blocks = blockCounts(teamEvents);
+  const block = blockStatsFromEvents(teamEvents);
   const possession = possessionStatsFromEvents(events, homeTeamId, awayTeamId);
   const side = teamId === homeTeamId ? possession.home : possession.away;
   return {
@@ -241,9 +233,7 @@ function teamSkillsFromEvents(
     defense,
     receptionAverage: skillQualityAverage(reception),
     defenseAverage: skillQualityAverage(defense),
-    blockPoints: blocks.points,
-    blockTouches: blocks.touches,
-    blockContinuations: blocks.continuations,
+    block,
     ownErrors: ownErrorCount(teamEvents),
     possession: side,
   };
@@ -275,7 +265,7 @@ function buildPlayerRow(
   const serve = serveStatsFromEvents(types);
   const reception = receptionStatsFromEvents(types);
   const defense = defenseStatsFromEvents(types);
-  const blocks = blockCounts(types);
+  const block = blockStatsFromEvents(types);
   let points = 0;
   let errors = 0;
   const sets = new Set<number>();
@@ -299,9 +289,7 @@ function buildPlayerRow(
     contribution: points - errors,
     attack,
     serve,
-    blockPoints: blocks.points,
-    blockTouches: blocks.touches,
-    blockContinuations: blocks.continuations,
+    block,
     reception,
     receptionAverage: skillQualityAverage(reception),
     defense,
@@ -427,33 +415,26 @@ function buildNarrative(input: {
 
   if (input.club.attack.attempts > 0) {
     lines.push(
-      `Ataque: ${formatAttackEfficiency(input.club.attack.efficiency)} con ${input.club.attack.kills} puntos, ${
-        input.club.attack.continuations
-      } continuaciones y ${input.club.attack.errors} errores en ${input.club.attack.attempts} intentos.`
+      `Ataque: ${formatAttackEfficiency(input.club.attack.efficiency)} de acierto. ${attackActionLine(input.club.attack)}.`
     );
   }
   if (input.club.serve.attempts > 0) {
     lines.push(
-      `Saque: ${input.club.serve.aces} aces y ${input.club.serve.errors} errores en ${input.club.serve.attempts} saques (${formatSkillRate(
-        input.club.serve.successRate
-      )} en juego).`
+      `Saque: ${formatSkillRate(input.club.serve.successRate)} en juego. ${serveActionLine(input.club.serve)}.`
+    );
+  }
+  if (input.club.block.attempts > 0) {
+    lines.push(
+      `Bloqueo: ${formatSkillRate(input.club.block.efficiency)} de acierto. ${blockActionLine(input.club.block)}.`
     );
   }
   if (input.club.reception.total > 0) {
     lines.push(
-      `Recepción: ${formatSkillRate(input.club.reception.successRate)} sin error (${input.club.reception.good} buenas, ${
-        input.club.reception.medium
-      } medias, ${input.club.reception.bad} malas, ${input.club.reception.errors} errores). Media ${formatAvg(
-        input.club.receptionAverage
-      )} sobre 3.`
+      `Recepción: ${receptionActionLine(input.club.reception)}. Media ${formatAvg(input.club.receptionAverage)} sobre 3.`
     );
   }
   if (input.club.defense.total > 0) {
-    lines.push(
-      `Defensa: ${formatSkillRate(input.club.defense.successRate)} sin error (${input.club.defense.good} buenas, ${
-        input.club.defense.medium
-      } medias, ${input.club.defense.bad} malas, ${input.club.defense.errors} errores).`
-    );
+    lines.push(`Defensa: ${defenseActionLine(input.club.defense)}. Media ${formatAvg(input.club.defenseAverage)} sobre 3.`);
   }
   if (input.club.possession.sideOut.opportunities || input.club.possession.breakPoint.opportunities) {
     lines.push(
@@ -524,14 +505,14 @@ function buildInsights(input: {
     .sort((a, b) => (b.reception.goodRate ?? -1) - (a.reception.goodRate ?? -1))[0];
   if (receiver) {
     insights.push(
-      `Mejor recepción: ${receiver.name} ${formatSkillRate(receiver.reception.successRate)} sin error, media ${formatAvg(
+      `Mejor recepción: ${receiver.name} ${formatSkillRate(receiver.reception.positiveRate)} buenas, media ${formatAvg(
         receiver.receptionAverage
-      )} (${receiver.reception.good} buenas / ${receiver.reception.total}).`
+      )} (${receiver.reception.good} buenas y ${receiver.reception.medium} medias de ${receiver.reception.total}).`
     );
   }
-  const blocker = [...input.players].sort((a, b) => b.blockPoints - a.blockPoints)[0];
-  if (blocker && blocker.blockPoints >= 2) {
-    insights.push(`Bloqueo: ${blocker.name} aportó ${blocker.blockPoints} puntos de bloqueo.`);
+  const blocker = [...input.players].sort((a, b) => b.block.points - a.block.points)[0];
+  if (blocker && blocker.block.points >= 2) {
+    insights.push(`Bloqueo: ${blocker.name}, ${blockActionLine(blocker.block)}.`);
   }
   const { best, worst } = bestAndWorstRotations(input.rotations);
   if (best && worst && best.rotation !== worst.rotation) {
@@ -566,7 +547,7 @@ function buildHighlights(
     highlights.push({
       label: "Mejor ataque",
       value: formatAttackEfficiency(bestAttack.attack.efficiency),
-      detail: `${bestAttack.name} · ${bestAttack.attack.kills}/${bestAttack.attack.attempts}`,
+      detail: `${bestAttack.name} · ${attackActionLine(bestAttack.attack)}`,
     });
   }
   highlights.push({
@@ -582,28 +563,27 @@ function buildHighlights(
   highlights.push({
     label: "Eff. ataque",
     value: formatAttackEfficiency(club.attack.efficiency),
-    detail: club.attack.attempts
-      ? `${club.attack.kills} pts · ${club.attack.errors} err · ${club.attack.attempts} int.`
-      : clubLabel,
+    detail: attackActionLine(club.attack),
   });
   highlights.push({
     label: "Saque",
     value: formatSkillRate(club.serve.successRate),
-    detail: `${club.serve.aces} aces · ${club.serve.errors} err`,
+    detail: serveActionLine(club.serve),
+  });
+  highlights.push({
+    label: "Bloqueo",
+    value: formatSkillRate(club.block.efficiency),
+    detail: blockActionLine(club.block),
   });
   highlights.push({
     label: "Recepción",
-    value: formatSkillRate(club.reception.successRate),
-    detail: club.reception.total
-      ? `${club.reception.good} buenas · media ${formatAvg(club.receptionAverage)}`
-      : clubLabel,
+    value: formatSkillRate(club.reception.positiveRate),
+    detail: receptionActionLine(club.reception),
   });
   highlights.push({
     label: "Defensa",
-    value: formatSkillRate(club.defense.successRate),
-    detail: club.defense.total
-      ? `${club.defense.good} buenas · ${club.defense.errors} err`
-      : clubLabel,
+    value: formatSkillRate(club.defense.positiveRate),
+    detail: defenseActionLine(club.defense),
   });
   return highlights;
 }
@@ -854,13 +834,14 @@ const GLOSSARY: MatchExcelGlossaryRow[] = [
     meaning: "Saque directo a punto.",
   },
   {
-    term: "Bloqueo (punto / toque / cont. / error)",
+    term: "Eff. bloqueo",
     meaning:
-      "Punto de bloqueo, toque que no cierra el punto, bloqueo que sigue en juego, o error de bloqueo (el punto es del rival). El block-out cuenta como punto de bloqueo.",
+      "(Puntos de bloqueo + continuaciones) / intentos. El toque y el error no cuentan como acierto. El block-out cuenta como punto de bloqueo.",
   },
   {
-    term: "Recepción / defensa (B-M-M-E)",
-    meaning: "Buena, media, mala y error. La efectividad es el porcentaje que no es error.",
+    term: "Recepción / defensa",
+    meaning:
+      "% buenas es (buenas + medias) / total. % malas es (malas + errores) / total.",
   },
   {
     term: "Media 0–3",
@@ -895,9 +876,7 @@ export function emptyPlayerTotals(): MatchExcelPlayerRow {
     contribution: 0,
     attack: emptyAttackStats(),
     serve: emptyServeStats(),
-    blockPoints: 0,
-    blockTouches: 0,
-    blockContinuations: 0,
+    block: emptyBlockStats(),
     reception: emptyReceptionStats(),
     receptionAverage: null,
     defense: emptyDefenseStats(),
@@ -917,9 +896,10 @@ export function sumPlayerRows(rows: MatchExcelPlayerRow[]): MatchExcelPlayerRow 
     total.serve.aces += row.serve.aces;
     total.serve.errors += row.serve.errors;
     total.serve.inPlay += row.serve.inPlay;
-    total.blockPoints += row.blockPoints;
-    total.blockTouches += row.blockTouches;
-    total.blockContinuations += row.blockContinuations;
+    total.block.points += row.block.points;
+    total.block.continuations += row.block.continuations;
+    total.block.touches += row.block.touches;
+    total.block.errors += row.block.errors;
     total.reception.good += row.reception.good;
     total.reception.medium += row.reception.medium;
     total.reception.bad += row.reception.bad;
@@ -938,6 +918,12 @@ export function sumPlayerRows(rows: MatchExcelPlayerRow[]): MatchExcelPlayerRow 
   total.serve.attempts = total.serve.aces + total.serve.errors + total.serve.inPlay;
   total.serve.successRate =
     total.serve.attempts === 0 ? null : (total.serve.aces + total.serve.inPlay) / total.serve.attempts;
+  total.block.attempts =
+    total.block.points + total.block.continuations + total.block.touches + total.block.errors;
+  total.block.efficiency =
+    total.block.attempts === 0
+      ? null
+      : (total.block.points + total.block.continuations) / total.block.attempts;
   total.reception.total =
     total.reception.good + total.reception.medium + total.reception.bad + total.reception.errors;
   total.reception.goodRate =
@@ -946,6 +932,14 @@ export function sumPlayerRows(rows: MatchExcelPlayerRow[]): MatchExcelPlayerRow 
     total.reception.total === 0
       ? null
       : (total.reception.total - total.reception.errors) / total.reception.total;
+  total.reception.positiveRate =
+    total.reception.total === 0
+      ? null
+      : (total.reception.good + total.reception.medium) / total.reception.total;
+  total.reception.negativeRate =
+    total.reception.total === 0
+      ? null
+      : (total.reception.bad + total.reception.errors) / total.reception.total;
   total.receptionAverage = skillQualityAverage(total.reception);
   total.defense.total =
     total.defense.good + total.defense.medium + total.defense.bad + total.defense.errors;
@@ -954,6 +948,14 @@ export function sumPlayerRows(rows: MatchExcelPlayerRow[]): MatchExcelPlayerRow 
     total.defense.total === 0
       ? null
       : (total.defense.total - total.defense.errors) / total.defense.total;
+  total.defense.positiveRate =
+    total.defense.total === 0
+      ? null
+      : (total.defense.good + total.defense.medium) / total.defense.total;
+  total.defense.negativeRate =
+    total.defense.total === 0
+      ? null
+      : (total.defense.bad + total.defense.errors) / total.defense.total;
   total.defenseAverage = skillQualityAverage(total.defense);
   return total;
 }

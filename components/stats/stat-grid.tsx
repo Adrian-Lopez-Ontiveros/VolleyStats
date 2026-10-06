@@ -38,6 +38,7 @@ export function StatGrid({ stats }: { stats: PlayerStats }) {
             Eficiencia
           </p>
           <p className="mt-1 text-2xl font-bold tabular-nums">{formatEfficiency(efficiency)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">(puntos − errores) / (puntos + errores)</p>
         </CardContent>
       </Card>
     </div>

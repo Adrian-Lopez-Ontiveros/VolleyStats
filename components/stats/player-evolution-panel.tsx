@@ -20,6 +20,7 @@ import { errorBreakdownFromEvents } from "@/lib/error-breakdown";
 import { cn } from "@/lib/utils";
 import {
   attackStatsFromEvents,
+  blockStatsFromEvents,
   defenseStatsFromEvents,
   formatAttackEfficiency,
   receptionStatsFromEvents,
@@ -129,7 +130,13 @@ export function PlayerEvolutionPanel({
   );
   const series = useMemo(() => buildPlayerMatchSeries(filtered), [filtered]);
   const totals = useMemo(() => summarizePlayerSeries(series), [series]);
-  const errorBreakdown = useMemo(() => errorBreakdownFromEvents(filtered), [filtered]);
+  const errorBreakdown = useMemo(
+    () =>
+      errorBreakdownFromEvents(filtered, (matchId) => {
+        return matchOptions.find((item) => item.id === matchId)?.label ?? "Partido";
+      }),
+    [filtered, matchOptions]
+  );
   const metrics = EVOLUTION_METRICS.filter((item) => activeKeys.includes(item.key));
 
   function toggleMetric(key: string) {
@@ -229,6 +236,7 @@ export function PlayerEvolutionPanel({
       <AttackServeCards
         attack={attackStatsFromEvents(filtered)}
         serve={serveStatsFromEvents(filtered)}
+        block={blockStatsFromEvents(filtered)}
         reception={receptionStatsFromEvents(filtered)}
         defense={defenseStatsFromEvents(filtered)}
       />
@@ -251,6 +259,14 @@ export function PlayerEvolutionPanel({
   );
 }
 
+function gradeSplit(good: number, medium: number, bad: number, errors: number) {
+  const total = good + medium + bad + errors;
+  if (total === 0) return "—";
+  const buenas = Math.round(((good + medium) / total) * 100);
+  const malas = Math.round(((bad + errors) / total) * 100);
+  return `${buenas}% buenas · ${malas}% malas`;
+}
+
 function MatchRow({ sample }: { sample: PlayerMatchSample }) {
   return (
     <Link
@@ -265,8 +281,8 @@ function MatchRow({ sample }: { sample: PlayerMatchSample }) {
         <span>ATK {formatAttackEfficiency(sample.attackEffPct === null ? null : sample.attackEffPct / 100)}</span>
         <span>{sample.aces} aces</span>
         <span>{sample.errors} err</span>
-        <span>Rec {sample.receptionPct === null ? "—" : `${Math.round(sample.receptionPct)}%`}</span>
-        <span>Def {sample.defensePct === null ? "—" : `${Math.round(sample.defensePct)}%`}</span>
+        <span>Rec {gradeSplit(sample.receptionGood, sample.receptionMedium, sample.receptionBad, sample.receptionErrors)}</span>
+        <span>Def {gradeSplit(sample.defenseGood, sample.defenseMedium, sample.defenseBad, sample.defenseErrors)}</span>
         <span>{formatEfficiency(sample.efficiency)}</span>
       </div>
     </Link>

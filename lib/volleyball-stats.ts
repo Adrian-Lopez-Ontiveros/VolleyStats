@@ -24,7 +24,12 @@ export type ReceptionStats = {
   errors: number;
   total: number;
   goodRate: number | null;
+  /** Buenas + medias + malas, sin contar el error. */
   successRate: number | null;
+  /** (buenas + medias) / total. */
+  positiveRate: number | null;
+  /** (malas + errores) / total. */
+  negativeRate: number | null;
 };
 
 export type DefenseStats = {
@@ -35,6 +40,18 @@ export type DefenseStats = {
   total: number;
   goodRate: number | null;
   successRate: number | null;
+  positiveRate: number | null;
+  negativeRate: number | null;
+};
+
+export type BlockStats = {
+  points: number;
+  continuations: number;
+  touches: number;
+  errors: number;
+  attempts: number;
+  /** (puntos + continuaciones) / intentos. El toque y el error bajan el porcentaje. */
+  efficiency: number | null;
 };
 
 export type PossessionStats = {
@@ -69,6 +86,30 @@ type SkillEvent = {
 function rate(won: number, total: number): number | null {
   if (total === 0) return null;
   return won / total;
+}
+
+function gradeStats(good: number, medium: number, bad: number, errors: number) {
+  const total = good + medium + bad + errors;
+  return {
+    good,
+    medium,
+    bad,
+    errors,
+    total,
+    goodRate: rate(good, total),
+    successRate: rate(good + medium + bad, total),
+    positiveRate: rate(good + medium, total),
+    negativeRate: rate(bad + errors, total),
+  };
+}
+
+function joinAnd(parts: string[]) {
+  if (parts.length <= 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} y ${parts[parts.length - 1]}`;
+}
+
+function counted(count: number, singular: string, plural: string) {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 export function emptyAttackStats(): AttackStats {
@@ -128,40 +169,15 @@ export function receptionStatsFromEvents(events: SkillEvent[]): ReceptionStats {
     else if (event.point_type === "reception_bad") bad += 1;
     else if (event.point_type === "reception_error") errors += 1;
   }
-  const total = good + medium + bad + errors;
-  return {
-    good,
-    medium,
-    bad,
-    errors,
-    total,
-    goodRate: rate(good, total),
-    successRate: rate(good + medium + bad, total),
-  };
+  return gradeStats(good, medium, bad, errors);
 }
 
 export function emptyDefenseStats(): DefenseStats {
-  return {
-    good: 0,
-    medium: 0,
-    bad: 0,
-    errors: 0,
-    total: 0,
-    goodRate: null,
-    successRate: null,
-  };
+  return gradeStats(0, 0, 0, 0);
 }
 
 export function emptyReceptionStats(): ReceptionStats {
-  return {
-    good: 0,
-    medium: 0,
-    bad: 0,
-    errors: 0,
-    total: 0,
-    goodRate: null,
-    successRate: null,
-  };
+  return gradeStats(0, 0, 0, 0);
 }
 
 export function defenseStatsFromEvents(events: SkillEvent[]): DefenseStats {
@@ -175,15 +191,32 @@ export function defenseStatsFromEvents(events: SkillEvent[]): DefenseStats {
     else if (event.point_type === "defense_bad") bad += 1;
     else if (event.point_type === "defense_error") errors += 1;
   }
-  const total = good + medium + bad + errors;
+  return gradeStats(good, medium, bad, errors);
+}
+
+export function emptyBlockStats(): BlockStats {
+  return { points: 0, continuations: 0, touches: 0, errors: 0, attempts: 0, efficiency: null };
+}
+
+export function blockStatsFromEvents(events: { point_type: PointType }[]): BlockStats {
+  let points = 0;
+  let continuations = 0;
+  let touches = 0;
+  let errors = 0;
+  for (const event of events) {
+    if (event.point_type === "block" || event.point_type === "blockout") points += 1;
+    else if (event.point_type === "block_continuation") continuations += 1;
+    else if (event.point_type === "block_touch") touches += 1;
+    else if (event.point_type === "block_error") errors += 1;
+  }
+  const attempts = points + continuations + touches + errors;
   return {
-    good,
-    medium,
-    bad,
+    points,
+    continuations,
+    touches,
     errors,
-    total,
-    goodRate: rate(good, total),
-    successRate: rate(good + medium + bad, total),
+    attempts,
+    efficiency: rate(points + continuations, attempts),
   };
 }
 
@@ -194,6 +227,58 @@ export function formatSkillRate(value: number | null) {
 
 export function formatAttackEfficiency(value: number | null) {
   return formatSkillRate(value);
+}
+
+export function attackActionLine(stats: AttackStats) {
+  if (stats.attempts === 0) return "Sin intentos de ataque";
+  return `${counted(stats.attempts, "ataque", "ataques")}, ${joinAnd([
+    counted(stats.kills, "punto", "puntos"),
+    counted(stats.continuations, "continuación", "continuaciones"),
+    counted(stats.errors, "error", "errores"),
+  ])}`;
+}
+
+export function serveActionLine(stats: ServeStats) {
+  if (stats.attempts === 0) return "Sin saques registrados";
+  return `${counted(stats.attempts, "saque", "saques")}, ${joinAnd([
+    `${stats.inPlay} dentro`,
+    counted(stats.aces, "ace", "aces"),
+    counted(stats.errors, "error", "errores"),
+  ])}`;
+}
+
+export function blockActionLine(stats: BlockStats) {
+  if (stats.attempts === 0) return "Sin bloqueos registrados";
+  return `${counted(stats.attempts, "bloqueo", "bloqueos")}, ${joinAnd([
+    counted(stats.points, "punto", "puntos"),
+    counted(stats.continuations, "continuación", "continuaciones"),
+    counted(stats.touches, "toque", "toques"),
+    counted(stats.errors, "error", "errores"),
+  ])}`;
+}
+
+function gradeActionLine(
+  stats: ReceptionStats,
+  nounSingular: string,
+  nounPlural: string,
+  empty: string
+) {
+  if (stats.total === 0) return empty;
+  return `${counted(stats.total, nounSingular, nounPlural)}, ${formatSkillRate(stats.positiveRate)} buenas (${joinAnd([
+    counted(stats.good, "buena", "buenas"),
+    counted(stats.medium, "media", "medias"),
+  ])}) y ${formatSkillRate(stats.negativeRate)} malas (${joinAnd([
+    counted(stats.bad, "mala", "malas"),
+    counted(stats.errors, "error", "errores"),
+  ])})`;
+}
+
+export function receptionActionLine(stats: ReceptionStats) {
+  return gradeActionLine(stats, "recepción", "recepciones", "Sin recepciones");
+}
+
+export function defenseActionLine(stats: DefenseStats) {
+  return gradeActionLine(stats, "defensa", "defensas", "Sin defensas");
 }
 
 function emptyTeamPossession(): TeamPossessionStats {
