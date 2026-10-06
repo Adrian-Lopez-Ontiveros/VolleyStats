@@ -26,6 +26,7 @@ import {
   undoPoint as undoPointImpl,
   addSubstitution as addSubstitutionImpl,
   deleteSubstitution as deleteSubstitutionImpl,
+  resetSetSubstitutions as resetSetSubstitutionsImpl,
   setMatchLibero as setMatchLiberoImpl,
   activateMatchLibero as activateMatchLiberoImpl,
 } from "@/lib/actions/match-ops";
@@ -442,6 +443,10 @@ export async function deleteSubstitution(matchId: string, substitutionId: string
   return deleteSubstitutionImpl(matchId, substitutionId);
 }
 
+export async function resetSetSubstitutions(matchId: string, teamId: string, setNumber: number) {
+  return resetSetSubstitutionsImpl(matchId, teamId, setNumber);
+}
+
 export async function setMatchLibero(
   matchId: string,
   teamId: string,
@@ -466,6 +471,29 @@ export async function setLiveSetLineup(matchId: string, formData: FormData) {
 
   const lineup = await saveClubLineup(matchId, match.home_team_id, match.away_team_id, formData);
   if (lineup.error) return { error: lineup.error };
+
+  if (formData.get("clearSubstitutions") === "1") {
+    const parsed = parseLineupFromForm(formData);
+    const setNumber = Number(formData.get("setNumber"));
+    if (
+      parsed.teamId &&
+      (parsed.teamId === match.home_team_id || parsed.teamId === match.away_team_id) &&
+      Number.isInteger(setNumber) &&
+      setNumber >= 1 &&
+      setNumber <= 5
+    ) {
+      const query = supabase
+        .from("match_substitutions")
+        .delete()
+        .eq("match_id", matchId)
+        .eq("team_id", parsed.teamId);
+      const { error: clearError } =
+        setNumber === 1
+          ? await query.or("set_number.eq.1,set_number.is.null")
+          : await query.eq("set_number", setNumber);
+      if (clearError) return { error: clearError.message };
+    }
+  }
 
   revalidatePath(`/partidos/${matchId}`);
   revalidatePath(`/partidos/${matchId}/seguimiento`);

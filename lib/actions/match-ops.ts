@@ -16,7 +16,7 @@ import type { LiberoKind, MatchLineupEntry, MatchSubstitution, PointType } from 
 const LINEUP_COURT_SELECT =
   "id, match_id, team_id, player_id, is_starter, is_libero, is_reception_libero, is_defense_libero, is_active_libero, court_position" as const;
 
-async function loadCourtState(matchId: string, teamId: string) {
+async function loadCourtRows(matchId: string) {
   const supabase = await createClient();
   const [{ data: lineup }, { data: substitutions }, { data: match }] = await Promise.all([
     supabase.from("match_lineups").select(LINEUP_COURT_SELECT).eq("match_id", matchId),
@@ -28,15 +28,27 @@ async function loadCourtState(matchId: string, teamId: string) {
     supabase.from("matches").select("current_set").eq("id", matchId).maybeSingle(),
   ]);
 
-  return currentOnCourtIds(
-    (lineup ?? []) as MatchLineupEntry[],
-    (substitutions ?? []) as Pick<
+  return {
+    lineup: (lineup ?? []) as MatchLineupEntry[],
+    substitutions: (substitutions ?? []) as Pick<
       MatchSubstitution,
       "player_out_id" | "player_in_id" | "team_id" | "set_number"
     >[],
-    teamId,
-    match?.current_set ?? 1
-  );
+    currentSet: match?.current_set ?? 1,
+  };
+}
+
+async function loadCourtState(matchId: string, teamId: string) {
+  const court = await loadCourtRows(matchId);
+  return currentOnCourtIds(court.lineup, court.substitutions, teamId, court.currentSet);
+}
+
+async function loadSwapCourt(matchId: string, teamId: string, setNumber: number) {
+  const court = await loadCourtRows(matchId);
+  return {
+    slots: courtSlotIds(court.lineup, court.substitutions, teamId, setNumber),
+    onCourt: currentOnCourtIds(court.lineup, court.substitutions, teamId, setNumber),
+  };
 }
 
 function missingLiberoSchema(message?: string) {
@@ -621,12 +633,24 @@ export async function addSubstitution(matchId: string, formData: FormData) {
     return { error: "Ese equipo no juega este partido." };
   }
 
-  const onCourt = await loadCourtState(matchId, outPlayer.team_id);
-  if (onCourt) {
-    if (!onCourt.has(parsed.data.playerOutId)) {
+  const court = await loadSwapCourt(
+    matchId,
+    outPlayer.team_id,
+    setNumber ?? match.current_set
+  );
+  if (court.onCourt) {
+    const canLeave =
+      court.slots.size > 0
+        ? court.slots.has(parsed.data.playerOutId) || court.onCourt.has(parsed.data.playerOutId)
+        : court.onCourt.has(parsed.data.playerOutId);
+    const alreadyIn =
+      court.slots.size > 0
+        ? court.slots.has(parsed.data.playerInId)
+        : court.onCourt.has(parsed.data.playerInId);
+    if (!canLeave) {
       return { error: "El jugador que sale no está en pista." };
     }
-    if (onCourt.has(parsed.data.playerInId)) {
+    if (alreadyIn) {
       return { error: "El jugador que entra ya está en pista." };
     }
   }
@@ -649,6 +673,51 @@ export async function addSubstitution(matchId: string, formData: FormData) {
   revalidatePath(`/partidos/${matchId}`);
   revalidatePath(`/partidos/${matchId}/seguimiento`);
   return { success: true };
+}
+
+async function clearTeamSetSubstitutions(matchId: string, teamId: string, setNumber: number) {
+  const supabase = await createClient();
+  const query = supabase
+    .from("match_substitutions")
+    .delete()
+    .eq("match_id", matchId)
+    .eq("team_id", teamId);
+  const { error } =
+    setNumber === 1
+      ? await query.or("set_number.eq.1,set_number.is.null")
+      : await query.eq("set_number", setNumber);
+  if (error) return { error: error.message };
+  return { success: true as const };
+}
+
+export async function resetSetSubstitutions(matchId: string, teamId: string, setNumber: number) {
+  await requireCoach();
+  if (!Number.isInteger(setNumber) || setNumber < 1 || setNumber > 5) {
+    return { error: "El set debe estar entre 1 y 5." };
+  }
+
+  const supabase = await createClient();
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id, home_team_id, away_team_id, status")
+    .eq("id", matchId)
+    .maybeSingle();
+
+  if (!match) return { error: "Partido no encontrado" };
+  if (match.status === "cancelled") {
+    return { error: "No se puede resetear un partido cancelado." };
+  }
+  if (teamId !== match.home_team_id && teamId !== match.away_team_id) {
+    return { error: "Ese equipo no juega este partido." };
+  }
+
+  const cleared = await clearTeamSetSubstitutions(matchId, teamId, setNumber);
+  if ("error" in cleared && cleared.error) return cleared;
+
+  await logMatchActivity(matchId, "Sustitución", `Volvió a las titulares del set ${setNumber}`);
+  revalidatePath(`/partidos/${matchId}`);
+  revalidatePath(`/partidos/${matchId}/seguimiento`);
+  return { success: true as const };
 }
 
 export async function deleteSubstitution(matchId: string, substitutionId: string) {

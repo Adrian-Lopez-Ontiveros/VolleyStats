@@ -161,7 +161,8 @@ export function applyPhaseLibero(
   slots: CourtSlots,
   receptionId: string | null,
   defenseId: string | null,
-  serving: boolean
+  serving: boolean,
+  keepIds?: ReadonlySet<string> | null
 ) {
   if (!onCourt) return onCourt;
   const next = new Set(onCourt);
@@ -178,7 +179,9 @@ export function applyPhaseLibero(
     const offCourt: CourtPosition[] = serving ? [5, 6] : [1, 5, 6];
     for (const position of offCourt) {
       const player = slots[position];
-      if (player?.position === "central") next.delete(player.id);
+      // The libero replaces the back-row middle who started there. A player
+      // who entered by substitution stays, whatever their roster position.
+      if (player?.position === "central" && !keepIds?.has(player.id)) next.delete(player.id);
     }
   }
   return next;
@@ -214,6 +217,19 @@ function substitutionsForSet<T extends { team_id: string; set_number?: number | 
     if (typeof setNumber !== "number") return true;
     return (item.set_number ?? 1) === setNumber;
   });
+}
+
+export function playersEnteredBySubstitution(
+  substitutions: Pick<MatchSubstitution, "player_out_id" | "player_in_id" | "team_id" | "set_number">[],
+  teamId?: string,
+  setNumber?: number
+) {
+  const entered = new Set<string>();
+  for (const sub of substitutionsForSet(substitutions, teamId, setNumber)) {
+    entered.delete(sub.player_out_id);
+    entered.add(sub.player_in_id);
+  }
+  return entered;
 }
 
 export function applySlotSubstitutions(

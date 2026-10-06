@@ -4,10 +4,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import { useRouter } from "next/navigation";
 import { Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { addSubstitution, recordPoint, setMatchLibero, undoPoint } from "@/lib/actions/matches";
+import { addSubstitution, recordPoint, resetSetSubstitutions, setMatchLibero, undoPoint } from "@/lib/actions/matches";
 import { LiveSetLineupPanel } from "@/components/matches/live-set-lineup-panel";
 import { LiveStatPad } from "@/components/matches/live-stat-pad";
-import { POINT_TYPE_META } from "@/lib/constants";
+import { POINT_TYPE_META, POSITION_LABELS } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
   enqueuePoint,
@@ -43,6 +43,7 @@ import {
   currentLiberoPlayers,
   liberoKindForPhase,
   lineupHasCourtPositions,
+  playersEnteredBySubstitution,
   setterStartZone,
   type CourtOccupant,
   type CourtSlots,
@@ -97,6 +98,19 @@ const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = 
     types: ["defense_good", "defense_medium", "defense_bad", "defense_error"],
   },
 ];
+
+function occupantIds(slots: CourtSlots) {
+  const ids = new Set<string>();
+  for (const player of Object.values(slots)) {
+    if (player) ids.add(player.id);
+  }
+  return ids;
+}
+
+function playerOptionLabel(player: Pick<Player, "full_name" | "jersey_number" | "position">) {
+  const position = player.position ? POSITION_LABELS[player.position] : "Sin posición";
+  return `${formatJersey(player.jersey_number)} ${player.full_name} · ${position}`;
+}
 
 function orderedPadPlayers(slots: CourtSlots, onCourt: Player[]): Player[] {
   const byId = new Map(onCourt.map((player) => [player.id, player]));
@@ -155,6 +169,9 @@ export function LiveTracker({
     confirmOptimistic,
     removeOptimistic,
     removeLastEvent,
+    addLocalSubstitution,
+    removeLocalSubstitution,
+    removeSetSubstitutions,
     pullEvents,
   } = useLiveMatchEvents({
     matchId: match.id,
@@ -231,7 +248,8 @@ export function LiveTracker({
   const [awayRotationOverride, setAwayRotationOverride] = useState<number | null>(null);
   const [padSide, setPadSide] = useState<"home" | "away">("home");
   const [lineupTeams, setLineupTeams] = useState<string[]>([]);
-  const promptedSetRef = useRef(match.current_set);
+  const [lineupMode, setLineupMode] = useState<"edit" | "blank">("edit");
+  const promptedSetRef = useRef(displayMatch.current_set);
   const finished = displayMatch.status === "finished";
   const inferredServer = useMemo(
     () =>
@@ -346,6 +364,14 @@ export function LiveTracker({
     awayLiberos.reception?.id ?? null,
     awayLiberos.defense?.id ?? null
   );
+  const homeEntered = useMemo(
+    () => playersEnteredBySubstitution(liveSubstitutions, match.home_team_id, displayMatch.current_set),
+    [liveSubstitutions, match.home_team_id, displayMatch.current_set]
+  );
+  const awayEntered = useMemo(
+    () => playersEnteredBySubstitution(liveSubstitutions, match.away_team_id, displayMatch.current_set),
+    [liveSubstitutions, match.away_team_id, displayMatch.current_set]
+  );
   const homeOnCourtIds = useMemo(
     () =>
       applyPhaseLibero(
@@ -353,7 +379,8 @@ export function LiveTracker({
         homeCourtSlots,
         homeLiberos.reception?.id ?? null,
         homeLiberos.defense?.id ?? null,
-        homeServing
+        homeServing,
+        homeEntered
       ),
     [
       liveLineup,
@@ -364,6 +391,7 @@ export function LiveTracker({
       homeLiberos.reception?.id,
       homeLiberos.defense?.id,
       homeServing,
+      homeEntered,
     ]
   );
   const awayOnCourtIds = useMemo(
@@ -373,7 +401,8 @@ export function LiveTracker({
         awayCourtSlots,
         awayLiberos.reception?.id ?? null,
         awayLiberos.defense?.id ?? null,
-        awayServing
+        awayServing,
+        awayEntered
       ),
     [
       liveLineup,
@@ -384,6 +413,7 @@ export function LiveTracker({
       awayLiberos.reception?.id,
       awayLiberos.defense?.id,
       awayServing,
+      awayEntered,
     ]
   );
   const homeOnCourt = useMemo(
@@ -411,6 +441,36 @@ export function LiveTracker({
   const awayBench = useMemo(
     () => playersOnBench(awayPlayers, awayOnCourtIds),
     [awayPlayers, awayOnCourtIds]
+  );
+  const homeSlotIds = useMemo(() => occupantIds(homeCourtSlots), [homeCourtSlots]);
+  const awaySlotIds = useMemo(() => occupantIds(awayCourtSlots), [awayCourtSlots]);
+  const homeChangeCourt = useMemo(
+    () =>
+      homeHasCourt && homeSlotIds.size > 0
+        ? homePlayers.filter((player) => homeSlotIds.has(player.id))
+        : homeOnCourt,
+    [homeHasCourt, homeSlotIds, homePlayers, homeOnCourt]
+  );
+  const awayChangeCourt = useMemo(
+    () =>
+      awayHasCourt && awaySlotIds.size > 0
+        ? awayPlayers.filter((player) => awaySlotIds.has(player.id))
+        : awayOnCourt,
+    [awayHasCourt, awaySlotIds, awayPlayers, awayOnCourt]
+  );
+  const homeChangeBench = useMemo(
+    () =>
+      homeHasCourt && homeSlotIds.size > 0
+        ? homePlayers.filter((player) => !homeSlotIds.has(player.id))
+        : homeBench,
+    [homeHasCourt, homeSlotIds, homePlayers, homeBench]
+  );
+  const awayChangeBench = useMemo(
+    () =>
+      awayHasCourt && awaySlotIds.size > 0
+        ? awayPlayers.filter((player) => !awaySlotIds.has(player.id))
+        : awayBench,
+    [awayHasCourt, awaySlotIds, awayPlayers, awayBench]
   );
 
   const flushingRef = useRef(false);
@@ -508,6 +568,7 @@ export function LiveTracker({
       return;
     }
     if (displayMatch.current_set > promptedSetRef.current) {
+      setLineupMode("blank");
       setLineupTeams(lineupTeamQueue());
     } else if (displayMatch.current_set < promptedSetRef.current) {
       setLineupTeams([]);
@@ -604,20 +665,71 @@ export function LiveTracker({
 
   function submitSubstitution() {
     if (!swapTeamId || !playerOutId || !playerInId) return;
+    const setNumber = displayMatch.current_set;
+    const localId = `local-sub-${newQueueId()}`;
+    const roster = [...homePlayers, ...awayPlayers];
+    const outPlayer = roster.find((player) => player.id === playerOutId);
+    const inPlayer = roster.find((player) => player.id === playerInId);
+    const brief = (player: Player | undefined) =>
+      player
+        ? {
+            id: player.id,
+            full_name: player.full_name,
+            jersey_number: player.jersey_number,
+            position: player.position,
+          }
+        : null;
+    addLocalSubstitution({
+      id: localId,
+      match_id: match.id,
+      team_id: swapTeamId,
+      player_out_id: playerOutId,
+      player_in_id: playerInId,
+      set_number: setNumber,
+      occurred_at: `${displayMatch.home_points}-${displayMatch.away_points}`,
+      created_by: null,
+      created_at: new Date().toISOString(),
+      player_out: brief(outPlayer),
+      player_in: brief(inPlayer),
+    });
     const formData = new FormData();
     formData.set("playerOutId", playerOutId);
     formData.set("playerInId", playerInId);
-    formData.set("setNumber", String(match.current_set));
+    formData.set("setNumber", String(setNumber));
+    setSwapTeamId(null);
+    setPlayerOutId("");
+    setPlayerInId("");
     startTransition(async () => {
       const result = await addSubstitution(match.id, formData);
       if (result.error) {
+        removeLocalSubstitution(localId);
         toast.error(result.error);
         return;
       }
       toast.success("Cambio hecho");
-      setSwapTeamId(null);
-      setPlayerOutId("");
-      setPlayerInId("");
+      void pullEvents();
+      router.refresh();
+    });
+  }
+
+  function resetTeam(teamId: string, teamName: string) {
+    const setNumber = displayMatch.current_set;
+    if (
+      !confirm(
+        `¿Resetear el set ${setNumber} de ${teamName} y volver a las titulares? Se quitan los cambios de este set.`
+      )
+    ) {
+      return;
+    }
+    removeSetSubstitutions(teamId, setNumber);
+    startTransition(async () => {
+      const result = await resetSetSubstitutions(match.id, teamId, setNumber);
+      if (result.error) {
+        toast.error(result.error);
+        void pullEvents();
+        return;
+      }
+      toast.success("Titulares del set restauradas");
       void pullEvents();
       router.refresh();
     });
@@ -642,8 +754,8 @@ export function LiveTracker({
     });
   }
 
-  const swapOnCourt = swapTeamId === match.home_team_id ? homeOnCourt : awayOnCourt;
-  const swapBench = swapTeamId === match.home_team_id ? homeBench : awayBench;
+  const swapOnCourt = swapTeamId === match.home_team_id ? homeChangeCourt : awayChangeCourt;
+  const swapBench = swapTeamId === match.home_team_id ? homeChangeBench : awayChangeBench;
   const liberoTeamPlayers =
     liberoEdit?.teamId === match.home_team_id
       ? homePlayers
@@ -768,12 +880,14 @@ export function LiveTracker({
         </p>
       ) : lineupTeam && lineupTeamId ? (
         <LiveSetLineupPanel
+          key={`${lineupTeamId}-${displayMatch.current_set}-${lineupMode}`}
           matchId={match.id}
           setNumber={displayMatch.current_set}
           teamId={lineupTeamId}
           teamName={lineupTeam.name}
           players={lineupPlayers}
-          lineup={lineupEntries}
+          lineup={lineupMode === "blank" ? [] : lineupEntries}
+          fresh={lineupMode === "blank"}
           onDone={() => {
             setLineupTeams((current) => current.slice(1));
             void pullEvents();
@@ -810,7 +924,10 @@ export function LiveTracker({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setLineupTeams(lineupTeamQueue())}
+                onClick={() => {
+                  setLineupMode("edit");
+                  setLineupTeams(lineupTeamQueue());
+                }}
               >
                 Titulares
               </Button>
@@ -888,7 +1005,8 @@ export function LiveTracker({
             activeKind: homeLiberoKind,
           }}
           serving={homeServing}
-          canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
+          canSubstitute={!finished && homeChangeCourt.length > 0 && homeChangeBench.length > 0}
+          canReset={!finished && (homeHasCourt ? homeSlotIds.size > 0 : homeOnCourtIds !== null)}
           disabled={finished}
           onPick={(player) => {
             const full = homePlayers.find((item) => item.id === player.id);
@@ -899,6 +1017,7 @@ export function LiveTracker({
             setPlayerOutId("");
             setPlayerInId("");
           }}
+          onReset={() => resetTeam(match.home_team_id, match.home_team.name)}
           onAssignLibero={(kind) => setLiberoEdit({ teamId: match.home_team_id, kind })}
         />
       ) : (
@@ -909,7 +1028,8 @@ export function LiveTracker({
           federationTeamId={match.home_team.federation_team_id}
           players={homeOnCourt}
           hasLineup={homeOnCourtIds !== null}
-          canSubstitute={!finished && homeOnCourtIds !== null && homeBench.length > 0}
+          canSubstitute={!finished && homeChangeCourt.length > 0 && homeChangeBench.length > 0}
+          canReset={!finished && homeOnCourtIds !== null}
           disabled={finished}
           onPick={(player) => openTeam(match.home_team_id, match.home_team.name, player)}
           onSubstitute={() => {
@@ -917,6 +1037,7 @@ export function LiveTracker({
             setPlayerOutId("");
             setPlayerInId("");
           }}
+          onReset={() => resetTeam(match.home_team_id, match.home_team.name)}
         />
       )}
       {awayHasCourt ? (
@@ -933,7 +1054,8 @@ export function LiveTracker({
             activeKind: awayLiberoKind,
           }}
           serving={awayServing}
-          canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
+          canSubstitute={!finished && awayChangeCourt.length > 0 && awayChangeBench.length > 0}
+          canReset={!finished && (awayHasCourt ? awaySlotIds.size > 0 : awayOnCourtIds !== null)}
           disabled={finished}
           onPick={(player) => {
             const full = awayPlayers.find((item) => item.id === player.id);
@@ -944,6 +1066,7 @@ export function LiveTracker({
             setPlayerOutId("");
             setPlayerInId("");
           }}
+          onReset={() => resetTeam(match.away_team_id, match.away_team.name)}
           onAssignLibero={(kind) => setLiberoEdit({ teamId: match.away_team_id, kind })}
         />
       ) : (
@@ -954,7 +1077,8 @@ export function LiveTracker({
           federationTeamId={match.away_team.federation_team_id}
           players={awayOnCourt}
           hasLineup={awayOnCourtIds !== null}
-          canSubstitute={!finished && awayOnCourtIds !== null && awayBench.length > 0}
+          canSubstitute={!finished && awayChangeCourt.length > 0 && awayChangeBench.length > 0}
+          canReset={!finished && awayOnCourtIds !== null}
           disabled={finished}
           onPick={(player) => openTeam(match.away_team_id, match.away_team.name, player)}
           onSubstitute={() => {
@@ -962,6 +1086,7 @@ export function LiveTracker({
             setPlayerOutId("");
             setPlayerInId("");
           }}
+          onReset={() => resetTeam(match.away_team_id, match.away_team.name)}
         />
       )}
 
@@ -1061,7 +1186,7 @@ export function LiveTracker({
           <SheetHeader>
             <SheetTitle>Cambio</SheetTitle>
             <SheetDescription>
-              El que sale deja de poder anotar. El que entra pasa a estar en pista.
+              Cualquier jugadora de la pista puede salir. Entra cualquiera del banquillo, sea cual sea su posición.
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-3">
@@ -1072,10 +1197,10 @@ export function LiveTracker({
                 onChange={(event) => setPlayerOutId(event.target.value)}
                 className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal"
               >
-                <option value="">Jugador en pista</option>
+                <option value="">Jugadora en pista</option>
                 {swapOnCourt.map((player) => (
                   <option key={player.id} value={player.id}>
-                    {formatJersey(player.jersey_number)} {player.full_name}
+                    {playerOptionLabel(player)}
                   </option>
                 ))}
               </select>
@@ -1087,10 +1212,10 @@ export function LiveTracker({
                 onChange={(event) => setPlayerInId(event.target.value)}
                 className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal"
               >
-                <option value="">Jugador del banquillo</option>
+                <option value="">Jugadora del banquillo</option>
                 {swapBench.map((player) => (
                   <option key={player.id} value={player.id}>
-                    {formatJersey(player.jersey_number)} {player.full_name}
+                    {playerOptionLabel(player)}
                   </option>
                 ))}
               </select>
@@ -1209,9 +1334,11 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
   liberos,
   serving,
   canSubstitute,
+  canReset,
   disabled,
   onPick,
   onSubstitute,
+  onReset,
   onAssignLibero,
 }: {
   title: string;
@@ -1227,14 +1354,16 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
   };
   serving: boolean;
   canSubstitute: boolean;
+  canReset: boolean;
   disabled: boolean;
   onPick: (player: CourtOccupant) => void;
   onSubstitute: () => void;
+  onReset: () => void;
   onAssignLibero: (kind: LiberoKind) => void;
 }) {
   return (
     <section className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
           <TeamLogo
             name={title}
@@ -1245,12 +1374,17 @@ const LiveTeamCourt = memo(function LiveTeamCourt({
           />
           <span className="truncate">{title}</span>
         </h3>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold tabular-nums text-muted-foreground">
             R{rotation}
           </span>
+          {canReset ? (
+            <Button type="button" size="sm" variant="outline" className="h-8 px-2 text-xs" disabled={disabled} onClick={onReset}>
+              Resetear
+            </Button>
+          ) : null}
           {canSubstitute ? (
-            <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={onSubstitute}>
+            <Button type="button" size="sm" variant="outline" className="h-8 px-2 text-xs" disabled={disabled} onClick={onSubstitute}>
               Cambio
             </Button>
           ) : null}
@@ -1275,9 +1409,11 @@ const Roster = memo(function Roster({
   players,
   hasLineup,
   canSubstitute,
+  canReset,
   disabled,
   onPick,
   onSubstitute,
+  onReset,
 }: {
   title: string;
   logoUrl?: string | null;
@@ -1286,13 +1422,15 @@ const Roster = memo(function Roster({
   players: Player[];
   hasLineup: boolean;
   canSubstitute: boolean;
+  canReset: boolean;
   disabled: boolean;
   onPick: (player: Player) => void;
   onSubstitute: () => void;
+  onReset: () => void;
 }) {
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
           <TeamLogo
             name={title}
@@ -1303,11 +1441,18 @@ const Roster = memo(function Roster({
           />
           <span className="truncate">{hasLineup ? `${title} · En pista` : title}</span>
         </h3>
-        {canSubstitute ? (
-          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={onSubstitute}>
-            Cambio
-          </Button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-1">
+          {canReset ? (
+            <Button type="button" size="sm" variant="outline" className="h-8 px-2 text-xs" disabled={disabled} onClick={onReset}>
+              Resetear
+            </Button>
+          ) : null}
+          {canSubstitute ? (
+            <Button type="button" size="sm" variant="outline" className="h-8 px-2 text-xs" disabled={disabled} onClick={onSubstitute}>
+              Cambio
+            </Button>
+          ) : null}
+        </div>
       </div>
       {players.length === 0 ? (
         <p className="text-sm text-muted-foreground">

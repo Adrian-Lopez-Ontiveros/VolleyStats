@@ -116,7 +116,20 @@ export function useLiveMatchEvents({
       setEvents((current) => adoptServerEvents(current, incoming));
     }
     if (subRows) {
-      setSubstitutions(subRows as MatchSubstitution[]);
+      const server = subRows as MatchSubstitution[];
+      setSubstitutions((current) => {
+        const pending = current.filter((local) => {
+          if (!local.id.startsWith("local-sub-")) return false;
+          return !server.some(
+            (item) =>
+              item.team_id === local.team_id &&
+              item.player_out_id === local.player_out_id &&
+              item.player_in_id === local.player_in_id &&
+              (item.set_number ?? 1) === (local.set_number ?? 1)
+          );
+        });
+        return [...server, ...pending];
+      });
     }
     if (lineupRows) {
       setLineup(lineupRows as MatchLineupEntry[]);
@@ -240,6 +253,23 @@ export function useLiveMatchEvents({
     return removed;
   }, []);
 
+  const addLocalSubstitution = useCallback((substitution: MatchSubstitution) => {
+    setSubstitutions((current) => {
+      if (current.some((item) => item.id === substitution.id)) return current;
+      return [...current, substitution];
+    });
+  }, []);
+
+  const removeLocalSubstitution = useCallback((id: string) => {
+    setSubstitutions((current) => current.filter((item) => item.id !== id));
+  }, []);
+
+  const removeSetSubstitutions = useCallback((teamId: string, setNumber: number) => {
+    setSubstitutions((current) =>
+      current.filter((item) => item.team_id !== teamId || (item.set_number ?? 1) !== setNumber)
+    );
+  }, []);
+
   return {
     events,
     substitutions,
@@ -248,6 +278,9 @@ export function useLiveMatchEvents({
     confirmOptimistic,
     removeOptimistic,
     removeLastEvent,
+    addLocalSubstitution,
+    removeLocalSubstitution,
+    removeSetSubstitutions,
     pullEvents,
   };
 }

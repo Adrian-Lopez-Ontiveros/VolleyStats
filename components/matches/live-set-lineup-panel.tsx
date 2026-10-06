@@ -14,6 +14,7 @@ export function LiveSetLineupPanel({
   teamName,
   players,
   lineup,
+  fresh = false,
   onDone,
   onSkip,
 }: {
@@ -23,6 +24,7 @@ export function LiveSetLineupPanel({
   teamName: string;
   players: Player[];
   lineup: MatchLineupEntry[];
+  fresh?: boolean;
   onDone: () => void;
   onSkip: () => void;
 }) {
@@ -45,12 +47,16 @@ export function LiveSetLineupPanel({
       <div>
         <p className="text-sm font-semibold">Titulares del set {setNumber}</p>
         <p className="text-xs text-muted-foreground">
-          Elige de nuevo las 6 de pista y las líberos de {teamName}. La rotación es la
-          zona de la colocadora: en el saque, el 1 (R1); recibiendo, el 2 (R2).
+          {fresh
+            ? `El campo está vacío. Coloca otra vez a las 6 y a las líberos de ${teamName}. `
+            : `Elige las 6 de pista y las líberos de ${teamName}. `}
+          La rotación es la zona de la colocadora: en el saque, el 1 (R1); recibiendo, el 2 (R2).
         </p>
       </div>
+      <input type="hidden" name="setNumber" value={setNumber} />
+      {fresh ? <input type="hidden" name="clearSubstitutions" value="1" /> : null}
       <LineupPicker
-        key={`${teamId}-${setNumber}`}
+        key={`${teamId}-${setNumber}-${fresh ? "fresh" : "edit"}`}
         teamId={teamId}
         teamName={teamName}
         players={players}
@@ -58,7 +64,7 @@ export function LiveSetLineupPanel({
       />
       <div className="flex gap-2">
         <Button type="button" variant="outline" className="flex-1" onClick={onSkip} disabled={pending}>
-          Ahora no
+          {fresh ? "Dejar las mismas" : "Ahora no"}
         </Button>
         <Button type="submit" variant="accent" className="flex-1" disabled={pending}>
           {pending ? "Guardando..." : "Guardar titulares"}

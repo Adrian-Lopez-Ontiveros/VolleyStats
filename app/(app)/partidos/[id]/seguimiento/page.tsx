@@ -108,8 +108,8 @@ export default async function LiveMatchPage({
         title={officialStats ? "Estadísticas del partido" : "Seguimiento en vivo"}
         description={
           officialStats
-            ? "El resultado oficial se queda como está. Apunta las acciones aunque no haya conexión."
-            : "Anota desde el pad de las jugadoras en pista. Al cambiar de set puedes elegir titulares de nuevo."
+            ? "El resultado oficial se queda como está. Apunta las acciones, cambia a cualquier jugadora y, si hace falta, vuelve a las titulares del set."
+            : "Anota desde el pad. Puedes cambiar a cualquier jugadora. Al acabar el set, el campo se vacía para elegir las titulares del siguiente."
         }
       />
       <LiveTracker
