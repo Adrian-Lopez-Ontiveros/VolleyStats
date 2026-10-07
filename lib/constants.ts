@@ -253,6 +253,9 @@ export const MATCH_TEAM_SERIES_SELECT =
 export const MATCH_EVENT_SELECT =
   "id, match_id, set_number, player_id, acting_team_id, scoring_team_id, serving_team_id, home_rotation, away_rotation, point_type, client_id, created_at, player:players(id, full_name, jersey_number, position, team_id)" as const;
 
+export const PLAYER_SKILL_EVENT_SELECT =
+  "id, match_id, point_type, created_at, set_number, serving_team_id, match:matches(scheduled_at, status, home_sets, away_sets, set_scores, notes, is_federation, home_team_id, away_team_id, home_team:teams!matches_home_team_id_fkey(name, short_name, logo_url, federation_team_id), away_team:teams!matches_away_team_id_fkey(name, short_name, logo_url, federation_team_id))" as const;
+
 export const MATCH_LINEUP_SELECT =
   "id, match_id, team_id, player_id, is_starter, is_libero, is_reception_libero, is_defense_libero, is_active_libero, court_position, created_at" as const;
 

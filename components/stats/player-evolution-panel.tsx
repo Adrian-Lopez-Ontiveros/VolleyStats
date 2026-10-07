@@ -1,23 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { EVOLUTION_METRICS, PlayerEvolutionChart } from "@/components/stats/charts";
 import { ChipRow, PhaseFilterBar } from "@/components/stats/phase-filter";
 import { ErrorBreakdownSheet } from "@/components/stats/error-breakdown-sheet";
 import { AttackServeCards } from "@/components/stats/skill-stats";
 import { StatSummary } from "@/components/stats/stat-summary";
+import { TeamLogo } from "@/components/teams/team-logo";
 import { Card, CardContent } from "@/components/ui/card";
+import { matchStatusMeta } from "@/lib/constants";
 import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/lib/stat-filters";
+import { formatMatchWhen } from "@/lib/federation/schedule";
 import {
   buildPlayerMatchSeries,
-  formatEfficiency,
   formatMatchLabel,
+  normalizeSetScores,
   summarizePlayerSeries,
-  type PlayerMatchSample,
 } from "@/lib/stats";
 import { errorBreakdownFromEvents } from "@/lib/error-breakdown";
-import { cn } from "@/lib/utils";
+import { cn, unwrapOne } from "@/lib/utils";
 import {
   attackStatsFromEvents,
   blockStatsFromEvents,
@@ -25,16 +27,33 @@ import {
   formatAttackEfficiency,
   receptionStatsFromEvents,
   serveStatsFromEvents,
+  type AttackStats,
+  type BlockStats,
+  type DefenseStats,
+  type ReceptionStats,
+  type ServeStats,
 } from "@/lib/volleyball-stats";
 import type { PointType } from "@/lib/types";
+
+export type PlayerStatTeam = {
+  name?: string | null;
+  short_name?: string | null;
+  logo_url?: string | null;
+  federation_team_id?: string | null;
+};
 
 export type PlayerStatEventMatch = {
   scheduled_at?: string | null;
   status?: string | null;
+  notes?: string | null;
+  is_federation?: boolean | null;
+  home_sets?: number | null;
+  away_sets?: number | null;
+  set_scores?: unknown;
   home_team_id?: string | null;
   away_team_id?: string | null;
-  home_team?: { name?: string | null; short_name?: string | null } | null;
-  away_team?: { name?: string | null; short_name?: string | null } | null;
+  home_team?: PlayerStatTeam | PlayerStatTeam[] | null;
+  away_team?: PlayerStatTeam | PlayerStatTeam[] | null;
 };
 
 export type PlayerStatEvent = {
@@ -69,11 +88,11 @@ function buildMatchOptions(
 
     if (match && teamId) {
       const isHome = match.home_team_id === teamId;
-      const opponent = isHome ? match.away_team : match.home_team;
+      const opponent = unwrapOne(isHome ? match.away_team : match.home_team);
       label = `vs ${teamDisplayName(opponent)} · ${dateLabel}`;
     } else if (match?.home_team || match?.away_team) {
-      const home = teamDisplayName(match.home_team);
-      const away = teamDisplayName(match.away_team);
+      const home = teamDisplayName(unwrapOne(match.home_team));
+      const away = teamDisplayName(unwrapOne(match.away_team));
       label = `${home}–${away} · ${dateLabel}`;
     }
 
@@ -129,6 +148,10 @@ export function PlayerEvolutionPanel({
     [matchFiltered, filter.possession, teamId]
   );
   const series = useMemo(() => buildPlayerMatchSeries(filtered), [filtered]);
+  const matchCards = useMemo(
+    () => buildPlayerMatchCards(filtered, teamId),
+    [filtered, teamId]
+  );
   const totals = useMemo(() => summarizePlayerSeries(series), [series]);
   const errorBreakdown = useMemo(
     () =>
@@ -243,14 +266,14 @@ export function PlayerEvolutionPanel({
 
       <section>
         <h3 className="mb-3 text-base font-semibold">Partido a partido</h3>
-        {series.length === 0 ? (
+        {matchCards.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay acciones con este filtro.
           </p>
         ) : (
-          <div className="space-y-2">
-            {series.map((item) => (
-              <MatchRow key={item.matchId} sample={item} />
+          <div className="grid gap-3 lg:grid-cols-2">
+            {matchCards.map((card) => (
+              <PlayerMatchCard key={card.matchId} card={card} />
             ))}
           </div>
         )}
@@ -259,32 +282,381 @@ export function PlayerEvolutionPanel({
   );
 }
 
-function gradeSplit(good: number, medium: number, bad: number, errors: number) {
-  const total = good + medium + bad + errors;
-  if (total === 0) return "—";
-  const buenas = Math.round(((good + medium) / total) * 100);
-  const malas = Math.round(((bad + errors) / total) * 100);
-  return `${buenas}% buenas · ${malas}% malas`;
+const SKILL_TONE = {
+  ataque: "bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-100",
+  saque: "bg-violet-100 text-violet-800 dark:bg-violet-500/20 dark:text-violet-100",
+  bloqueo: "bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-100",
+  recepcion: "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-100",
+  defensa: "bg-slate-200 text-slate-800 dark:bg-slate-500/25 dark:text-slate-100",
+} as const;
+
+const SCORE_TONE = {
+  win: "bg-emerald-600 text-white dark:bg-emerald-500/20 dark:text-emerald-50",
+  loss: "bg-rose-600 text-white dark:bg-rose-500/20 dark:text-rose-50",
+  live: "bg-orange-500 text-white dark:bg-orange-500/20 dark:text-orange-50",
+  neutral: "bg-primary text-primary-foreground",
+} as const;
+
+const GOOD = "text-emerald-700 dark:text-emerald-300";
+const MID = "text-amber-700 dark:text-amber-200";
+const POOR = "text-stone-600 dark:text-stone-300";
+const BAD = "text-rose-700 dark:text-rose-300";
+
+const PLAYER_POINT_TYPES = new Set<PointType>(["attack", "block", "blockout", "ace", "other"]);
+
+type ResultTone = keyof typeof SCORE_TONE;
+
+type SideTeam = {
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+  federationTeamId: string | null;
+};
+
+type PlayerMatchCardModel = {
+  matchId: string;
+  date: string;
+  when: string;
+  venue: string | null;
+  opponent: SideTeam | null;
+  title: string;
+  versus: boolean;
+  ourSets: number | null;
+  theirSets: number | null;
+  setLines: string[];
+  resultLabel: string;
+  resultTone: ResultTone;
+  points: number;
+  otherErrors: number;
+  attack: AttackStats;
+  serve: ServeStats;
+  block: BlockStats;
+  reception: ReceptionStats;
+  defense: DefenseStats;
+};
+
+function sideTeam(team: PlayerStatTeam | null, fallback: string): SideTeam {
+  return {
+    name: team?.name || team?.short_name || fallback,
+    shortName: team?.short_name ?? null,
+    logoUrl: team?.logo_url ?? null,
+    federationTeamId: team?.federation_team_id ?? null,
+  };
 }
 
-function MatchRow({ sample }: { sample: PlayerMatchSample }) {
+function countLabel(count: number, singular: string, plural: string) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function matchResult(
+  status: string | null | undefined,
+  knownSide: boolean,
+  ourSets: number | null,
+  theirSets: number | null
+): { label: string; tone: ResultTone } {
+  if (status === "live") return { label: "En vivo", tone: "live" };
+  if (status === "cancelled") return { label: "Cancelado", tone: "neutral" };
+  if (status === "finished" && knownSide && ourSets != null && theirSets != null) {
+    if (ourSets > theirSets) return { label: "Victoria", tone: "win" };
+    if (ourSets < theirSets) return { label: "Derrota", tone: "loss" };
+    return { label: "Empate", tone: "neutral" };
+  }
+  if (status === "finished") return { label: "Finalizado", tone: "neutral" };
+  return { label: matchStatusMeta(status).label, tone: "neutral" };
+}
+
+function buildPlayerMatchCards(events: PlayerStatEvent[], teamId?: string | null) {
+  const groups = new Map<string, PlayerStatEvent[]>();
+  for (const event of events) {
+    const list = groups.get(event.match_id);
+    if (list) list.push(event);
+    else groups.set(event.match_id, [event]);
+  }
+
+  const cards: PlayerMatchCardModel[] = [];
+  for (const [matchId, list] of groups) {
+    const match = unwrapOne(list.find((event) => event.match)?.match);
+    const home = unwrapOne(match?.home_team);
+    const away = unwrapOne(match?.away_team);
+    const date =
+      match?.scheduled_at ||
+      list.reduce(
+        (min, event) => (event.created_at < min ? event.created_at : min),
+        list[0].created_at
+      );
+    const isHome = Boolean(teamId && match?.home_team_id === teamId);
+    const isAway = Boolean(teamId && match?.away_team_id === teamId);
+    const knownSide = isHome || isAway;
+    const homeSets = typeof match?.home_sets === "number" ? match.home_sets : null;
+    const awaySets = typeof match?.away_sets === "number" ? match.away_sets : null;
+    const ourSets = knownSide ? (isHome ? homeSets : awaySets) : homeSets;
+    const theirSets = knownSide ? (isHome ? awaySets : homeSets) : awaySets;
+    const flip = knownSide && isAway;
+    const setLines = normalizeSetScores(match?.set_scores).map((set) => {
+      const left = flip ? set.away : set.home;
+      const right = flip ? set.home : set.away;
+      return `${left}–${right}`;
+    });
+    const result = matchResult(match?.status, knownSide, ourSets, theirSets);
+    const opponent = knownSide ? sideTeam(isHome ? away : home, "Rival") : null;
+
+    cards.push({
+      matchId,
+      date,
+      when: formatMatchWhen({
+        scheduledAt: date,
+        notes: match?.notes,
+        isFederation: match?.is_federation,
+      }),
+      venue: isHome ? "Local" : isAway ? "Visitante" : null,
+      opponent,
+      title: opponent ? opponent.name : `${sideTeam(home, "Local").name} – ${sideTeam(away, "Visitante").name}`,
+      versus: Boolean(opponent),
+      ourSets,
+      theirSets,
+      setLines,
+      resultLabel: result.label,
+      resultTone: result.tone,
+      points: list.filter((event) => PLAYER_POINT_TYPES.has(event.point_type)).length,
+      otherErrors: list.filter((event) => event.point_type === "error").length,
+      attack: attackStatsFromEvents(list),
+      serve: serveStatsFromEvents(list),
+      block: blockStatsFromEvents(list),
+      reception: receptionStatsFromEvents(list),
+      defense: defenseStatsFromEvents(list),
+    });
+  }
+
+  return cards.sort((a, b) => {
+    const at = new Date(a.date).getTime();
+    const bt = new Date(b.date).getTime();
+    if (Number.isNaN(at) || Number.isNaN(bt)) return 0;
+    return bt - at;
+  });
+}
+
+function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
+  const score =
+    card.ourSets != null && card.theirSets != null ? `${card.ourSets}–${card.theirSets}` : "–";
+
   return (
     <Link
-      href={`/partidos/${sample.matchId}`}
-      className="block rounded-2xl border bg-card px-3 py-3"
+      href={`/partidos/${card.matchId}`}
+      className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-card transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">{sample.label}</p>
-        <p className="text-sm font-bold tabular-nums">{sample.points} pts</p>
+      <div className="flex items-center gap-3 p-3">
+        {card.opponent ? (
+          <TeamLogo
+            name={card.opponent.name}
+            shortName={card.opponent.shortName}
+            logoUrl={card.opponent.logoUrl}
+            federationTeamId={card.opponent.federationTeamId}
+            size="md"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-tight [overflow-wrap:anywhere]">
+            {card.versus ? <span className="font-medium text-muted-foreground">vs </span> : null}
+            {card.title}
+          </p>
+          <p className="mt-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+            {card.when}
+            {card.venue ? ` · ${card.venue}` : ""}
+          </p>
+          <p className="mt-1 text-xs font-semibold tabular-nums">
+            {countLabel(card.points, "punto", "puntos")}
+          </p>
+        </div>
+        <div
+          className={cn(
+            "shrink-0 rounded-xl px-2.5 py-2 text-center",
+            SCORE_TONE[card.resultTone]
+          )}
+          title={
+            card.versus
+              ? "Sets a favor – sets del rival"
+              : "Sets del local – sets del visitante"
+          }
+        >
+          <p className="text-xl font-black tabular-nums leading-none">{score}</p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-90">
+            {card.resultLabel}
+          </p>
+        </div>
       </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-        <span>ATK {formatAttackEfficiency(sample.attackEffPct === null ? null : sample.attackEffPct / 100)}</span>
-        <span>{sample.aces} aces</span>
-        <span>{sample.errors} err</span>
-        <span>Rec {gradeSplit(sample.receptionGood, sample.receptionMedium, sample.receptionBad, sample.receptionErrors)}</span>
-        <span>Def {gradeSplit(sample.defenseGood, sample.defenseMedium, sample.defenseBad, sample.defenseErrors)}</span>
-        <span>{formatEfficiency(sample.efficiency)}</span>
+      {card.setLines.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1 px-3 pb-3">
+          <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Parciales
+          </span>
+          {card.setLines.map((line, index) => (
+            <span
+              key={`${card.matchId}-set-${index}`}
+              className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-secondary-foreground"
+              title={
+                card.versus
+                  ? "Puntos a favor – puntos del rival"
+                  : "Puntos del local – puntos del visitante"
+              }
+            >
+              {line}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="mt-auto divide-y divide-border border-t border-border">
+        <SkillRow label="Ataque" tone={SKILL_TONE.ataque} empty={card.attack.attempts === 0}>
+          {card.attack.attempts === 0 ? (
+            "Sin ataques"
+          ) : (
+            <AttackLine stats={card.attack} />
+          )}
+        </SkillRow>
+        <SkillRow label="Saque" tone={SKILL_TONE.saque} empty={card.serve.attempts === 0}>
+          {card.serve.attempts === 0 ? "Sin saques" : <ServeLine stats={card.serve} />}
+        </SkillRow>
+        <SkillRow label="Bloqueo" tone={SKILL_TONE.bloqueo} empty={card.block.attempts === 0}>
+          {card.block.attempts === 0 ? "Sin bloqueos" : <BlockLine stats={card.block} />}
+        </SkillRow>
+        <SkillRow label="Recepción" tone={SKILL_TONE.recepcion} empty={card.reception.total === 0}>
+          {card.reception.total === 0 ? "Sin recepciones" : <GradeLine noun={["recepción", "recepciones"]} stats={card.reception} />}
+        </SkillRow>
+        <SkillRow label="Defensa" tone={SKILL_TONE.defensa} empty={card.defense.total === 0}>
+          {card.defense.total === 0 ? "Sin defensas" : <GradeLine noun={["defensa", "defensas"]} stats={card.defense} />}
+        </SkillRow>
+        {card.otherErrors > 0 ? (
+          <p className="px-3 py-2 text-[11px] font-medium text-rose-700 dark:text-rose-300">
+            {countLabel(card.otherErrors, "error propio", "errores propios")}
+          </p>
+        ) : null}
       </div>
     </Link>
+  );
+}
+
+function SkillRow({
+  label,
+  tone,
+  empty,
+  children,
+}: {
+  label: string;
+  tone: string;
+  empty?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2 px-3 py-2">
+      <span
+        className={cn(
+          "mt-0.5 inline-flex w-[5.75rem] shrink-0 justify-center rounded-md px-1.5 py-1 text-center text-[10px] font-bold uppercase leading-tight tracking-wide",
+          tone
+        )}
+      >
+        {label}
+      </span>
+      <p className={cn("min-w-0 flex-1 pt-0.5 text-xs leading-snug", empty && "text-muted-foreground")}>
+        {children}
+      </p>
+    </div>
+  );
+}
+
+function Dot() {
+  return <span className="text-muted-foreground"> · </span>;
+}
+
+function Bits({ parts }: { parts: ReactNode[] }) {
+  return parts.map((part, index) => (
+    <span key={index}>
+      {index > 0 ? <Dot /> : null}
+      {part}
+    </span>
+  ));
+}
+
+function AttackLine({ stats }: { stats: AttackStats }) {
+  return (
+    <Bits
+      parts={[
+        <span className="font-semibold tabular-nums">
+          {stats.kills} {stats.kills === 1 ? "pt" : "pts"}
+        </span>,
+        <span className="text-muted-foreground">
+          {countLabel(stats.attempts, "ataque", "ataques")}
+        </span>,
+        stats.continuations > 0 ? (
+          <span className={GOOD}>{stats.continuations} cont.</span>
+        ) : null,
+        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
+      ].filter(Boolean)}
+    />
+  );
+}
+
+function ServeLine({ stats }: { stats: ServeStats }) {
+  return (
+    <Bits
+      parts={[
+        <span className="font-semibold tabular-nums">
+          {countLabel(stats.aces, "ace", "aces")}
+        </span>,
+        <span className="text-muted-foreground">
+          {countLabel(stats.attempts, "saque", "saques")}
+        </span>,
+        stats.inPlay > 0 ? <span className={GOOD}>{stats.inPlay} dentro</span> : null,
+        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
+      ].filter(Boolean)}
+    />
+  );
+}
+
+function BlockLine({ stats }: { stats: BlockStats }) {
+  return (
+    <Bits
+      parts={[
+        <span className="font-semibold tabular-nums">
+          {stats.points} {stats.points === 1 ? "pt" : "pts"}
+        </span>,
+        <span className="text-muted-foreground">
+          {countLabel(stats.attempts, "bloqueo", "bloqueos")}
+        </span>,
+        stats.touches > 0 ? (
+          <span className={POOR}>{countLabel(stats.touches, "toque", "toques")}</span>
+        ) : null,
+        stats.continuations > 0 ? (
+          <span className={GOOD}>{stats.continuations} cont.</span>
+        ) : null,
+        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
+      ].filter(Boolean)}
+    />
+  );
+}
+
+function GradeLine({
+  noun,
+  stats,
+}: {
+  noun: [string, string];
+  stats: ReceptionStats | DefenseStats;
+}) {
+  return (
+    <Bits
+      parts={[
+        <span className="font-semibold tabular-nums">
+          {countLabel(stats.total, noun[0], noun[1])}
+        </span>,
+        stats.good > 0 ? (
+          <span className={GOOD}>{countLabel(stats.good, "buena", "buenas")}</span>
+        ) : null,
+        stats.medium > 0 ? (
+          <span className={MID}>{countLabel(stats.medium, "media", "medias")}</span>
+        ) : null,
+        stats.bad > 0 ? (
+          <span className={POOR}>{countLabel(stats.bad, "mala", "malas")}</span>
+        ) : null,
+        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
+      ].filter(Boolean)}
+    />
   );
 }
