@@ -435,14 +435,9 @@ function buildPlayerMatchCards(events: PlayerStatEvent[], teamId?: string | null
   });
 }
 
-function scoreOrderLabel(versus: boolean) {
-  return versus ? "a favor – rival" : "local – visitante";
-}
-
 function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
   const score =
     card.ourSets != null && card.theirSets != null ? `${card.ourSets}–${card.theirSets}` : "–";
-  const orderLabel = scoreOrderLabel(card.versus);
   const hasSkills =
     card.attack.attempts > 0 ||
     card.serve.attempts > 0 ||
@@ -486,9 +481,6 @@ function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
           )}
         >
           <p className="text-xl font-black tabular-nums leading-none">{score}</p>
-          <p className="mt-1 whitespace-nowrap text-[10px] font-semibold leading-none">
-            {orderLabel}
-          </p>
           <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-90">
             {card.resultLabel}
           </p>
@@ -499,7 +491,6 @@ function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
           <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Parciales
           </span>
-          <span className="mr-0.5 text-[10px] font-medium text-muted-foreground">{orderLabel}</span>
           {card.setLines.map((line, index) => (
             <span
               key={`${card.matchId}-set-${index}`}
