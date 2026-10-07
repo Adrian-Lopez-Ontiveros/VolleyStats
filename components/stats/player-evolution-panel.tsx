@@ -435,9 +435,21 @@ function buildPlayerMatchCards(events: PlayerStatEvent[], teamId?: string | null
   });
 }
 
+function scoreOrderLabel(versus: boolean) {
+  return versus ? "a favor – rival" : "local – visitante";
+}
+
 function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
   const score =
     card.ourSets != null && card.theirSets != null ? `${card.ourSets}–${card.theirSets}` : "–";
+  const orderLabel = scoreOrderLabel(card.versus);
+  const hasSkills =
+    card.attack.attempts > 0 ||
+    card.serve.attempts > 0 ||
+    card.block.attempts > 0 ||
+    card.reception.total > 0 ||
+    card.defense.total > 0 ||
+    card.otherErrors > 0;
 
   return (
     <Link
@@ -463,8 +475,8 @@ function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
             {card.when}
             {card.venue ? ` · ${card.venue}` : ""}
           </p>
-          <p className="mt-1 text-xs font-semibold tabular-nums">
-            {countLabel(card.points, "punto", "puntos")}
+          <p className="mt-1 text-[11px] font-semibold tabular-nums text-muted-foreground">
+            {card.points} {card.points === 1 ? "pt" : "pts"} del jugador
           </p>
         </div>
         <div
@@ -472,13 +484,11 @@ function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
             "shrink-0 rounded-xl px-2.5 py-2 text-center",
             SCORE_TONE[card.resultTone]
           )}
-          title={
-            card.versus
-              ? "Sets a favor – sets del rival"
-              : "Sets del local – sets del visitante"
-          }
         >
           <p className="text-xl font-black tabular-nums leading-none">{score}</p>
+          <p className="mt-1 whitespace-nowrap text-[10px] font-semibold leading-none">
+            {orderLabel}
+          </p>
           <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-90">
             {card.resultLabel}
           </p>
@@ -489,47 +499,55 @@ function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
           <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Parciales
           </span>
+          <span className="mr-0.5 text-[10px] font-medium text-muted-foreground">{orderLabel}</span>
           {card.setLines.map((line, index) => (
             <span
               key={`${card.matchId}-set-${index}`}
               className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-secondary-foreground"
-              title={
-                card.versus
-                  ? "Puntos a favor – puntos del rival"
-                  : "Puntos del local – puntos del visitante"
-              }
             >
               {line}
             </span>
           ))}
         </div>
       ) : null}
-      <div className="mt-auto divide-y divide-border border-t border-border">
-        <SkillRow label="Ataque" tone={SKILL_TONE.ataque} empty={card.attack.attempts === 0}>
-          {card.attack.attempts === 0 ? (
-            "Sin ataques"
-          ) : (
-            <AttackLine stats={card.attack} />
-          )}
-        </SkillRow>
-        <SkillRow label="Saque" tone={SKILL_TONE.saque} empty={card.serve.attempts === 0}>
-          {card.serve.attempts === 0 ? "Sin saques" : <ServeLine stats={card.serve} />}
-        </SkillRow>
-        <SkillRow label="Bloqueo" tone={SKILL_TONE.bloqueo} empty={card.block.attempts === 0}>
-          {card.block.attempts === 0 ? "Sin bloqueos" : <BlockLine stats={card.block} />}
-        </SkillRow>
-        <SkillRow label="Recepción" tone={SKILL_TONE.recepcion} empty={card.reception.total === 0}>
-          {card.reception.total === 0 ? "Sin recepciones" : <GradeLine noun={["recepción", "recepciones"]} stats={card.reception} />}
-        </SkillRow>
-        <SkillRow label="Defensa" tone={SKILL_TONE.defensa} empty={card.defense.total === 0}>
-          {card.defense.total === 0 ? "Sin defensas" : <GradeLine noun={["defensa", "defensas"]} stats={card.defense} />}
-        </SkillRow>
-        {card.otherErrors > 0 ? (
-          <p className="px-3 py-2 text-[11px] font-medium text-rose-700 dark:text-rose-300">
-            {countLabel(card.otherErrors, "error propio", "errores propios")}
-          </p>
-        ) : null}
-      </div>
+      {hasSkills ? (
+        <div className="mt-auto divide-y divide-border border-t border-border">
+          {card.attack.attempts > 0 ? (
+            <SkillRow label="Ataque" tone={SKILL_TONE.ataque}>
+              <AttackLine stats={card.attack} />
+            </SkillRow>
+          ) : null}
+          {card.serve.attempts > 0 ? (
+            <SkillRow label="Saque" tone={SKILL_TONE.saque}>
+              <ServeLine stats={card.serve} />
+            </SkillRow>
+          ) : null}
+          {card.block.attempts > 0 ? (
+            <SkillRow label="Bloqueo" tone={SKILL_TONE.bloqueo}>
+              <BlockLine stats={card.block} />
+            </SkillRow>
+          ) : null}
+          {card.reception.total > 0 ? (
+            <SkillRow label="Recepción" tone={SKILL_TONE.recepcion}>
+              <GradeLine noun={["recepción", "recepciones"]} stats={card.reception} />
+            </SkillRow>
+          ) : null}
+          {card.defense.total > 0 ? (
+            <SkillRow label="Defensa" tone={SKILL_TONE.defensa}>
+              <GradeLine noun={["defensa", "defensas"]} stats={card.defense} />
+            </SkillRow>
+          ) : null}
+          {card.otherErrors > 0 ? (
+            <p className="px-3 py-2 text-[11px] font-medium text-rose-700 dark:text-rose-300">
+              {countLabel(card.otherErrors, "error propio", "errores propios")}
+            </p>
+          ) : null}
+        </div>
+      ) : card.points === 0 ? (
+        <p className="mt-auto border-t border-border px-3 py-2 text-xs text-muted-foreground">
+          Sin acciones
+        </p>
+      ) : null}
     </Link>
   );
 }
@@ -537,12 +555,10 @@ function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
 function SkillRow({
   label,
   tone,
-  empty,
   children,
 }: {
   label: string;
   tone: string;
-  empty?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -555,14 +571,14 @@ function SkillRow({
       >
         {label}
       </span>
-      <p className={cn("min-w-0 flex-1 pt-0.5 text-xs leading-snug", empty && "text-muted-foreground")}>
-        {children}
-      </p>
+      <div className="min-w-0 flex-1 pt-0.5 text-xs leading-snug">{children}</div>
     </div>
   );
 }
 
-function Bits({ parts }: { parts: { text: string; className?: string }[] }) {
+type Bit = { text: string; className?: string };
+
+function Bits({ parts }: { parts: Bit[] }) {
   return parts.map((part, index) => (
     <span key={`${part.text}-${index}`}>
       {index > 0 ? <span className="text-muted-foreground"> · </span> : null}
@@ -571,59 +587,93 @@ function Bits({ parts }: { parts: { text: string; className?: string }[] }) {
   ));
 }
 
+function SkillBits({ summary, detail }: { summary: Bit[]; detail: Bit[] }) {
+  return (
+    <>
+      <span className="block">
+        <Bits parts={summary} />
+      </span>
+      {detail.length > 0 ? (
+        <span className="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+          {detail.map((part, index) => (
+            <span key={`${part.text}-${index}`} className={part.className}>
+              {part.text}
+            </span>
+          ))}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 function AttackLine({ stats }: { stats: AttackStats }) {
-  const parts = [
-    {
-      text: `${stats.kills} ${stats.kills === 1 ? "pt" : "pts"}`,
-      className: "font-semibold tabular-nums",
-    },
-    {
-      text: countLabel(stats.attempts, "ataque", "ataques"),
-      className: "text-muted-foreground",
-    },
-  ];
+  const detail: Bit[] = [];
   if (stats.continuations > 0) {
-    parts.push({ text: `${stats.continuations} cont.`, className: GOOD });
+    detail.push({ text: `${stats.continuations} cont.`, className: GOOD });
   }
-  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
-  return <Bits parts={parts} />;
+  if (stats.errors > 0) detail.push({ text: `${stats.errors} err.`, className: BAD });
+  return (
+    <SkillBits
+      summary={[
+        {
+          text: `${stats.kills} ${stats.kills === 1 ? "pt" : "pts"}`,
+          className: "font-semibold tabular-nums",
+        },
+        {
+          text: countLabel(stats.attempts, "ataque", "ataques"),
+          className: "text-muted-foreground",
+        },
+      ]}
+      detail={detail}
+    />
+  );
 }
 
 function ServeLine({ stats }: { stats: ServeStats }) {
-  const parts = [
-    {
-      text: countLabel(stats.aces, "ace", "aces"),
-      className: "font-semibold tabular-nums",
-    },
-    {
-      text: countLabel(stats.attempts, "saque", "saques"),
-      className: "text-muted-foreground",
-    },
-  ];
-  if (stats.inPlay > 0) parts.push({ text: `${stats.inPlay} dentro`, className: GOOD });
-  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
-  return <Bits parts={parts} />;
+  const detail: Bit[] = [];
+  if (stats.inPlay > 0) detail.push({ text: `${stats.inPlay} dentro`, className: GOOD });
+  if (stats.errors > 0) detail.push({ text: `${stats.errors} err.`, className: BAD });
+  return (
+    <SkillBits
+      summary={[
+        {
+          text: countLabel(stats.aces, "ace", "aces"),
+          className: "font-semibold tabular-nums",
+        },
+        {
+          text: countLabel(stats.attempts, "saque", "saques"),
+          className: "text-muted-foreground",
+        },
+      ]}
+      detail={detail}
+    />
+  );
 }
 
 function BlockLine({ stats }: { stats: BlockStats }) {
-  const parts = [
-    {
-      text: `${stats.points} ${stats.points === 1 ? "pt" : "pts"}`,
-      className: "font-semibold tabular-nums",
-    },
-    {
-      text: countLabel(stats.attempts, "bloqueo", "bloqueos"),
-      className: "text-muted-foreground",
-    },
-  ];
+  const detail: Bit[] = [];
   if (stats.touches > 0) {
-    parts.push({ text: countLabel(stats.touches, "toque", "toques"), className: POOR });
+    detail.push({ text: countLabel(stats.touches, "toque", "toques"), className: POOR });
   }
   if (stats.continuations > 0) {
-    parts.push({ text: `${stats.continuations} cont.`, className: GOOD });
+    detail.push({ text: `${stats.continuations} cont.`, className: GOOD });
   }
-  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
-  return <Bits parts={parts} />;
+  if (stats.errors > 0) detail.push({ text: `${stats.errors} err.`, className: BAD });
+  return (
+    <SkillBits
+      summary={[
+        {
+          text: `${stats.points} ${stats.points === 1 ? "pt" : "pts"}`,
+          className: "font-semibold tabular-nums",
+        },
+        {
+          text: countLabel(stats.attempts, "bloqueo", "bloqueos"),
+          className: "text-muted-foreground",
+        },
+      ]}
+      detail={detail}
+    />
+  );
 }
 
 function GradeLine({
@@ -633,21 +683,26 @@ function GradeLine({
   noun: [string, string];
   stats: ReceptionStats | DefenseStats;
 }) {
-  const parts = [
-    {
-      text: countLabel(stats.total, noun[0], noun[1]),
-      className: "font-semibold tabular-nums",
-    },
-  ];
+  const detail: Bit[] = [];
   if (stats.good > 0) {
-    parts.push({ text: countLabel(stats.good, "buena", "buenas"), className: GOOD });
+    detail.push({ text: countLabel(stats.good, "buena", "buenas"), className: GOOD });
   }
   if (stats.medium > 0) {
-    parts.push({ text: countLabel(stats.medium, "media", "medias"), className: MID });
+    detail.push({ text: countLabel(stats.medium, "media", "medias"), className: MID });
   }
   if (stats.bad > 0) {
-    parts.push({ text: countLabel(stats.bad, "mala", "malas"), className: POOR });
+    detail.push({ text: countLabel(stats.bad, "mala", "malas"), className: POOR });
   }
-  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
-  return <Bits parts={parts} />;
+  if (stats.errors > 0) detail.push({ text: `${stats.errors} err.`, className: BAD });
+  return (
+    <SkillBits
+      summary={[
+        {
+          text: countLabel(stats.total, noun[0], noun[1]),
+          className: "font-semibold tabular-nums",
+        },
+      ]}
+      detail={detail}
+    />
+  );
 }
