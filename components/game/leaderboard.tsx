@@ -12,10 +12,12 @@ export function GameLeaderboard({
 }) {
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Cuando se resuelvan las predicciones, aquí saldrá la clasificación: 1 punto por acierto, 0
-        si fallas.
-      </p>
+      <div className="rounded-3xl border bg-card px-6 py-8 text-center shadow-card">
+        <p className="text-base font-bold">La clasificación está vacía</p>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          Cuando se cierren los partidos, cada acierto suma 1 punto y aquí se ordena la afición.
+        </p>
+      </div>
     );
   }
 
@@ -29,7 +31,15 @@ export function GameLeaderboard({
             row.userId === userId && "border-orange-300 bg-orange-50/70 text-orange-950 dark:border-orange-400/40 dark:bg-orange-500/15 dark:text-foreground"
           )}
         >
-          <span className="w-6 text-center text-sm font-black tabular-nums text-muted-foreground">
+          <span
+            className={cn(
+              "w-6 text-center text-sm font-black tabular-nums",
+              index === 0 && "text-amber-600 dark:text-amber-300",
+              index === 1 && "text-slate-500 dark:text-slate-300",
+              index === 2 && "text-orange-700 dark:text-orange-300",
+              index > 2 && "text-muted-foreground"
+            )}
+          >
             {index + 1}
           </span>
           <FramedAvatar name={row.name} url={row.avatarUrl} frameId={row.frame} size="sm" />

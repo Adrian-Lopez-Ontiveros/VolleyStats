@@ -65,9 +65,7 @@ export function SubstitutionPanel({
         </p>
       </div>
 
-      {substitutions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Todavía no hay cambios registrados.</p>
-      ) : (
+      {substitutions.length === 0 ? null : (
         <ul className="space-y-2">
           {substitutions.map((item) => (
             <li

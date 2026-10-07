@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Check, Target, X } from "lucide-react";
 import { toast } from "sonner";
 import { saveMatchPrediction } from "@/lib/actions/game";
 import { formatMatchWhen } from "@/lib/federation/schedule";
-import { isPredictionLocked } from "@/lib/game";
+import { isPredictionLocked, predictionLocksAt } from "@/lib/game";
 import {
   clearPredictionDraft,
   getPredictionDraft,
@@ -29,41 +30,84 @@ export function PredictionsBoard({
   const now = useClock();
   if (jornadas.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Cuando haya una jornada próxima del club, podrás predecir el ganador de cada partido.
-      </p>
+      <div className="rounded-3xl border bg-card px-6 py-10 text-center shadow-card">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-orange-500/15 text-orange-700 dark:bg-orange-500/20 dark:text-orange-100">
+          <Target className="h-8 w-8" />
+        </div>
+        <h3 className="text-lg font-bold">Aún no hay jornada para predecir</h3>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+          Cuando salga el próximo partido del club, elige aquí quién gana. Un acierto suma 1 punto.
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {jornadas.map((jornada) => (
-        <section key={jornada.key} className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">{jornada.label}</h3>
-            {jornadaPhase(jornada, now) === "open" ? (
-              <Badge className="border-sky-800 bg-sky-600 text-white">Abierta</Badge>
-            ) : jornadaPhase(jornada, now) === "live" ? (
-              <Badge className="border-orange-800 bg-orange-500 text-white">En juego</Badge>
-            ) : (
-              <Badge variant="secondary">Cerrada</Badge>
-            )}
-          </div>
-          <div className="space-y-2">
-            {jornada.matches.map((match) => (
-              <PredictionMatch
-                key={match.id}
-                match={match}
-                prediction={predictions[match.id] ?? null}
-                split={community[match.id] ?? { home: 0, away: 0 }}
-                canPredict={jornada.canPredict}
-                now={now}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {jornadas.map((jornada) => {
+        const phase = jornadaPhase(jornada, now);
+        return (
+          <section key={jornada.key} className="space-y-3">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
+                  {phase === "open" ? "Se puede jugar" : phase === "live" ? "En juego" : "Ya cerrada"}
+                </p>
+                <h3 className="text-lg font-bold leading-tight">{jornada.label}</h3>
+              </div>
+              {phase === "open" ? (
+                <Badge className="border-sky-800 bg-sky-600 text-white">Abierta</Badge>
+              ) : phase === "live" ? (
+                <Badge className="border-orange-800 bg-orange-500 text-white">En juego</Badge>
+              ) : (
+                <Badge variant="secondary">Cerrada</Badge>
+              )}
+            </div>
+            {phase === "open" ? (
+              <p className="text-sm text-muted-foreground">
+                Toca el escudo del equipo que crees que gana. Se cierra 5 minutos antes del saque.
+              </p>
+            ) : null}
+            <div className="space-y-3">
+              {jornada.matches.map((match) => (
+                <PredictionMatch
+                  key={match.id}
+                  match={match}
+                  prediction={predictions[match.id] ?? null}
+                  split={community[match.id] ?? { home: 0, away: 0 }}
+                  canPredict={jornada.canPredict}
+                  now={now}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
+  );
+}
+
+export function QuinielaStrip({ hits, played }: { hits: number; played: number }) {
+  const rate = played > 0 ? Math.round((hits / played) * 100) : null;
+
+  return (
+    <section className="overflow-hidden rounded-3xl bg-primary text-primary-foreground shadow-card">
+      <div className="flex items-center justify-between gap-4 px-5 py-5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200">
+            Tu quiniela
+          </p>
+          <p className="mt-1 text-4xl font-black tabular-nums leading-none">{hits}</p>
+          <p className="mt-1 text-sm text-orange-100">
+            {hits === 1 ? "punto" : "puntos"} · {played} {played === 1 ? "pronóstico" : "pronósticos"}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-white/10 px-4 py-3 text-center">
+          <p className="text-2xl font-black tabular-nums leading-none">{rate == null ? "–" : `${rate}%`}</p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-orange-100">acierto</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -179,9 +223,15 @@ function PredictionMatch({
     void flush();
   }
 
+  const homePercent = total ? Math.round((liveSplit.home / total) * 100) : 0;
+  const awayPercent = total ? 100 - homePercent : 0;
+  const homeResult = pickResult(winnerId, match.home_team_id, selectedId);
+  const awayResult = pickResult(winnerId, match.away_team_id, selectedId);
+  const closing = !locked && canPredict ? closesIn(match.scheduled_at, now) : null;
+
   return (
-    <Card>
-      <CardContent className="space-y-3 p-3">
+    <Card className="overflow-hidden">
+      <CardContent className="space-y-3 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>
             {formatMatchWhen({
@@ -190,81 +240,95 @@ function PredictionMatch({
               isFederation: match.is_federation,
             })}
           </span>
-          <Link href={`/partidos/${match.id}`} className="font-medium text-accent hover:underline">
+          <Link href={`/partidos/${match.id}`} className="font-semibold text-accent hover:underline">
             Ver partido
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
           <TeamPick
             team={match.home_team}
             selected={selectedId === match.home_team_id}
             locked={locked}
-            result={
-              winnerId == null
-                ? null
-                : winnerId === match.home_team_id
-                  ? selectedId === match.home_team_id
-                    ? "hit"
-                    : selectedId
-                      ? "miss"
-                      : "won"
-                  : selectedId === match.home_team_id
-                    ? "miss"
-                    : null
-            }
-            percent={total ? Math.round((liveSplit.home / total) * 100) : null}
+            result={homeResult}
             onPick={() => pick(match.home_team_id)}
           />
+          <div className="flex items-center text-[11px] font-black tracking-wide text-muted-foreground">VS</div>
           <TeamPick
             team={match.away_team}
             selected={selectedId === match.away_team_id}
             locked={locked}
-            result={
-              winnerId == null
-                ? null
-                : winnerId === match.away_team_id
-                  ? selectedId === match.away_team_id
-                    ? "hit"
-                    : selectedId
-                      ? "miss"
-                      : "won"
-                  : selectedId === match.away_team_id
-                    ? "miss"
-                    : null
-            }
-            percent={total ? Math.round((liveSplit.away / total) * 100) : null}
+            result={awayResult}
             onPick={() => pick(match.away_team_id)}
           />
         </div>
 
+        {total > 0 ? (
+          <div>
+            <div className="flex h-2 overflow-hidden rounded-full bg-secondary">
+              <div className="bg-orange-500" style={{ width: `${homePercent}%` }} />
+              <div className="bg-primary" style={{ width: `${awayPercent}%` }} />
+            </div>
+            <div className="mt-1.5 flex justify-between text-[11px] font-semibold tabular-nums text-muted-foreground">
+              <span>
+                {homePercent}% {match.home_team.short_name || "Local"}
+              </span>
+              <span>
+                {awayPercent}% {match.away_team.short_name || "Visitante"}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         {match.status === "finished" ? (
-          <p className="text-center text-xs text-muted-foreground">
-            Resultado {match.home_sets}–{match.away_sets}
+          <p
+            className={cn(
+              "rounded-xl px-3 py-2 text-center text-sm font-semibold",
+              prediction?.is_correct
+                ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-100"
+                : prediction
+                  ? "bg-rose-500/10 text-rose-800 dark:text-rose-100"
+                  : "bg-secondary text-secondary-foreground"
+            )}
+          >
+            {match.home_sets}–{match.away_sets}
             {prediction?.is_correct
-              ? " · Acertaste · +1 punto"
+              ? " · Acertaste, +1 punto"
               : prediction
-                ? " · Fallaste · 0 puntos"
+                ? " · Esta vez no"
                 : " · No pronosticaste"}
           </p>
         ) : match.status === "live" ? (
-          <p className="text-center text-xs font-medium text-orange-700">En juego · predicción cerrada</p>
+          <p className="text-center text-xs font-semibold text-orange-700 dark:text-orange-200">
+            En juego · la predicción ya está cerrada
+          </p>
         ) : timeLocked ? (
-          <p className="text-center text-xs text-muted-foreground">
-            Las predicciones se cierran 5 minutos antes del partido
-          </p>
-        ) : canPredict ? (
-          <p className="text-center text-xs text-muted-foreground">
-            Toca el equipo que crees que gana. Se cierra 5 minutos antes.
-          </p>
-        ) : (
-          <p className="text-center text-xs text-muted-foreground">
-            Solo se predice la jornada más próxima
-          </p>
+          <p className="text-center text-xs text-muted-foreground">Cerrada 5 minutos antes del saque</p>
+        ) : closing ? (
+          <p className="text-center text-xs font-semibold text-sky-800 dark:text-sky-200">{closing}</p>
+        ) : canPredict ? null : (
+          <p className="text-center text-xs text-muted-foreground">Solo se predice la jornada más próxima</p>
         )}
       </CardContent>
     </Card>
   );
+}
+
+function pickResult(winnerId: string | null, teamId: string, selectedId: string | null) {
+  if (winnerId == null) return null;
+  if (winnerId === teamId) return selectedId === teamId ? ("hit" as const) : ("won" as const);
+  if (selectedId === teamId) return "miss" as const;
+  return null;
+}
+
+function closesIn(scheduledAt: string, now: number) {
+  const locksAt = predictionLocksAt(scheduledAt);
+  if (locksAt == null || locksAt <= now) return null;
+  const minutes = Math.max(1, Math.round((locksAt - now) / 60000));
+  if (minutes < 60) return `Cierra en ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `Cierra en ${hours} h`;
+  return `Cierra en ${Math.round(hours / 24)} días`;
 }
 
 function applyOwnVote(
@@ -288,29 +352,31 @@ function TeamPick({
   selected,
   locked,
   result,
-  percent,
   onPick,
 }: {
   team: MatchWithTeams["home_team"];
   selected: boolean;
   locked: boolean;
   result: "hit" | "miss" | "won" | null;
-  percent: number | null;
   onPick: () => void;
 }) {
+  const mark =
+    result === "hit" ? "Acierto" : result === "miss" ? "Tu pick" : result === "won" ? "Ganó" : selected ? "Tu pick" : null;
+
   return (
     <button
       type="button"
       onClick={onPick}
       disabled={locked}
       className={cn(
-        "flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-center transition-colors",
-        selected && !result && "border-orange-500 bg-orange-50 text-orange-950 dark:bg-orange-500/15 dark:text-orange-50",
+        "flex min-h-[8.5rem] flex-col items-center justify-center gap-2 rounded-2xl border px-2 py-3 text-center transition-colors",
+        selected && !result && "border-orange-500 bg-orange-50 text-orange-950 shadow-sm ring-2 ring-orange-400/70 dark:bg-orange-500/15 dark:text-orange-50 dark:ring-orange-400/40",
         result === "hit" && "border-emerald-600 bg-emerald-50 text-emerald-950 dark:bg-emerald-500/15 dark:text-emerald-50",
-        result === "miss" && "border-rose-400 bg-rose-50 text-rose-950 dark:bg-rose-500/15 dark:text-rose-50",
-        result === "won" && "border-emerald-300 bg-emerald-50/60 text-emerald-950 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-50",
+        result === "miss" && selected && "border-rose-400 bg-rose-50 text-rose-950 dark:bg-rose-500/15 dark:text-rose-50",
+        result === "won" && "border-emerald-300 bg-emerald-50/70 text-emerald-950 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-50",
         !selected && !result && "bg-background hover:border-orange-300",
-        locked && "cursor-default"
+        locked && !selected && !result && "cursor-default opacity-80",
+        !locked && "active:scale-[0.98]"
       )}
     >
       <TeamLogo
@@ -318,12 +384,28 @@ function TeamPick({
         shortName={team.short_name}
         logoUrl={team.logo_url}
         federationTeamId={team.federation_team_id}
-        size="sm"
+        size="md"
       />
-      <span className="line-clamp-2 text-xs font-semibold leading-tight">{team.name}</span>
-      {percent != null ? (
-        <span className="text-[10px] opacity-75">{percent}% de la afición</span>
-      ) : null}
+      <span className="line-clamp-2 text-sm font-bold leading-tight">{team.name}</span>
+      {mark ? (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            result === "hit" && "bg-emerald-600 text-white",
+            result === "miss" && "bg-rose-600 text-white",
+            result === "won" && "bg-emerald-600/15 text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-50",
+            !result && "bg-orange-500 text-white"
+          )}
+        >
+          {result === "hit" ? <Check className="h-3 w-3" /> : null}
+          {result === "miss" ? <X className="h-3 w-3" /> : null}
+          {mark}
+        </span>
+      ) : (
+        <span className="text-[10px] font-medium text-muted-foreground">
+          {locked ? "Cerrada" : "Elegir"}
+        </span>
+      )}
     </button>
   );
 }

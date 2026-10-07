@@ -1,11 +1,11 @@
 import { memo } from "react";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
 import { matchStatusMeta } from "@/lib/constants";
 import { formatMatchWhen } from "@/lib/federation/schedule";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MatchKindBadge, cnMatchCard, isFriendlyMatch } from "@/components/matches/match-kind";
+import { MatchPlaceLink } from "@/components/matches/match-place-link";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams, Team } from "@/lib/types";
@@ -18,84 +18,88 @@ export const MatchCard = memo(function MatchCard({
   href?: string | null;
 }) {
   const status = matchStatusMeta(match.status);
-  const card = (
-      <Card className={cnMatchCard(match)}>
-        <CardContent className="space-y-3 p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium capitalize text-muted-foreground">
-              {formatMatchWhen({
-                scheduledAt: match.scheduled_at,
-                notes: match.notes,
-                isFederation: match.is_federation,
-              })}
+  const summary = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium capitalize text-muted-foreground">
+          {formatMatchWhen({
+            scheduledAt: match.scheduled_at,
+            notes: match.notes,
+            isFederation: match.is_federation,
+          })}
+        </p>
+        <div className="flex flex-wrap justify-end gap-1">
+          <MatchKindBadge match={match} round={match.federation_round} />
+          <Badge
+            className={
+              match.status === "live"
+                ? "border-orange-800 bg-orange-500 text-white"
+                : match.status === "scheduled"
+                  ? "border-sky-800 bg-sky-600 text-white"
+                  : match.status === "cancelled"
+                    ? "border-slate-400 bg-slate-200 text-slate-900"
+                    : "border-slate-800 bg-slate-700 text-white"
+            }
+          >
+            {status.label}
+          </Badge>
+        </div>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <TeamSide team={match.home_team} align="right" caption="Local" />
+        <div
+          className={cn(
+            "min-w-[4.5rem] rounded-xl px-3 py-2 text-center",
+            isFriendlyMatch(match)
+              ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-50"
+              : "bg-primary text-primary-foreground"
+          )}
+        >
+          {match.status === "finished" ? (
+            <p className="text-xl font-bold tabular-nums leading-none">
+              {match.home_sets} – {match.away_sets}
             </p>
-            <div className="flex flex-wrap justify-end gap-1">
-              <MatchKindBadge match={match} round={match.federation_round} />
-              <Badge
-                className={
-                  match.status === "live"
-                    ? "border-orange-800 bg-orange-500 text-white"
-                    : match.status === "scheduled"
-                      ? "border-sky-800 bg-sky-600 text-white"
-                      : match.status === "cancelled"
-                        ? "border-slate-400 bg-slate-200 text-slate-900"
-                        : "border-slate-800 bg-slate-700 text-white"
-                }
+          ) : (
+            <>
+              <p className="text-xl font-bold tabular-nums leading-none">
+                {match.home_points} – {match.away_points}
+              </p>
+              <p
+                className={cn(
+                  "mt-1 text-[10px] font-semibold uppercase tracking-wide",
+                  isFriendlyMatch(match) ? "text-orange-700 dark:text-orange-200" : "text-orange-300"
+                )}
               >
-                {status.label}
-              </Badge>
-            </div>
-          </div>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <TeamSide team={match.home_team} align="right" caption="Local" />
-            <div
-              className={cn(
-                "min-w-[4.5rem] rounded-xl px-3 py-2 text-center",
-                isFriendlyMatch(match)
-                  ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-50"
-                  : "bg-primary text-primary-foreground"
-              )}
-            >
-              {match.status === "finished" ? (
-                <p className="text-xl font-bold tabular-nums leading-none">
-                  {match.home_sets} – {match.away_sets}
-                </p>
-              ) : (
-                <>
-                  <p className="text-xl font-bold tabular-nums leading-none">
-                    {match.home_points} – {match.away_points}
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-1 text-[10px] font-semibold uppercase tracking-wide",
-                      isFriendlyMatch(match) ? "text-orange-700 dark:text-orange-200" : "text-orange-300"
-                    )}
-                  >
-                    Sets{" "}
-                    <span className="tabular-nums">
-                      {match.home_sets}–{match.away_sets}
-                    </span>
-                  </p>
-                </>
-              )}
-            </div>
-            <TeamSide team={match.away_team} align="left" caption="Visitante" />
-          </div>
-          {match.location ? (
-            <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              {match.location}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
+                Sets{" "}
+                <span className="tabular-nums">
+                  {match.home_sets}–{match.away_sets}
+                </span>
+              </p>
+            </>
+          )}
+        </div>
+        <TeamSide team={match.away_team} align="left" caption="Visitante" />
+      </div>
+    </>
   );
 
-  if (href === null) return <div className="block h-full">{card}</div>;
   return (
-    <Link href={href ?? `/partidos/${match.id}`} className="block h-full">
-      {card}
-    </Link>
+    <Card className={cnMatchCard(match)}>
+      <CardContent className="space-y-3 p-4">
+        {href === null ? (
+          <div className="space-y-3">{summary}</div>
+        ) : (
+          <Link href={href ?? `/partidos/${match.id}`} className="block space-y-3">
+            {summary}
+          </Link>
+        )}
+        {match.location ? (
+          <div className="flex justify-center">
+            <MatchPlaceLink location={match.location} className="text-xs" />
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 });
 

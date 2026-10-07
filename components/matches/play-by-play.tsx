@@ -1,10 +1,11 @@
 "use client";
 
 import { memo, useMemo } from "react";
+import { MatchAwaiting } from "@/components/matches/match-awaiting";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { cn } from "@/lib/utils";
 import { annotateEventScores, isScoringAction } from "@/lib/volleyball";
-import type { MatchEventWithPlayer, Team } from "@/lib/types";
+import type { MatchEventWithPlayer, MatchStatus, Team } from "@/lib/types";
 
 export type RallyTeamInfo = Pick<Team, "name" | "short_name" | "logo_url" | "federation_team_id">;
 
@@ -13,11 +14,13 @@ export const PlayByPlay = memo(function PlayByPlay({
   homeTeamId,
   homeTeam,
   awayTeam,
+  awaitingStatus = "points",
 }: {
   events: MatchEventWithPlayer[];
   homeTeamId: string;
   homeTeam: RallyTeamInfo;
   awayTeam: RallyTeamInfo;
+  awaitingStatus?: MatchStatus | "points";
 }) {
   const homeLabel = homeTeam.short_name || homeTeam.name;
   const awayLabel = awayTeam.short_name || awayTeam.name;
@@ -49,14 +52,7 @@ export const PlayByPlay = memo(function PlayByPlay({
   }, [events, homeTeamId]);
 
   if (groups.length === 0) {
-    return (
-      <section className="overflow-hidden rounded-3xl border bg-card shadow-card">
-        <RallyHeader />
-        <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-          Cuando se anote el primer punto verás aquí el marcador punto a punto.
-        </p>
-      </section>
-    );
+    return <MatchAwaiting status={awaitingStatus} />;
   }
 
   return (

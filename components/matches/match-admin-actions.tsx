@@ -39,7 +39,7 @@ export function MatchAdminActions({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="space-y-2">
       {canTrackLive && status !== "cancelled" && (status !== "finished" || allowFinishedStats) ? (
         <Button asChild variant="accent" className="w-full">
           <Link href={`/partidos/${matchId}/seguimiento`}>
@@ -47,39 +47,49 @@ export function MatchAdminActions({
           </Link>
         </Button>
       ) : null}
-      {canTrackLive && status === "scheduled" ? (
-        <Button
-          variant="secondary"
-          disabled={pending}
-          onClick={() => changeStatus("live")}
-        >
-          Iniciar partido
-        </Button>
-      ) : null}
-      {status === "live" ? (
-        <Button
-          variant="secondary"
-          disabled={pending}
-          onClick={() => changeStatus("finished")}
-        >
-          Finalizar partido
-        </Button>
-      ) : null}
-      {status !== "cancelled" && status === "scheduled" ? (
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() => changeStatus("cancelled")}
-        >
-          Cancelar partido
-        </Button>
-      ) : null}
-      {status !== "cancelled" ? (
-        <Button asChild variant="outline">
-          <Link href={`/partidos/${matchId}/editar`}>Editar partido</Link>
-        </Button>
-      ) : null}
-      <Button variant="destructive" disabled={pending} onClick={onDelete}>
+      <div className="flex flex-wrap gap-2">
+        {canTrackLive && status === "scheduled" ? (
+          <Button
+            variant="secondary"
+            className="min-w-[46%] flex-1"
+            disabled={pending}
+            onClick={() => changeStatus("live")}
+          >
+            Iniciar partido
+          </Button>
+        ) : null}
+        {status === "live" ? (
+          <Button
+            variant="secondary"
+            className="min-w-[46%] flex-1"
+            disabled={pending}
+            onClick={() => changeStatus("finished")}
+          >
+            Finalizar partido
+          </Button>
+        ) : null}
+        {status !== "cancelled" && status === "scheduled" ? (
+          <Button
+            variant="outline"
+            className="min-w-[46%] flex-1"
+            disabled={pending}
+            onClick={() => changeStatus("cancelled")}
+          >
+            Cancelar partido
+          </Button>
+        ) : null}
+        {status !== "cancelled" ? (
+          <Button asChild variant="outline" className="min-w-[46%] flex-1">
+            <Link href={`/partidos/${matchId}/editar`}>Editar partido</Link>
+          </Button>
+        ) : null}
+      </div>
+      <Button
+        variant="ghost"
+        className="w-full text-rose-700 hover:bg-rose-500/10 hover:text-rose-800 dark:text-rose-300 dark:hover:text-rose-200"
+        disabled={pending}
+        onClick={onDelete}
+      >
         Eliminar partido
       </Button>
     </div>

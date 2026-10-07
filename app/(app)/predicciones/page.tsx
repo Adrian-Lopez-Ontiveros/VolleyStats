@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Target } from "lucide-react";
 import { GameLeaderboard } from "@/components/game/leaderboard";
-import { PredictionsBoard } from "@/components/game/predictions-board";
+import { PredictionsBoard, QuinielaStrip } from "@/components/game/predictions-board";
 import { RewardsDisclosure } from "@/components/game/rewards-grid";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
@@ -37,15 +37,19 @@ export default async function PredictionsPage() {
     <>
       <PageHeader
         title="Predicciones"
-        description="Elige el ganador de la jornada más próxima. Un acierto vale 1 punto, un fallo 0."
+        description="Elige quién gana. Cada acierto suma 1 punto."
         leading={
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-100">
             <Target className="h-5 w-5" />
           </span>
         }
       />
 
       <div className="space-y-8">
+        <QuinielaStrip
+          hits={Object.values(predictionMap).filter((row) => row.is_correct).length}
+          played={Object.values(predictionMap).filter((row) => row.is_correct != null).length}
+        />
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Jornada más próxima</h2>
           <PredictionsBoard

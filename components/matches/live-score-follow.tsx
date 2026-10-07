@@ -54,6 +54,7 @@ export function LiveScoreFollow({
         homeTeamId={match.home_team_id}
         homeTeam={match.home_team}
         awayTeam={match.away_team}
+        awaitingStatus={match.status}
       />
     </div>
   );

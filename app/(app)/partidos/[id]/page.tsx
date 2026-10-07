@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { MapPin } from "lucide-react";
 import { MatchKindBadge } from "@/components/matches/match-kind";
+import { MatchPlaceLink } from "@/components/matches/match-place-link";
 import { formatMatchWhen, stripFmvScheduleNote } from "@/lib/federation/schedule";
 import { MatchAdminActions } from "@/components/matches/match-admin-actions";
 import { BoxScoreCard } from "@/components/matches/box-score";
 import { BoxScoreReveal } from "@/components/matches/box-score-reveal";
 import { ShareBoxScore } from "@/components/matches/share-box-score";
 import { LiveScoreFollow } from "@/components/matches/live-score-follow";
+import { MatchAwaiting } from "@/components/matches/match-awaiting";
 import { MatchLineup } from "@/components/matches/match-lineup";
 import { MatchStatsPanel } from "@/components/stats/match-stats-panel";
 import { PointHistory } from "@/components/matches/point-history";
@@ -88,15 +89,12 @@ export default async function MatchDetailPage({
         />
         <div className="space-y-4">
           <LiveScoreFollow match={typedMatch} events={publicEvents} />
-          <p className="flex justify-center">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
-          </p>
-          {typedMatch.location ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              {typedMatch.location}
-            </p>
-          ) : null}
+            {typedMatch.location ? (
+              <MatchPlaceLink location={typedMatch.location} className="text-sm" />
+            ) : null}
+          </div>
           {notes ? (
             <Card>
               <CardContent className="p-4 text-sm">{notes}</CardContent>
@@ -192,16 +190,12 @@ export default async function MatchDetailPage({
       />
       <div className="space-y-4">
         <Scoreboard match={typedMatch} />
-        <p className="flex justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
-        </p>
-
-        {typedMatch.location ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4" />
-            {typedMatch.location}
-          </p>
-        ) : null}
+          {typedMatch.location ? (
+            <MatchPlaceLink location={typedMatch.location} className="text-sm" />
+          ) : null}
+        </div>
 
         {notes ? (
           <Card>
@@ -226,11 +220,11 @@ export default async function MatchDetailPage({
           allowFinishedStats={Boolean(typedMatch.is_federation)}
         />
 
-        {canTrackLiveMatch(typedMatch) && clubTeamId ? (
+        {canTrackLiveMatch(typedMatch) && clubTeamId && typedLineup.length > 0 ? (
           <MatchLineup teamName={clubTeamName} entries={typedLineup} />
         ) : null}
 
-        {canTrackLiveMatch(typedMatch) && clubTeamId ? (
+        {canTrackLiveMatch(typedMatch) && clubTeamId && (typedLineup.length > 0 || typedSubs.length > 0) ? (
           <SubstitutionPanel
             matchId={typedMatch.id}
             players={roster}
@@ -241,23 +235,31 @@ export default async function MatchDetailPage({
           />
         ) : null}
 
-        <section>
-          <h2 className="mb-3 text-lg font-semibold">Resumen estadístico</h2>
-          <MatchStatsPanel match={typedMatch} events={typedEvents} setterStarts={setterStarts} />
-        </section>
+        {typedEvents.length > 0 ? (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Resumen estadístico</h2>
+            <MatchStatsPanel match={typedMatch} events={typedEvents} setterStarts={setterStarts} />
+          </section>
+        ) : typedSubs.length === 0 ? (
+          <MatchAwaiting status={typedMatch.status} />
+        ) : null}
 
-        <PointHistory
-          events={typedEvents}
-          substitutions={typedSubs}
-          homeTeamId={typedMatch.home_team_id}
-          homeTeam={typedMatch.home_team}
-          awayTeam={typedMatch.away_team}
-        />
+        {typedEvents.length > 0 || typedSubs.length > 0 ? (
+          <PointHistory
+            events={typedEvents}
+            substitutions={typedSubs}
+            homeTeamId={typedMatch.home_team_id}
+            homeTeam={typedMatch.home_team}
+            awayTeam={typedMatch.away_team}
+          />
+        ) : null}
 
-        <section>
-          <h2 className="mb-3 text-lg font-semibold">Historial de cambios</h2>
-          <ActivityLog entries={activity} />
-        </section>
+        {activity.length > 0 ? (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Historial de cambios</h2>
+            <ActivityLog entries={activity} />
+          </section>
+        ) : null}
       </div>
     </>
   );
