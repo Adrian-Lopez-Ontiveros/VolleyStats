@@ -724,7 +724,7 @@ export function LiveTracker({
     removeSetSubstitutions(teamId, setNumber);
     startTransition(async () => {
       const result = await resetSetSubstitutions(match.id, teamId, setNumber);
-      if (result.error) {
+      if ("error" in result && result.error) {
         toast.error(result.error);
         void pullEvents();
         return;

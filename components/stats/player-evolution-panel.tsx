@@ -562,75 +562,68 @@ function SkillRow({
   );
 }
 
-function Dot() {
-  return <span className="text-muted-foreground"> · </span>;
-}
-
-function Bits({ parts }: { parts: ReactNode[] }) {
+function Bits({ parts }: { parts: { text: string; className?: string }[] }) {
   return parts.map((part, index) => (
-    <span key={index}>
-      {index > 0 ? <Dot /> : null}
-      {part}
+    <span key={`${part.text}-${index}`}>
+      {index > 0 ? <span className="text-muted-foreground"> · </span> : null}
+      <span className={part.className}>{part.text}</span>
     </span>
   ));
 }
 
 function AttackLine({ stats }: { stats: AttackStats }) {
-  return (
-    <Bits
-      parts={[
-        <span className="font-semibold tabular-nums">
-          {stats.kills} {stats.kills === 1 ? "pt" : "pts"}
-        </span>,
-        <span className="text-muted-foreground">
-          {countLabel(stats.attempts, "ataque", "ataques")}
-        </span>,
-        stats.continuations > 0 ? (
-          <span className={GOOD}>{stats.continuations} cont.</span>
-        ) : null,
-        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
-      ].filter(Boolean)}
-    />
-  );
+  const parts = [
+    {
+      text: `${stats.kills} ${stats.kills === 1 ? "pt" : "pts"}`,
+      className: "font-semibold tabular-nums",
+    },
+    {
+      text: countLabel(stats.attempts, "ataque", "ataques"),
+      className: "text-muted-foreground",
+    },
+  ];
+  if (stats.continuations > 0) {
+    parts.push({ text: `${stats.continuations} cont.`, className: GOOD });
+  }
+  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
+  return <Bits parts={parts} />;
 }
 
 function ServeLine({ stats }: { stats: ServeStats }) {
-  return (
-    <Bits
-      parts={[
-        <span className="font-semibold tabular-nums">
-          {countLabel(stats.aces, "ace", "aces")}
-        </span>,
-        <span className="text-muted-foreground">
-          {countLabel(stats.attempts, "saque", "saques")}
-        </span>,
-        stats.inPlay > 0 ? <span className={GOOD}>{stats.inPlay} dentro</span> : null,
-        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
-      ].filter(Boolean)}
-    />
-  );
+  const parts = [
+    {
+      text: countLabel(stats.aces, "ace", "aces"),
+      className: "font-semibold tabular-nums",
+    },
+    {
+      text: countLabel(stats.attempts, "saque", "saques"),
+      className: "text-muted-foreground",
+    },
+  ];
+  if (stats.inPlay > 0) parts.push({ text: `${stats.inPlay} dentro`, className: GOOD });
+  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
+  return <Bits parts={parts} />;
 }
 
 function BlockLine({ stats }: { stats: BlockStats }) {
-  return (
-    <Bits
-      parts={[
-        <span className="font-semibold tabular-nums">
-          {stats.points} {stats.points === 1 ? "pt" : "pts"}
-        </span>,
-        <span className="text-muted-foreground">
-          {countLabel(stats.attempts, "bloqueo", "bloqueos")}
-        </span>,
-        stats.touches > 0 ? (
-          <span className={POOR}>{countLabel(stats.touches, "toque", "toques")}</span>
-        ) : null,
-        stats.continuations > 0 ? (
-          <span className={GOOD}>{stats.continuations} cont.</span>
-        ) : null,
-        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
-      ].filter(Boolean)}
-    />
-  );
+  const parts = [
+    {
+      text: `${stats.points} ${stats.points === 1 ? "pt" : "pts"}`,
+      className: "font-semibold tabular-nums",
+    },
+    {
+      text: countLabel(stats.attempts, "bloqueo", "bloqueos"),
+      className: "text-muted-foreground",
+    },
+  ];
+  if (stats.touches > 0) {
+    parts.push({ text: countLabel(stats.touches, "toque", "toques"), className: POOR });
+  }
+  if (stats.continuations > 0) {
+    parts.push({ text: `${stats.continuations} cont.`, className: GOOD });
+  }
+  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
+  return <Bits parts={parts} />;
 }
 
 function GradeLine({
@@ -640,23 +633,21 @@ function GradeLine({
   noun: [string, string];
   stats: ReceptionStats | DefenseStats;
 }) {
-  return (
-    <Bits
-      parts={[
-        <span className="font-semibold tabular-nums">
-          {countLabel(stats.total, noun[0], noun[1])}
-        </span>,
-        stats.good > 0 ? (
-          <span className={GOOD}>{countLabel(stats.good, "buena", "buenas")}</span>
-        ) : null,
-        stats.medium > 0 ? (
-          <span className={MID}>{countLabel(stats.medium, "media", "medias")}</span>
-        ) : null,
-        stats.bad > 0 ? (
-          <span className={POOR}>{countLabel(stats.bad, "mala", "malas")}</span>
-        ) : null,
-        stats.errors > 0 ? <span className={BAD}>{stats.errors} err.</span> : null,
-      ].filter(Boolean)}
-    />
-  );
+  const parts = [
+    {
+      text: countLabel(stats.total, noun[0], noun[1]),
+      className: "font-semibold tabular-nums",
+    },
+  ];
+  if (stats.good > 0) {
+    parts.push({ text: countLabel(stats.good, "buena", "buenas"), className: GOOD });
+  }
+  if (stats.medium > 0) {
+    parts.push({ text: countLabel(stats.medium, "media", "medias"), className: MID });
+  }
+  if (stats.bad > 0) {
+    parts.push({ text: countLabel(stats.bad, "mala", "malas"), className: POOR });
+  }
+  if (stats.errors > 0) parts.push({ text: `${stats.errors} err.`, className: BAD });
+  return <Bits parts={parts} />;
 }
