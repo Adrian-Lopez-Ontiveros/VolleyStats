@@ -8,6 +8,7 @@ import { FmvLeagueSearch } from "@/components/matches/fmv-league-search";
 import { JornadaBar } from "@/components/matches/jornada-bar";
 import { LeagueStandings } from "@/components/matches/league-standings";
 import { MatchViews } from "@/components/matches/match-views";
+import { AppLogo } from "@/components/app-logo";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function MatchesBrowser({
       <PageHeader
         title="Partidos"
         description={description}
+        leading={<AppLogo src="/partidos-logo.png" className="mt-0.5 h-11 w-14 text-foreground" />}
         action={
           canManage ? (
             <Button asChild variant="accent" size="sm">

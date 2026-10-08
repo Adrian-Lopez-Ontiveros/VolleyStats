@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GameLeaderboard } from "@/components/game/leaderboard";
 import { PredictionsBoard, QuinielaStrip } from "@/components/game/predictions-board";
 import { RewardsDisclosure } from "@/components/game/rewards-grid";
+import { AppLogo } from "@/components/app-logo";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { loadGamePageData } from "@/lib/actions/game";
@@ -37,6 +38,7 @@ export default async function PredictionsPage() {
       <PageHeader
         title="Predicciones"
         description="Elige quién gana. Cada acierto suma 1 punto."
+        leading={<AppLogo src="/predictions-logo.png" className="mt-0.5 h-12 w-11 text-foreground" />}
       />
 
       <div className="space-y-8">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Medal, Plus } from "lucide-react";
 import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
 import { EmptyState } from "@/components/empty-state";
+import { AppLogo } from "@/components/app-logo";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { StandingsTable } from "@/components/stats/standings-table";
@@ -72,6 +73,7 @@ export function LeagueBrowser({
       <PageHeader
         title="Clasificación"
         description={`${meta.label}. Tabla calculada con los partidos finalizados de esta liga.`}
+        leading={<AppLogo src="/liga-logo.png" className="mt-0.5 h-12 w-12 text-foreground" />}
         action={
           <div className="flex flex-wrap justify-end gap-2">
             {isAdmin ? <RefreshLeaguesButton /> : null}
