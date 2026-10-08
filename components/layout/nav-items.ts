@@ -1,10 +1,8 @@
 import {
   CircleDot,
-  ClipboardList,
   Medal,
   Target,
   Newspaper,
-  Shield,
   Trophy,
   UserRound,
   type LucideIcon,
@@ -24,18 +22,15 @@ const spectatorItems: AppNavItem[] = [
 ];
 
 const memberItems: AppNavItem[] = [
-  { href: "/noticias", label: "Noticias", icon: Newspaper },
   { href: "/partidos", label: "Partidos", icon: Trophy },
-  { href: "/predicciones", label: "Predicciones", icon: Target },
   { href: "/liga", label: "Liga", icon: Medal },
-  { href: "/equipos", label: "Equipos", icon: CircleDot },
+  { href: "/predicciones", label: "Predicciones", icon: Target },
+  { href: "/perfil", label: "Perfil", icon: UserRound },
 ];
 
 export const SHOW_TACTICS_NAV = false;
 
 export function getAppNavItems({
-  isAdmin,
-  isCoach,
   isGuest,
 }: {
   isAdmin: boolean;
@@ -43,13 +38,5 @@ export function getAppNavItems({
   isGuest: boolean;
 }): AppNavItem[] {
   if (isGuest) return spectatorItems;
-
-  return [
-    ...memberItems,
-    ...(SHOW_TACTICS_NAV && isCoach
-      ? [{ href: "/entrenador", label: "Táctica", icon: ClipboardList }]
-      : []),
-    { href: "/perfil", label: "Perfil", icon: UserRound },
-    ...(isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
-  ];
+  return memberItems;
 }

@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ClipboardList, KeyRound, LogOut, Newspaper, Shield, Target, UserRound } from "lucide-react";
+import {
+  CircleDot,
+  ClipboardList,
+  KeyRound,
+  LogOut,
+  Newspaper,
+  Shield,
+  Target,
+  UserRound,
+} from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { SHOW_TACTICS_NAV } from "@/components/layout/nav-items";
 import { hasCoachAccess } from "@/lib/constants";
@@ -45,6 +54,12 @@ export function UserMenu({ user }: { user: SessionUser }) {
           <Link href="/noticias">
             <Newspaper className="h-4 w-4" />
             Noticias
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/equipos">
+            <CircleDot className="h-4 w-4" />
+            Equipos
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

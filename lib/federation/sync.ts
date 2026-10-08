@@ -171,13 +171,14 @@ export async function refreshStoredLeague(
     supabase,
     matches.map((match) => match.id)
   );
-
-  for (const match of matches) {
+  const pending = matches.flatMap((match) => {
     const existing = existingByFedId.get(match.id);
-    if (!existing) continue;
-    const result = await updateExistingFederationMatch(supabase, existing, match);
-    report[result] += 1;
-  }
+    return existing ? [{ match, existing }] : [];
+  });
+  const outcomes = await mapPool(pending, 8, ({ match, existing }) =>
+    updateExistingFederationMatch(supabase, existing, match)
+  );
+  for (const result of outcomes) report[result] += 1;
 
   const removed = await removeRivalsOutsideGroup(
     supabase,
@@ -364,6 +365,16 @@ async function refreshFederationTeam(
 
   const { error } = await supabase.from("teams").update(patch).eq("id", teamId);
   if (error) throw new Error(error.message);
+}
+
+async function mapPool<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>) {
+  const results: R[] = [];
+  const size = Math.max(1, limit);
+  for (let index = 0; index < items.length; index += size) {
+    const chunk = items.slice(index, index + size);
+    results.push(...(await Promise.all(chunk.map((item) => mapper(item)))));
+  }
+  return results;
 }
 
 async function loadMatchesByFederationId(supabase: SupabaseClient, federationIds: string[]) {

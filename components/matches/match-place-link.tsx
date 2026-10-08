@@ -39,7 +39,7 @@ export function MatchPlaceLink({
       <button
         type="button"
         className={cn(
-          "inline-flex max-w-full items-center gap-1 text-left font-medium text-accent underline decoration-accent/40 underline-offset-2",
+          "inline-flex max-w-full items-center gap-1 text-left font-medium text-[#0B1F3A] underline decoration-[#0B1F3A]/40 underline-offset-2 dark:text-sky-300 dark:decoration-sky-300/40",
           className
         )}
         onClick={(event) => {

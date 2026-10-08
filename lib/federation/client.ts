@@ -99,13 +99,22 @@ async function fmvGet<T>(path: string, params?: Record<string, string | number>)
     }
   }
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent": "FuenlaStats/1.0 (CV Fuenlabrada)",
-    },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "FuenlaStats/1.0 (CV Fuenlabrada)",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new Error(`FMV ${path} tardó demasiado`);
+    }
+    throw error;
+  }
   if (!response.ok) {
     throw new Error(`FMV ${path} → ${response.status}`);
   }
@@ -381,54 +390,80 @@ export async function resolveFmvTestLeague(): Promise<FmvCatalogPath> {
   };
 }
 
-/** FMV group whose standings include one of these federation team ids. */
+/** 2ª Autonómica Preferente. 1ª Preferente and the zonal divisions are not club leagues. */
+function isSecondPreferenteDivision(name: string) {
+  const folded = foldFmvText(name);
+  if (!folded.includes("preferente")) return false;
+  if (folded.startsWith("1") || folded.includes("primera")) return false;
+  return folded.startsWith("2") || folded.includes("segunda");
+}
+
+/**
+ * FMV group whose standings include one of these federation team ids.
+ * Only the regular season of 2ª Preferente: scanning every division and playoff
+ * group blows the 60s cron limit and can link the wrong división.
+ */
 export async function locateFmvGroupsByTeamIds(teamIds: string[]): Promise<LocatedFmvGroup[]> {
   const wanted = new Set(teamIds.filter(Boolean));
   if (wanted.size === 0) return [];
 
-  const found = new Map<string, LocatedFmvGroup>();
   const types = await fetchFmvCompetitionTypes();
   const type =
     types.find((item) => foldFmvText(item.name).includes("federad")) ?? types[0];
   if (!type) return [];
 
-  const competitions = await fetchFmvCompetitions(type.id);
-  for (const competition of competitions) {
-    if (found.size === wanted.size) break;
-    const competitionName = foldFmvText(competition.name);
-    const relevant =
-      (competitionName.includes("cadete") && competitionName.includes("fem")) ||
-      (competitionName.includes("senior") &&
-        (competitionName.includes("masc") || competitionName.includes("fem")));
-    if (!relevant) continue;
+  const competitions = (await fetchFmvCompetitions(type.id)).filter((competition) => {
+    const name = foldFmvText(competition.name);
+    return (
+      (name.includes("cadete") && name.includes("fem")) ||
+      (name.includes("senior") && (name.includes("masc") || name.includes("fem")))
+    );
+  });
 
-    const divisions = await fetchFmvDivisions(competition.id);
-    for (const division of divisions) {
-      if (found.size === wanted.size) break;
-      const phases = await fetchFmvPhases(division.id);
-      const regularPhases = phases.filter((phase) => foldFmvText(phase.name).includes("regular"));
-      for (const phase of regularPhases.length > 0 ? regularPhases : phases) {
-        if (found.size === wanted.size) break;
-        const groups = await fetchFmvGroupOptions(phase.id);
-        for (const group of groups) {
-          if (found.size === wanted.size) break;
-          let groupTeams: FmvTeam[] = [];
-          try {
-            groupTeams = await fetchFmvTeams(group.id);
-          } catch {
-            continue;
-          }
-          const hits = groupTeams.filter((team) => wanted.has(team.id));
-          if (hits.length === 0) continue;
-          const path = `${competition.name} · ${division.name} · ${phase.name} · ${group.name}`;
-          for (const team of hits) {
-            if (found.has(team.id)) continue;
-            found.set(team.id, { teamId: team.id, groupId: group.id, path, teams: groupTeams });
-          }
-        }
-      }
-    }
-  }
+  const found = new Map<string, LocatedFmvGroup>();
+  await Promise.all(
+    competitions.map(async (competition) => {
+      const divisions = (await fetchFmvDivisions(competition.id)).filter((division) =>
+        isSecondPreferenteDivision(division.name)
+      );
+      await Promise.all(
+        divisions.map(async (division) => {
+          const phases = await fetchFmvPhases(division.id);
+          const regularPhases = phases.filter((phase) =>
+            foldFmvText(phase.name).includes("regular")
+          );
+          const phaseList = regularPhases.length > 0 ? regularPhases : phases;
+          await Promise.all(
+            phaseList.map(async (phase) => {
+              const groups = await fetchFmvGroupOptions(phase.id);
+              await Promise.all(
+                groups.map(async (group) => {
+                  let groupTeams: FmvTeam[] = [];
+                  try {
+                    groupTeams = await fetchFmvTeams(group.id);
+                  } catch {
+                    return;
+                  }
+                  const hits = groupTeams.filter((team) => wanted.has(team.id));
+                  if (hits.length === 0) return;
+                  const path = `${competition.name} · ${division.name} · ${phase.name} · ${group.name}`;
+                  for (const team of hits) {
+                    if (found.has(team.id)) continue;
+                    found.set(team.id, {
+                      teamId: team.id,
+                      groupId: group.id,
+                      path,
+                      teams: groupTeams,
+                    });
+                  }
+                })
+              );
+            })
+          );
+        })
+      );
+    })
+  );
 
   return [...found.values()];
 }
