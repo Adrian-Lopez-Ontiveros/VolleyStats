@@ -1868,6 +1868,11 @@ begin
   if p_reward_id is null or p_reward_id = '' then
     raise exception 'Recompensa no válida';
   end if;
+  -- frame_none antes de frame_%: el _ de LIKE es un comodín.
+  if p_reward_id = 'frame_none' then
+    update public.user_progress set equipped_frame = null where user_id = uid;
+    return jsonb_build_object('ok', true, 'reward_id', p_reward_id);
+  end if;
   if not exists (
     select 1 from public.user_rewards
     where user_id = uid and reward_id = p_reward_id

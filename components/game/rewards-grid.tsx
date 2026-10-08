@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { IdCard, Lock, Medal, Sparkles, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { equipReward } from "@/lib/actions/game";
-import { GAME_REWARDS, type GameReward } from "@/lib/game";
+import { FRAME_NONE, GAME_REWARDS, type GameReward } from "@/lib/game";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { UserProgress } from "@/lib/types";
@@ -97,12 +97,13 @@ function RewardCard({
     unlocked && (reward.kind === "title" || reward.kind === "frame" || reward.kind === "card");
 
   async function onEquip() {
+    const clearing = equipped && reward.kind === "frame";
     setPending(true);
-    const result = await equipReward(reward.id);
+    const result = await equipReward(clearing ? FRAME_NONE : reward.id);
     setPending(false);
     if (result.error) toast.error(result.error);
     else {
-      toast.success(`Equipado: ${reward.label}`);
+      toast.success(clearing ? "Marco quitado" : `Equipado: ${reward.label}`);
       router.refresh();
     }
   }
@@ -131,13 +132,17 @@ function RewardCard({
             size="sm"
             variant={equipped ? "secondary" : "outline"}
             className="mt-2 h-8"
-            disabled={pending || equipped}
+            disabled={pending || (equipped && reward.kind !== "frame")}
             onClick={onEquip}
           >
             {equipped
               ? reward.kind === "card"
                 ? "En el cromo"
-                : "En uso"
+                : reward.kind === "frame"
+                  ? pending
+                    ? "Quitando..."
+                    : "Quitar"
+                  : "En uso"
               : pending
                 ? "Equipando..."
                 : reward.kind === "card"

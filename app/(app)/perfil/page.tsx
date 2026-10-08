@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { PlayerCardSection } from "@/components/players/player-card-section";
-import { AvatarUpload } from "@/components/profile/avatar-upload";
+import { ProfileLook } from "@/components/profile/profile-look";
 import { NotificationToggle } from "@/components/profile/notification-toggle";
 import { PlayerEvolutionPanel, type PlayerStatEvent } from "@/components/stats/player-evolution-panel";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,6 @@ import {
   ROLE_LABELS,
   hasCoachAccess,
 } from "@/lib/constants";
-import { rewardLabel } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
 import { readUserProgress } from "@/lib/user-progress";
 import type { PlayerCard } from "@/lib/types";
@@ -40,7 +39,8 @@ export default async function ProfilePage() {
     skillEvents = (events ?? []) as PlayerStatEvent[];
   }
 
-  const [{ data: notifyPrefs }, cardResult, progressResult, predsResult] = await Promise.all([
+  const [{ data: notifyPrefs }, cardResult, progressResult, predsResult, rewardsResult] =
+    await Promise.all([
     supabase.from("profiles").select("notify_match_end").eq("id", user.id).maybeSingle(),
     player?.id
       ? supabase
@@ -57,32 +57,36 @@ export default async function ProfilePage() {
       .select("is_correct")
       .eq("user_id", user.id)
       .not("is_correct", "is", null),
+    supabase.from("user_rewards").select("reward_id").eq("user_id", user.id),
   ]);
   const notifyEnabled = Boolean(
     notifyPrefs && "notify_match_end" in notifyPrefs && notifyPrefs.notify_match_end
   );
   const playerCard = (cardResult.data as PlayerCard | null) ?? null;
   const progress = progressResult.data;
-  const title = rewardLabel(progress?.equipped_title);
   const resolvedPreds = (predsResult.data ?? []) as { is_correct: boolean | null }[];
+  const unlockedIds = (
+    (rewardsResult.error ? [] : rewardsResult.data ?? []) as { reward_id?: unknown }[]
+  )
+    .map((row) => row.reward_id)
+    .filter((id): id is string => typeof id === "string");
   const predPlayed = resolvedPreds.length;
   const predHits = resolvedPreds.filter((row) => row.is_correct).length;
   const predRate = predPlayed > 0 ? Math.round((predHits / predPlayed) * 100) : null;
 
   return (
     <div className="space-y-6">
-      <AvatarUpload
+      <ProfileLook
         userId={user.id}
         name={user.profile.full_name}
+        email={user.email}
         url={user.profile.avatar_url ?? player?.avatar_url}
-        frameId={progress?.equipped_frame}
-      />
-
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">{user.profile.full_name}</h1>
-        {title ? <p className="text-sm font-medium text-orange-700">{title}</p> : null}
-        <p className="text-sm text-muted-foreground">{user.email}</p>
-        <div className="mt-3 flex flex-wrap justify-center gap-2">
+        initialTitle={progress?.equipped_title}
+        initialFrame={progress?.equipped_frame}
+        unlockedIds={unlockedIds}
+        canChoose={Boolean(progress)}
+      >
+        <div className="flex flex-wrap justify-center gap-2">
           <Badge
             variant={
               user.profile.role === "admin"
@@ -105,7 +109,7 @@ export default async function ProfilePage() {
             <Badge variant="outline">{POSITION_LABELS[player.position]}</Badge>
           ) : null}
         </div>
-      </div>
+      </ProfileLook>
 
       {player ? (
         <PlayerCardSection

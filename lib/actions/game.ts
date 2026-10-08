@@ -5,7 +5,13 @@ import { getSessionUser, requireUser } from "@/lib/auth";
 import { MATCH_LIST_SELECT, MATCH_LIST_SELECT_BASE } from "@/lib/constants";
 import { readUserProgress } from "@/lib/user-progress";
 import { involvesClubTeam } from "@/lib/federation/leagues";
-import { isPredictionLocked, jornadaKeyFromIso, jornadaRangeLabel, nearestJornadaKey } from "@/lib/game";
+import {
+  FRAME_NONE,
+  isPredictionLocked,
+  jornadaKeyFromIso,
+  jornadaRangeLabel,
+  nearestJornadaKey,
+} from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CheckinResult,
@@ -91,12 +97,20 @@ export async function equipReward(rewardId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("game_equip_reward", { p_reward_id: rewardId });
   if (error) {
-    return { error: error.message.replace(/^.*:\s*/, "") || "No se pudo equipar" };
+    const message = error.message.replace(/^.*:\s*/, "");
+    if (
+      rewardId === FRAME_NONE &&
+      /desbloqueado|no se puede equipar|no válida|does not exist|schema cache/i.test(message)
+    ) {
+      return { error: "Para quitar el marco aplica la migración 035 en Supabase." };
+    }
+    return { error: message || "No se pudo equipar" };
   }
   revalidatePath("/predicciones");
   revalidatePath("/perfil");
   revalidatePath("/perfil/carta");
   revalidatePath("/jugadores", "layout");
+  revalidatePath("/equipos", "layout");
   return { success: true };
 }
 

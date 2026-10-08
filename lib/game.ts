@@ -296,6 +296,8 @@ export function jornadaRangeLabel(scheduledAts: string[]) {
   return `Jornada · ${format(first)} – ${format(last)}`;
 }
 
+export const FRAME_NONE = "frame_none";
+
 export const FRAME_CLASS: Record<string, string> = {
   frame_naranja: "bg-gradient-to-br from-orange-400 to-orange-600 p-[3px] shadow-[0_0_0_1px_rgba(234,88,12,0.35)]",
   frame_violeta: "bg-gradient-to-br from-violet-400 to-fuchsia-600 p-[3px] shadow-[0_0_0_1px_rgba(124,58,237,0.35)]",
