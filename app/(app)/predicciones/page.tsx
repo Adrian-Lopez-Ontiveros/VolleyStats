@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Target } from "lucide-react";
 import { GameLeaderboard } from "@/components/game/leaderboard";
+import { PredictionsLogo } from "@/components/game/predictions-logo";
 import { PredictionsBoard, QuinielaStrip } from "@/components/game/predictions-board";
 import { RewardsDisclosure } from "@/components/game/rewards-grid";
 import { PageHeader } from "@/components/page-header";
@@ -38,11 +38,7 @@ export default async function PredictionsPage() {
       <PageHeader
         title="Predicciones"
         description="Elige quién gana. Cada acierto suma 1 punto."
-        leading={
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-100">
-            <Target className="h-5 w-5" />
-          </span>
-        }
+        leading={<PredictionsLogo className="h-16 w-14" />}
       />
 
       <div className="space-y-8">

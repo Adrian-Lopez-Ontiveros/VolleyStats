@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, List, Trophy } from "lucide-react";
+import { CalendarDays, List } from "lucide-react";
 import { SeasonCalendar } from "@/components/matches/season-calendar";
 import { EmptyState } from "@/components/empty-state";
+import { SectionLogo } from "@/components/section-logo";
 import { MatchCard } from "@/components/matches/match-card";
 import type { MatchWithTeams } from "@/lib/types";
 
@@ -44,7 +45,11 @@ export function MatchViews({
       </div>
 
       {matches.length === 0 ? (
-        <EmptyState icon={Trophy} title="Sin partidos" description={empty} />
+        <EmptyState
+          mark={<SectionLogo src="/partidos-logo.png" className="mx-auto h-24 w-24" />}
+          title="Sin partidos"
+          description={empty}
+        />
       ) : view === "calendar" ? (
         <SeasonCalendar matches={matches} linked={linked} />
       ) : (

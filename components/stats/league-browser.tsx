@@ -2,9 +2,10 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Medal, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
 import { EmptyState } from "@/components/empty-state";
+import { SectionLogo } from "@/components/section-logo";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { StandingsTable } from "@/components/stats/standings-table";
@@ -72,6 +73,7 @@ export function LeagueBrowser({
       <PageHeader
         title="Clasificación"
         description={`${meta.label}. Tabla calculada con los partidos finalizados de esta liga.`}
+        leading={<SectionLogo src="/liga-logo.png" className="h-16 w-16" />}
         action={
           <div className="flex flex-wrap justify-end gap-2">
             {isAdmin ? <RefreshLeaguesButton /> : null}
@@ -139,7 +141,7 @@ export function LeagueBrowser({
 
       {rows.length === 0 ? (
         <EmptyState
-          icon={Medal}
+          mark={<SectionLogo src="/liga-logo.png" className="mx-auto h-24 w-24" />}
           title={`Sin equipos en ${meta.label}`}
           description={
             canManage

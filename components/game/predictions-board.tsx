@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Target, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { saveMatchPrediction } from "@/lib/actions/game";
 import { formatMatchWhen } from "@/lib/federation/schedule";
@@ -13,6 +13,7 @@ import {
   setPredictionDraft,
 } from "@/lib/prediction-drafts";
 import { cn } from "@/lib/utils";
+import { PredictionsLogo } from "@/components/game/predictions-logo";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,9 +32,7 @@ export function PredictionsBoard({
   if (jornadas.length === 0) {
     return (
       <div className="rounded-3xl border bg-card px-6 py-10 text-center shadow-card">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-orange-500/15 text-orange-700 dark:bg-orange-500/20 dark:text-orange-100">
-          <Target className="h-8 w-8" />
-        </div>
+        <PredictionsLogo className="mx-auto mb-4 h-28 w-24" />
         <h3 className="text-lg font-bold">Aún no hay jornada para predecir</h3>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
           Cuando salga el próximo partido del club, elige aquí quién gana. Un acierto suma 1 punto.
