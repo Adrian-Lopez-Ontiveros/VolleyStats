@@ -37,10 +37,12 @@ import { VolleyballCourt } from "@/components/matches/volleyball-court";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { isLocalEventId, useLiveMatchEvents } from "@/components/matches/use-live-match-events";
 import {
+  COURT_POSITION_META,
   LIBERO_KIND_LABEL,
   applyPhaseLibero,
   currentCourtSlots,
   currentLiberoPlayers,
+  frontRowOccupants,
   liberoKindForPhase,
   lineupHasCourtPositions,
   playersEnteredBySubstitution,
@@ -70,7 +72,7 @@ const ACTION_GROUPS: { id: ActionGroup; label: string; types: PointType[] }[] = 
   {
     id: "punto",
     label: "Punto",
-    types: ["attack", "block", "ace", "blockout", "opponent_error", "opponent_point", "error"],
+    types: ["attack", "block", "ace", "opponent_error", "opponent_point", "error"],
   },
   {
     id: "ataque",
@@ -247,6 +249,7 @@ export function LiveTracker({
   const [homeRotationOverride, setHomeRotationOverride] = useState<number | null>(null);
   const [awayRotationOverride, setAwayRotationOverride] = useState<number | null>(null);
   const [padSide, setPadSide] = useState<"home" | "away">("home");
+  const [blockoutOpen, setBlockoutOpen] = useState(false);
   const [lineupTeams, setLineupTeams] = useState<string[]>([]);
   const [lineupMode, setLineupMode] = useState<"edit" | "blank">("edit");
   const promptedSetRef = useRef(displayMatch.current_set);
@@ -780,6 +783,9 @@ export function LiveTracker({
     awayCourtSlots,
     awayOnCourt.length > 0 ? awayOnCourt : awayOnCourtIds ? [] : awayPlayers
   );
+  const padTeamId = padSide === "home" ? match.home_team_id : match.away_team_id;
+  const padHasCourt = padSide === "home" ? homeHasCourt : awayHasCourt;
+  const padFront = frontRowOccupants(padSide === "home" ? homeCourtSlots : awayCourtSlots);
   const homeLocks = useMemo(
     () => rallyLocks(mergedEvents, displayMatch.current_set, match.home_team_id, homeServing),
     [mergedEvents, displayMatch.current_set, match.home_team_id, homeServing]
@@ -968,9 +974,15 @@ export function LiveTracker({
               type="button"
               variant="outline"
               className="h-12 px-1 text-[11px] leading-tight"
-              onClick={() =>
-                recordAction(padSide === "home" ? match.home_team_id : match.away_team_id, "blockout")
-              }
+              onClick={() => {
+                if (!padHasCourt || padFront.length === 0) {
+                  toast.error(
+                    "No hay línea de delante. Coloca la rotación en la pista antes de apuntar el block-out."
+                  );
+                  return;
+                }
+                setBlockoutOpen(true);
+              }}
             >
               Block-out
             </Button>
@@ -1279,6 +1291,46 @@ export function LiveTracker({
                 </button>
               );
             })}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={blockoutOpen} onOpenChange={setBlockoutOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Block-out del rival</SheetTitle>
+            <SheetDescription>
+              El rival nos ha hecho block-out. Elige a quién de la línea de delante y el punto
+              suma para el rival.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-4">
+            {padFront.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay línea de delante. Coloca la rotación en la pista.
+              </p>
+            ) : (
+              padFront.map(({ zone, player }) => (
+                <button
+                  key={player.id}
+                  type="button"
+                  onClick={() => {
+                    recordAction(padTeamId, "blockout", player);
+                    setBlockoutOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border bg-card px-3 py-3 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block font-semibold leading-tight">
+                      {formatJersey(player.jersey_number)} {player.full_name}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {COURT_POSITION_META[zone].label}
+                    </span>
+                  </span>
+                </button>
+              ))
+            )}
           </div>
         </SheetContent>
       </Sheet>

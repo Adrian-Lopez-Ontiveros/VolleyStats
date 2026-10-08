@@ -26,6 +26,25 @@ export const CARD_STAT_META: Record<CardStatKey, { label: string; short: string 
   defense: { label: "Defensa", short: "DEF" },
 };
 
+export type CardStatSlot = {
+  key: CardStatKey;
+  label: string;
+  short: string;
+};
+
+/** Las seis columnas se reutilizan. Líbero y colocador solo cambian el nombre que se ve. */
+export function cardStatSlots(position?: PlayerPosition | null): CardStatSlot[] {
+  return CARD_STAT_KEYS.map((key) => {
+    if (position === "libero" && key === "jump") return { key, label: "Reflejos", short: "REF" };
+    if (position === "libero" && key === "attack") return { key, label: "Apoyos", short: "APO" };
+    if (position === "libero" && key === "block") return { key, label: "Colocación", short: "COL" };
+    if (position === "colocador" && key === "reception") {
+      return { key, label: "Colocación", short: "COL" };
+    }
+    return { key, label: CARD_STAT_META[key].label, short: CARD_STAT_META[key].short };
+  });
+}
+
 export const DEFAULT_CARD_STATS: PlayerCardStats = {
   jump: 50,
   attack: 50,
@@ -48,8 +67,8 @@ const POSITION_WEIGHTS: Record<PlayerPosition, Record<CardStatKey, number>> = {
   central: { jump: 22, attack: 18, block: 28, serve: 10, reception: 8, defense: 14 },
   receptor: { jump: 16, attack: 24, block: 10, serve: 14, reception: 20, defense: 16 },
   opuesto: { jump: 20, attack: 30, block: 14, serve: 18, reception: 6, defense: 12 },
-  colocador: { jump: 12, attack: 10, block: 10, serve: 18, reception: 16, defense: 34 },
-  libero: { jump: 6, attack: 4, block: 4, serve: 8, reception: 40, defense: 38 },
+  colocador: { jump: 10, attack: 8, block: 12, serve: 14, reception: 38, defense: 18 },
+  libero: { jump: 24, attack: 16, block: 12, serve: 6, reception: 22, defense: 20 },
   universal: { jump: 17, attack: 17, block: 16, serve: 16, reception: 17, defense: 17 },
 };
 
@@ -160,6 +179,50 @@ export function canManagePlayerCard(session: SessionUser | null | undefined, pla
   if (!session) return false;
   if (session.profile.role === "admin") return true;
   return session.profile.player?.id === playerId;
+}
+
+export type CardSkin = {
+  frame: string;
+  surface: string;
+  nameBar: string;
+  nameText: string;
+  accent: string;
+};
+
+export const CARD_SKINS: Record<string, CardSkin> = {
+  card_quiniela: {
+    frame: "player-card-skin-quiniela shadow-[0_18px_40px_-16px_rgba(6,182,212,0.55)]",
+    surface: "player-card-surface-quiniela",
+    nameBar: "bg-gradient-to-r from-cyan-500 to-teal-600",
+    nameText: "text-white",
+    accent: "text-cyan-200",
+  },
+  card_profeta: {
+    frame: "player-card-skin-profeta shadow-[0_18px_40px_-16px_rgba(168,85,247,0.55)]",
+    surface: "player-card-surface-profeta",
+    nameBar: "bg-gradient-to-r from-fuchsia-500 to-violet-600",
+    nameText: "text-white",
+    accent: "text-fuchsia-200",
+  },
+  card_vidente: {
+    frame: "player-card-skin-vidente shadow-[0_18px_40px_-16px_rgba(16,185,129,0.55)]",
+    surface: "player-card-surface-vidente",
+    nameBar: "bg-gradient-to-r from-emerald-400 to-teal-600",
+    nameText: "text-white",
+    accent: "text-emerald-200",
+  },
+  card_leyenda: {
+    frame: "player-card-skin-leyenda shadow-[0_18px_40px_-16px_rgba(232,185,35,0.75)]",
+    surface: "player-card-surface-leyenda",
+    nameBar: "bg-gradient-to-r from-amber-200 to-yellow-400",
+    nameText: "text-amber-950",
+    accent: "text-amber-200",
+  },
+};
+
+export function cardSkin(id?: string | null) {
+  if (!id) return null;
+  return CARD_SKINS[id] ?? null;
 }
 
 export type CardTier = "gold" | "rare" | "silver" | "bronze";

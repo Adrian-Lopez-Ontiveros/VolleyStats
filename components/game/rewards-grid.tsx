@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Medal, Sparkles, Tag } from "lucide-react";
+import { IdCard, Lock, Medal, Sparkles, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { equipReward } from "@/lib/actions/game";
 import { GAME_REWARDS, type GameReward } from "@/lib/game";
@@ -45,6 +45,7 @@ export function RewardsGrid({
   const groups: { kind: GameReward["kind"]; title: string }[] = [
     { kind: "title", title: "Títulos" },
     { kind: "frame", title: "Marcos" },
+    { kind: "card", title: "Estilos de cromo" },
     { kind: "badge", title: "Insignias" },
   ];
 
@@ -60,7 +61,9 @@ export function RewardsGrid({
                 reward={reward}
                 unlocked={unlocked.has(reward.id)}
                 equipped={
-                  progress.equipped_title === reward.id || progress.equipped_frame === reward.id
+                  progress.equipped_title === reward.id ||
+                  progress.equipped_frame === reward.id ||
+                  progress.equipped_card === reward.id
                 }
               />
             ))}
@@ -82,8 +85,16 @@ function RewardCard({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
-  const Icon = reward.kind === "title" ? Tag : reward.kind === "frame" ? Sparkles : Medal;
-  const canEquip = unlocked && (reward.kind === "title" || reward.kind === "frame");
+  const Icon =
+    reward.kind === "title"
+      ? Tag
+      : reward.kind === "frame"
+        ? Sparkles
+        : reward.kind === "card"
+          ? IdCard
+          : Medal;
+  const canEquip =
+    unlocked && (reward.kind === "title" || reward.kind === "frame" || reward.kind === "card");
 
   async function onEquip() {
     setPending(true);
@@ -123,7 +134,15 @@ function RewardCard({
             disabled={pending || equipped}
             onClick={onEquip}
           >
-            {equipped ? "En uso" : pending ? "Equipando..." : "Equipar"}
+            {equipped
+              ? reward.kind === "card"
+                ? "En el cromo"
+                : "En uso"
+              : pending
+                ? "Equipando..."
+                : reward.kind === "card"
+                  ? "Poner en el cromo"
+                  : "Equipar"}
           </Button>
         ) : null}
       </div>

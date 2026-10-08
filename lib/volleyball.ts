@@ -20,7 +20,7 @@ const OWN_ERROR_TYPES: PointType[] = [
 ];
 
 /** Punto para el rival que no es un error nuestro (no suma en errores del jugador). */
-const OPPONENT_SCORE_TYPES: PointType[] = ["opponent_point"];
+const OPPONENT_SCORE_TYPES: PointType[] = ["opponent_point", "blockout"];
 
 const NON_SCORING_TYPES: PointType[] = [
   "attack_continuation",
@@ -298,7 +298,7 @@ export function statFromPointType(pointType: PointType) {
     case "other":
       return "other_points" as const;
     case "blockout":
-      return "block_points" as const;
+      return null;
     default:
       return null;
   }

@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { PLAYER_CARD_SELECT, PLAYER_ROSTER_SELECT, TEAM_SUMMARY_SELECT } from "@/lib/constants";
 import { canManagePlayerCard } from "@/lib/player-card";
 import { createClient } from "@/lib/supabase/server";
+import { equippedCardForPlayer } from "@/lib/user-progress";
 import type { PlayerCard, PlayerWithTeam } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Editar cromo" };
@@ -20,13 +21,18 @@ export default async function PlayerCardEditPage({
   if (!canManagePlayerCard(session, id)) redirect(`/jugadores/${id}`);
 
   const supabase = await createClient();
-  const [{ data: player }, { data: card }] = await Promise.all([
+  const [{ data: player }, { data: card }, cardStyle] = await Promise.all([
     supabase
       .from("players")
       .select(`${PLAYER_ROSTER_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})` as "*")
       .eq("id", id)
       .maybeSingle(),
     supabase.from("player_cards").select(PLAYER_CARD_SELECT as "*").eq("player_id", id).maybeSingle(),
+    equippedCardForPlayer(
+      () => supabase.from("players").select("user_id").eq("id", id).maybeSingle(),
+      (userId, columns) =>
+        supabase.from("user_progress").select(columns).eq("user_id", userId).maybeSingle()
+    ),
   ]);
 
   if (!player) notFound();
@@ -44,6 +50,7 @@ export default async function PlayerCardEditPage({
         team={typed.team}
         userId={typed.user_id ?? session.id}
         cancelHref={`/jugadores/${id}`}
+        cardStyle={cardStyle}
       />
     </>
   );

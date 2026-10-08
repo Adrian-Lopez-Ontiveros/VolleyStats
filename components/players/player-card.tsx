@@ -4,12 +4,12 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { cn, initials } from "@/lib/utils";
 import { POSITION_LABELS } from "@/lib/constants";
 import {
-  CARD_STAT_KEYS,
-  CARD_STAT_META,
   DEFAULT_PHOTO_FRAME,
   POSITION_SHORT,
   calculateCardRating,
   cardPosition,
+  cardSkin,
+  cardStatSlots,
   cardTier,
   clampPhotoFocus,
   resolveCardName,
@@ -31,6 +31,7 @@ export type PlayerCardView = {
   teamLogoUrl?: string | null;
   stats?: PlayerCardStats | null;
   ratingOverride?: number | null;
+  cardStyle?: string | null;
 };
 
 const TIER_FRAME: Record<ReturnType<typeof cardTier>, string> = {
@@ -79,6 +80,7 @@ export function PlayerCardVisual({
     ? calculateCardRating(data.stats, position, data.ratingOverride)
     : null;
   const tier = cardTier(rating);
+  const skin = cardSkin(data.cardStyle);
   const shownName = resolveCardName(data.fullName, data.nameMode, data.displayName);
   const photo = !photoFailed && data.photoUrl ? data.photoUrl : null;
   const logo = !logoFailed && data.teamLogoUrl ? data.teamLogoUrl : null;
@@ -127,8 +129,13 @@ export function PlayerCardVisual({
       className={cn("w-full max-w-[280px] overflow-visible", className)}
       aria-label={`Cromo de ${data.fullName}`}
     >
-      <div className={cn("rounded-[1.35rem] p-[3px]", TIER_FRAME[tier])}>
-        <div className="player-card-surface relative overflow-hidden rounded-[1.2rem] text-white">
+      <div className={cn("rounded-[1.35rem] p-[3px]", skin?.frame ?? TIER_FRAME[tier])}>
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-[1.2rem] text-white",
+            skin?.surface ?? "player-card-surface"
+          )}
+        >
           <div className="player-card-shine pointer-events-none absolute inset-0 z-20" />
           <div className="relative w-full" style={{ paddingBottom: "140%" }}>
             <div className="absolute inset-0">
@@ -174,7 +181,12 @@ export function PlayerCardVisual({
                 <p className="font-black leading-none tracking-tight [font-variant-numeric:tabular-nums]">
                   <span className="text-[2.6rem]">{rating ?? "—"}</span>
                 </p>
-                <p className="mt-0.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-orange-300">
+                <p
+                  className={cn(
+                    "mt-0.5 text-[11px] font-extrabold uppercase tracking-[0.18em]",
+                    skin?.accent ?? "text-orange-300"
+                  )}
+                >
                   {position ? POSITION_SHORT[position] : "POS"}
                 </p>
                 {data.jerseyNumber != null ? (
@@ -198,10 +210,16 @@ export function PlayerCardVisual({
             </div>
 
             <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-3 pt-2">
-              <div className="rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-2 py-1.5 text-center shadow-lg">
+              <div
+                className={cn(
+                  "rounded-xl px-2 py-1.5 text-center shadow-lg",
+                  skin?.nameBar ?? "bg-gradient-to-r from-orange-500 to-orange-600"
+                )}
+              >
                 <p
                   className={cn(
-                    "truncate font-black uppercase text-white",
+                    "truncate font-black uppercase",
+                    skin?.nameText ?? "text-white",
                     shownName.length > 16
                       ? "text-[11px] tracking-[0.08em]"
                       : "text-[13px] tracking-[0.16em]"
@@ -212,16 +230,14 @@ export function PlayerCardVisual({
               </div>
 
               <dl className="mx-auto mt-2 grid w-max grid-cols-2 gap-x-5 gap-y-[3px] text-[11px] font-bold uppercase">
-                {CARD_STAT_KEYS.map((key) => {
-                  const value = data.stats?.[key];
+                {cardStatSlots(position).map((slot) => {
+                  const value = data.stats?.[slot.key];
                   return (
                     <div
-                      key={key}
+                      key={slot.key}
                       className="grid grid-cols-[2.35rem_1.45rem] items-center justify-items-center"
                     >
-                      <dt className="tracking-wider text-white/55">
-                        {CARD_STAT_META[key].short}
-                      </dt>
+                      <dt className="tracking-wider text-white/55">{slot.short}</dt>
                       <dd
                         className={cn(
                           "tracking-normal [font-variant-numeric:tabular-nums]",

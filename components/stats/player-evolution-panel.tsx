@@ -311,7 +311,7 @@ export function PlayerEvolutionPanel({
           {
             label: "Puntos de bloqueo",
             value: filtered.filter(
-              (event) => event.point_type === "block" || event.point_type === "blockout"
+              (event) => event.point_type === "block"
             ).length,
           },
           {
@@ -383,7 +383,7 @@ const MID = "text-amber-700 dark:text-amber-200";
 const POOR = "text-stone-600 dark:text-stone-300";
 const BAD = "text-rose-700 dark:text-rose-300";
 
-const PLAYER_POINT_TYPES = new Set<PointType>(["attack", "block", "blockout", "ace", "other"]);
+const PLAYER_POINT_TYPES = new Set<PointType>(["attack", "block", "ace", "other"]);
 
 type ResultTone = keyof typeof SCORE_TONE;
 

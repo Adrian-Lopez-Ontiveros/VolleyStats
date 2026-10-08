@@ -14,6 +14,7 @@ export function PlayerCardSection({
   canEdit,
   editHref,
   title = "Cromo",
+  cardStyle = null,
 }: {
   player: Pick<Player, "id" | "full_name" | "jersey_number" | "position" | "avatar_url">;
   card?: PlayerCard | null;
@@ -21,6 +22,7 @@ export function PlayerCardSection({
   canEdit?: boolean;
   editHref?: string;
   title?: string;
+  cardStyle?: string | null;
 }) {
   const view: PlayerCardView = {
     fullName: player.full_name,
@@ -35,6 +37,7 @@ export function PlayerCardSection({
     teamLogoUrl: team ? resolveTeamLogoUrl(team) : null,
     stats: statsFromCard(card),
     ratingOverride: card?.rating_override ?? null,
+    cardStyle,
   };
   const fileSlug = `cromo-${player.full_name.replace(/\s+/g, "-").toLowerCase()}`;
   const captureId = `player-card-${player.id}`;

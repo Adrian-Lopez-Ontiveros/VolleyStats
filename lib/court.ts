@@ -250,6 +250,18 @@ export function applySlotSubstitutions(
   return next;
 }
 
+export function frontRowOccupants(slots: CourtSlots) {
+  const seen = new Set<string>();
+  const row: { zone: CourtPosition; player: CourtOccupant }[] = [];
+  for (const zone of [4, 3, 2] as const) {
+    const player = slots[zone];
+    if (!player || seen.has(player.id)) continue;
+    seen.add(player.id);
+    row.push({ zone, player });
+  }
+  return row;
+}
+
 export function currentCourtSlots(
   lineup: Pick<
     MatchLineupEntry,

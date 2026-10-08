@@ -522,7 +522,7 @@ begin
     select
       e.player_id,
       count(*) filter (where e.point_type = 'attack') as attack_points,
-      count(*) filter (where e.point_type::text in ('block', 'blockout')) as block_points,
+      count(*) filter (where e.point_type = 'block') as block_points,
       count(*) filter (where e.point_type = 'ace') as aces,
       count(*) filter (
         where e.point_type::text in (
@@ -1265,9 +1265,13 @@ create table if not exists public.user_progress (
   last_checkin_on date,
   equipped_title text,
   equipped_frame text,
+  equipped_card text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.user_progress
+  add column if not exists equipped_card text;
 
 create table if not exists public.xp_events (
   id uuid primary key default gen_random_uuid(),
@@ -1457,6 +1461,10 @@ begin
       union all select 'badge_first_pick' where picks >= 1
       union all select 'title_profeta' where hits >= 10
       union all select 'badge_oracle' where hits >= 25
+      union all select 'card_quiniela' where hits >= 5
+      union all select 'card_profeta' where hits >= 10
+      union all select 'card_vidente' where hits >= 25
+      union all select 'card_leyenda' where hits >= 50
       union all select 'title_oraculo' where perfects >= 1
       union all select 'badge_perfect' where perfects >= 1
     ) x
@@ -1871,6 +1879,8 @@ begin
     update public.user_progress set equipped_title = p_reward_id where user_id = uid;
   elsif p_reward_id like 'frame_%' then
     update public.user_progress set equipped_frame = p_reward_id where user_id = uid;
+  elsif p_reward_id like 'card_%' then
+    update public.user_progress set equipped_card = p_reward_id where user_id = uid;
   else
     raise exception 'Esta recompensa no se puede equipar';
   end if;

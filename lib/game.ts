@@ -9,7 +9,7 @@ export const JORNADA_PERFECT_MIN = 2;
 export const JERSEY_XP = 20;
 export const PREDICTION_CUTOFF_MS = 5 * 60 * 1000;
 
-export type RewardKind = "title" | "frame" | "badge";
+export type RewardKind = "title" | "frame" | "badge" | "card";
 
 export type GameReward = {
   id: string;
@@ -96,6 +96,34 @@ export const GAME_REWARDS: GameReward[] = [
     label: "Profeta",
     description: "Diez pronósticos que se cumplieron.",
     hint: "10 predicciones acertadas",
+  },
+  {
+    id: "card_quiniela",
+    kind: "card",
+    label: "Cromo quiniela",
+    description: "El cromo pasa a azul y verde azulado.",
+    hint: "5 predicciones acertadas",
+  },
+  {
+    id: "card_profeta",
+    kind: "card",
+    label: "Cromo profeta",
+    description: "El cromo pasa a violeta.",
+    hint: "10 predicciones acertadas",
+  },
+  {
+    id: "card_vidente",
+    kind: "card",
+    label: "Cromo vidente",
+    description: "El cromo pasa a verde esmeralda.",
+    hint: "25 predicciones acertadas",
+  },
+  {
+    id: "card_leyenda",
+    kind: "card",
+    label: "Cromo leyenda",
+    description: "El cromo pasa a oro.",
+    hint: "50 predicciones acertadas",
   },
   {
     id: "frame_naranja",

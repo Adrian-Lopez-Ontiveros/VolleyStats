@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
-import { MATCH_LIST_SELECT, MATCH_LIST_SELECT_BASE, USER_PROGRESS_SELECT } from "@/lib/constants";
+import { MATCH_LIST_SELECT, MATCH_LIST_SELECT_BASE } from "@/lib/constants";
+import { readUserProgress } from "@/lib/user-progress";
 import { involvesClubTeam } from "@/lib/federation/leagues";
 import { isPredictionLocked, jornadaKeyFromIso, jornadaRangeLabel, nearestJornadaKey } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
@@ -94,6 +95,8 @@ export async function equipReward(rewardId: string) {
   }
   revalidatePath("/predicciones");
   revalidatePath("/perfil");
+  revalidatePath("/perfil/carta");
+  revalidatePath("/jugadores", "layout");
   return { success: true };
 }
 
@@ -132,11 +135,9 @@ export async function loadGamePageData() {
     { data: board },
     { data: profiles },
   ] = await Promise.all([
-    supabase
-      .from("user_progress")
-      .select(USER_PROGRESS_SELECT as "*")
-      .eq("user_id", session.id)
-      .maybeSingle(),
+    readUserProgress((columns) =>
+      supabase.from("user_progress").select(columns).eq("user_id", session.id).maybeSingle()
+    ),
     supabase.from("user_rewards").select("user_id, reward_id, unlocked_at").eq("user_id", session.id),
     supabase
       .from("matches")
@@ -291,6 +292,7 @@ export async function loadGamePageData() {
       last_checkin_on: null,
       equipped_title: null,
       equipped_frame: null,
+      equipped_card: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }) as UserProgress,

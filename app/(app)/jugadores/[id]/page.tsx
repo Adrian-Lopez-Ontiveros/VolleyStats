@@ -29,6 +29,7 @@ import {
 } from "@/lib/constants";
 import { canManagePlayerCard } from "@/lib/player-card";
 import { createClient } from "@/lib/supabase/server";
+import { equippedCardForPlayer } from "@/lib/user-progress";
 import { formatJersey, initials } from "@/lib/utils";
 import type { PlayerCard, PlayerWithTeam } from "@/lib/types";
 
@@ -56,7 +57,7 @@ export default async function PlayerDetailPage({
     ? `${PLAYER_ROSTER_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})`
     : `${PLAYER_LINEUP_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})`;
 
-  const [{ data: player }, eventsResult, { data: card }] = await Promise.all([
+  const [{ data: player }, eventsResult, { data: card }, cardStyle] = await Promise.all([
     supabase.from("players").select(`${playerSelect}` as "*").eq("id", id).maybeSingle(),
     canViewStats
       ? supabase
@@ -66,6 +67,11 @@ export default async function PlayerDetailPage({
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
     supabase.from("player_cards").select(PLAYER_CARD_SELECT as "*").eq("player_id", id).maybeSingle(),
+    equippedCardForPlayer(
+      () => supabase.from("players").select("user_id").eq("id", id).maybeSingle(),
+      (userId, columns) =>
+        supabase.from("user_progress").select(columns).eq("user_id", userId).maybeSingle()
+    ),
   ]);
   const events = eventsResult.data;
 
@@ -144,6 +150,7 @@ export default async function PlayerDetailPage({
           editHref={
             user?.profile.player?.id === id ? "/perfil/carta" : `/jugadores/${id}/carta`
           }
+          cardStyle={cardStyle}
         />
       </div>
 

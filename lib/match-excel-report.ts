@@ -192,12 +192,16 @@ function originsFromEvents(
       origins.other += 1;
       continue;
     }
+    if (event.point_type === "blockout") {
+      origins.block += 1;
+      continue;
+    }
     if (event.acting_team_id !== teamId) {
       origins.opponentError += 1;
       continue;
     }
     if (event.point_type === "attack") origins.attack += 1;
-    else if (event.point_type === "block" || event.point_type === "blockout") origins.block += 1;
+    else if (event.point_type === "block") origins.block += 1;
     else if (event.point_type === "ace") origins.ace += 1;
     else if (event.point_type === "opponent_error") origins.opponentError += 1;
     else origins.other += 1;
@@ -806,7 +810,8 @@ export function buildMatchExcelReport(
 const GLOSSARY: MatchExcelGlossaryRow[] = [
   {
     term: "Puntos",
-    meaning: "Acciones que suman para el equipo: ataque, bloqueo, block-out, ace o error del rival.",
+    meaning:
+      "Acciones que suman para el equipo: ataque, bloqueo, ace, otro punto o error del rival. El block-out suma para el rival.",
   },
   {
     term: "Errores",
@@ -836,7 +841,7 @@ const GLOSSARY: MatchExcelGlossaryRow[] = [
   {
     term: "Eff. bloqueo",
     meaning:
-      "(Puntos de bloqueo + continuaciones) / intentos. El toque y el error no cuentan como acierto. El block-out cuenta como punto de bloqueo.",
+      "(Puntos de bloqueo + continuaciones) / intentos. El toque, el error y el block-out del rival no cuentan como acierto nuestro.",
   },
   {
     term: "Recepción / defensa",

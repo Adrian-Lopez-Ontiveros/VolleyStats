@@ -181,7 +181,7 @@ export const POINT_TYPE_META: Record<
       "border-slate-400 bg-slate-200 text-slate-950 hover:bg-slate-300",
   },
   blockout: {
-    label: "Block-out",
+    label: "Block-out del rival",
     short: "BO",
     className: "bg-sky-100 text-sky-950",
     buttonClassName: "border-sky-400 bg-sky-100 text-sky-950 hover:bg-sky-200",
@@ -280,8 +280,11 @@ export const PROFILE_SESSION_SELECT =
 export const PROFILE_SESSION_SELECT_LEGACY =
   `id, email, full_name, avatar_url, role, team_id, created_at, updated_at, team:teams(${PROFILE_TEAM_FIELDS})` as const;
 
-export const USER_PROGRESS_SELECT =
+export const USER_PROGRESS_SELECT_BASE =
   "user_id, xp, level, current_streak, longest_streak, last_checkin_on, equipped_title, equipped_frame, created_at, updated_at" as const;
+
+export const USER_PROGRESS_SELECT =
+  "user_id, xp, level, current_streak, longest_streak, last_checkin_on, equipped_title, equipped_frame, equipped_card, created_at, updated_at" as const;
 
 export const MATCH_PREDICTION_SELECT =
   "id, user_id, match_id, predicted_winner_id, created_at, updated_at, resolved_at, is_correct, xp_awarded" as const;

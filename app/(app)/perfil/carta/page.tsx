@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth";
 import { PLAYER_CARD_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { readUserProgress } from "@/lib/user-progress";
 import type { PlayerCard } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Editar cromo" };
@@ -24,11 +25,16 @@ export default async function OwnPlayerCardPage() {
   }
 
   const supabase = await createClient();
-  const { data: card } = await supabase
-    .from("player_cards")
-    .select(PLAYER_CARD_SELECT as "*")
-    .eq("player_id", player.id)
-    .maybeSingle();
+  const [{ data: card }, progress] = await Promise.all([
+    supabase
+      .from("player_cards")
+      .select(PLAYER_CARD_SELECT as "*")
+      .eq("player_id", player.id)
+      .maybeSingle(),
+    readUserProgress((columns) =>
+      supabase.from("user_progress").select(columns).eq("user_id", user.id).maybeSingle()
+    ),
+  ]);
 
   return (
     <>
@@ -42,6 +48,7 @@ export default async function OwnPlayerCardPage() {
         team={user.profile.team}
         userId={user.id}
         cancelHref="/perfil"
+        cardStyle={progress.data?.equipped_card}
       />
     </>
   );

@@ -14,11 +14,11 @@ import { POSITION_LABELS } from "@/lib/constants";
 import {
   CARD_NAME_MODE_LABELS,
   CARD_STAT_KEYS,
-  CARD_STAT_META,
   DEFAULT_CARD_STATS,
   DEFAULT_PHOTO_FRAME,
   calculateCardRating,
   cardPhotoUrl,
+  cardStatSlots,
   clampCardStat,
   photoFrameFromCard,
   statValueTone,
@@ -34,12 +34,14 @@ export function PlayerCardForm({
   team,
   userId,
   cancelHref,
+  cardStyle = null,
 }: {
   player: Pick<Player, "id" | "full_name" | "jersey_number" | "position" | "avatar_url">;
   card?: PlayerCard | null;
   team?: Pick<Team, "name" | "logo_url"> & { federation_team_id?: string | null } | null;
   userId: string;
   cancelHref: string;
+  cardStyle?: string | null;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -149,6 +151,7 @@ export function PlayerCardForm({
             teamName: team?.name,
             teamLogoUrl: team ? resolveTeamLogoUrl(team) : null,
             stats,
+            cardStyle,
             ratingOverride:
               overrideValue != null && Number.isFinite(overrideValue) ? overrideValue : null,
           }}
@@ -281,8 +284,8 @@ export function PlayerCardForm({
             ))}
           </select>
           <p className="text-xs text-muted-foreground">
-            Solo afecta al cromo, no a la plantilla. El rating se pondera según la posición
-            (un líbero valora más recepción y defensa).
+            Solo afecta al cromo, no a la plantilla. El líbero muestra reflejos, apoyos y
+            colocación. El colocador muestra colocación en el hueco de la recepción.
           </p>
         </div>
 
@@ -294,12 +297,12 @@ export function PlayerCardForm({
               <span className="font-bold text-foreground">{liveRating}</span>
             </p>
           </div>
-          {CARD_STAT_KEYS.map((key) => (
+          {cardStatSlots(previewPosition).map((slot) => (
             <StatSlider
-              key={key}
-              label={CARD_STAT_META[key].label}
-              value={stats[key]}
-              onChange={(value) => setStat(key, value)}
+              key={slot.key}
+              label={slot.label}
+              value={stats[slot.key]}
+              onChange={(value) => setStat(slot.key, value)}
             />
           ))}
         </div>

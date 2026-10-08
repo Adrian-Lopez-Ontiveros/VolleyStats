@@ -15,12 +15,12 @@ import {
   PLAYER_SKILL_EVENT_SELECT,
   POSITION_LABELS,
   ROLE_LABELS,
-  USER_PROGRESS_SELECT,
   hasCoachAccess,
 } from "@/lib/constants";
 import { rewardLabel } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
-import type { PlayerCard, UserProgress } from "@/lib/types";
+import { readUserProgress } from "@/lib/user-progress";
+import type { PlayerCard } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Mi perfil" };
 
@@ -49,11 +49,9 @@ export default async function ProfilePage() {
           .eq("player_id", player.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    supabase
-      .from("user_progress")
-      .select(USER_PROGRESS_SELECT as "*")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+    readUserProgress((columns) =>
+      supabase.from("user_progress").select(columns).eq("user_id", user.id).maybeSingle()
+    ),
     supabase
       .from("match_predictions")
       .select("is_correct")
@@ -64,7 +62,7 @@ export default async function ProfilePage() {
     notifyPrefs && "notify_match_end" in notifyPrefs && notifyPrefs.notify_match_end
   );
   const playerCard = (cardResult.data as PlayerCard | null) ?? null;
-  const progress = (progressResult.data as UserProgress | null) ?? null;
+  const progress = progressResult.data;
   const title = rewardLabel(progress?.equipped_title);
   const resolvedPreds = (predsResult.data ?? []) as { is_correct: boolean | null }[];
   const predPlayed = resolvedPreds.length;
@@ -117,6 +115,7 @@ export default async function ProfilePage() {
           canEdit
           editHref="/perfil/carta"
           title="Mi cromo"
+          cardStyle={progress?.equipped_card}
         />
       ) : null}
 

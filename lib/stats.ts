@@ -246,7 +246,6 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
       sample.attackContinuations += 1;
       break;
     case "block":
-    case "blockout":
       sample.blocks += 1;
       sample.points += 1;
       break;
@@ -307,6 +306,7 @@ export function applyPointType(sample: PlayerMatchSample, pointType: PointType) 
     case "block_touch":
     case "block_continuation":
     case "opponent_point":
+    case "blockout":
       break;
   }
   sample.attackAttempts = sample.attackKills + sample.attackErrors + sample.attackContinuations;
@@ -522,7 +522,7 @@ export function countChartPointTypes(
     ) {
       counts.error += 1;
     } else if (event.point_type === "blockout") {
-      counts.block += 1;
+      counts.blockout += 1;
     } else if (
       event.point_type === "attack" ||
       event.point_type === "block" ||

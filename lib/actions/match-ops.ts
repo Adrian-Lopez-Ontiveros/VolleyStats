@@ -344,6 +344,12 @@ export async function recordPoint(input: {
     return { error: "El equipo no participa en este partido" };
   }
 
+  if (input.pointType === "blockout" && !input.playerId) {
+    return {
+      error: "Elige a quién de la línea de delante le han hecho el block-out.",
+    };
+  }
+
   if (input.playerId && !input.liveFast) {
     const { data: player } = await supabase
       .from("players")

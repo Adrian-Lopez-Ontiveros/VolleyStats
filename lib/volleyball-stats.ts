@@ -204,7 +204,7 @@ export function blockStatsFromEvents(events: { point_type: PointType }[]): Block
   let touches = 0;
   let errors = 0;
   for (const event of events) {
-    if (event.point_type === "block" || event.point_type === "blockout") points += 1;
+    if (event.point_type === "block") points += 1;
     else if (event.point_type === "block_continuation") continuations += 1;
     else if (event.point_type === "block_touch") touches += 1;
     else if (event.point_type === "block_error") errors += 1;

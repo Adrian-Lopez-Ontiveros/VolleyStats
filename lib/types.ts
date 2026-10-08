@@ -149,6 +149,7 @@ export type UserProgress = {
   last_checkin_on: string | null;
   equipped_title: string | null;
   equipped_frame: string | null;
+  equipped_card: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -132,6 +132,78 @@
   );
 }
 
+.player-card-skin-quiniela {
+  background-image: linear-gradient(160deg, #a5f3fc 0%, #06b6d4 42%, #0f766e 100%);
+}
+
+.player-card-surface-quiniela {
+  background-color: #042f2e;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(34, 211, 238, 0.38), transparent 58%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(45, 212, 191, 0.16), transparent 50%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 255, 255, 0.035) 11px,
+      rgba(255, 255, 255, 0.035) 12px
+    );
+}
+
+.player-card-skin-profeta {
+  background-image: linear-gradient(160deg, #f5d0fe 0%, #a855f7 46%, #6b21a8 100%);
+}
+
+.player-card-surface-profeta {
+  background-color: #2e1065;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(192, 132, 252, 0.4), transparent 58%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(244, 114, 182, 0.16), transparent 50%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 255, 255, 0.04) 11px,
+      rgba(255, 255, 255, 0.04) 12px
+    );
+}
+
+.player-card-skin-vidente {
+  background-image: linear-gradient(160deg, #a7f3d0 0%, #10b981 46%, #065f46 100%);
+}
+
+.player-card-surface-vidente {
+  background-color: #022c22;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(52, 211, 153, 0.4), transparent 58%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(16, 185, 129, 0.18), transparent 50%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 255, 255, 0.035) 11px,
+      rgba(255, 255, 255, 0.035) 12px
+    );
+}
+
+.player-card-skin-leyenda {
+  background-image: linear-gradient(160deg, #fff4c4 0%, #f5d76e 28%, #e8b923 58%, #b45309 100%);
+}
+
+.player-card-surface-leyenda {
+  background-color: #1c1408;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(245, 215, 110, 0.45), transparent 58%),
+    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(249, 115, 22, 0.22), transparent 52%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 236, 179, 0.05) 11px,
+      rgba(255, 236, 179, 0.05) 12px
+    );
+}
+
 .stat-slider {
   accent-color: hsl(24 95% 53%);
 }
