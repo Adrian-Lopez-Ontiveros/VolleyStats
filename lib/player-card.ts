@@ -32,13 +32,13 @@ export type CardStatSlot = {
   short: string;
 };
 
-/** Las seis columnas se reutilizan. Líbero y colocador solo cambian el nombre que se ve. */
+/** Las seis columnas se reutilizan. Líbero, colocador y opuesto solo cambian el nombre que se ve. */
 export function cardStatSlots(position?: PlayerPosition | null): CardStatSlot[] {
   return CARD_STAT_KEYS.map((key) => {
     if (position === "libero" && key === "jump") return { key, label: "Reflejos", short: "REF" };
     if (position === "libero" && key === "attack") return { key, label: "Apoyos", short: "APY" };
     if (position === "libero" && key === "block") return { key, label: "Colocación", short: "COL" };
-    if (position === "colocador" && key === "reception") {
+    if ((position === "colocador" || position === "opuesto") && key === "reception") {
       return { key, label: "Colocación", short: "COL" };
     }
     return { key, label: CARD_STAT_META[key].label, short: CARD_STAT_META[key].short };

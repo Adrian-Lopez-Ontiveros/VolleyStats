@@ -285,7 +285,7 @@ export function PlayerCardForm({
           </select>
           <p className="text-xs text-muted-foreground">
             Solo afecta al cromo, no a la plantilla. El líbero muestra reflejos, apoyos y
-            colocación. El colocador muestra colocación en el hueco de la recepción.
+            colocación. El colocador y el opuesto muestran colocación en el hueco de la recepción.
           </p>
         </div>
 
