@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getAppNavItems } from "@/components/layout/nav-items";
-import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, initials } from "@/lib/utils";
 
 export function BottomNav({
   isAdmin,
   isCoach = false,
   isGuest = false,
+  profile = null,
 }: {
   isAdmin: boolean;
   isCoach?: boolean;
   isGuest?: boolean;
+  profile?: { name: string; avatarUrl: string | null } | null;
 }) {
   const pathname = usePathname();
   const navItems = getAppNavItems({ isAdmin, isCoach, isGuest });
@@ -40,6 +43,7 @@ export function BottomNav({
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
+          const showProfile = item.href === "/perfil" && profile;
           return (
             <li key={item.href}>
               <Link
@@ -51,7 +55,21 @@ export function BottomNav({
                   active ? "text-accent" : "text-muted-foreground"
                 )}
               >
-                <Icon className={cn("h-5 w-5", active && "stroke-[2.4]")} />
+                {showProfile ? (
+                  <Avatar
+                    className={cn(
+                      "h-6 w-6 ring-2 ring-offset-1 ring-offset-background",
+                      active ? "ring-accent" : "ring-transparent"
+                    )}
+                  >
+                    <AvatarImage src={profile.avatarUrl ?? undefined} alt="" />
+                    <AvatarFallback className="text-[9px]">
+                      {initials(profile.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <Icon className={cn("h-5 w-5", active && "stroke-[2.4]")} />
+                )}
                 {item.label}
               </Link>
             </li>

@@ -6,6 +6,7 @@ import {
   ClipboardList,
   KeyRound,
   LogOut,
+  Menu,
   Newspaper,
   Shield,
   Target,
@@ -14,8 +15,6 @@ import {
 import { logoutAction } from "@/lib/actions/auth";
 import { SHOW_TACTICS_NAV } from "@/components/layout/nav-items";
 import { hasCoachAccess } from "@/lib/constants";
-import { initials } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,15 +30,8 @@ export function UserMenu({ user }: { user: SessionUser }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-11 gap-2 rounded-full px-1.5">
-          <Avatar className="h-9 w-9">
-            <AvatarImage
-              src={user.profile.avatar_url ?? user.profile.player?.avatar_url ?? undefined}
-              alt={user.profile.full_name}
-            />
-            <AvatarFallback>{initials(user.profile.full_name)}</AvatarFallback>
-          </Avatar>
-          <span className="sr-only">Menú de usuario</span>
+        <Button variant="ghost" className="h-11 w-11 rounded-full px-0" aria-label="Abrir menú">
+          <Menu className="h-6 w-6" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getAppNavItems } from "@/components/layout/nav-items";
+import { getDesktopNavItems } from "@/components/layout/nav-items";
 import { cn } from "@/lib/utils";
 
 export function DesktopNav({
@@ -15,7 +15,7 @@ export function DesktopNav({
   isGuest?: boolean;
 }) {
   const pathname = usePathname();
-  const items = getAppNavItems({ isAdmin, isCoach, isGuest });
+  const items = getDesktopNavItems({ isAdmin, isCoach, isGuest });
 
   return (
     <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto lg:flex">

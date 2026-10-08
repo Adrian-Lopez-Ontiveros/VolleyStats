@@ -29,7 +29,19 @@ export default async function AppLayout({
         streak={checkin?.streak ?? 0}
       />
       <main className="app-shell pb-28 pt-5 lg:pb-10 lg:pt-8">{children}</main>
-      <BottomNav isAdmin={isAdmin} isCoach={isCoach} isGuest={isGuest} />
+      <BottomNav
+        isAdmin={isAdmin}
+        isCoach={isCoach}
+        isGuest={isGuest}
+        profile={
+          user
+            ? {
+                name: user.profile.full_name,
+                avatarUrl: user.profile.avatar_url ?? user.profile.player?.avatar_url ?? null,
+              }
+            : null
+        }
+      />
       <CheckinToaster result={checkin} />
     </div>
   );
