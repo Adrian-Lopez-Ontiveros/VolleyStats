@@ -57,7 +57,7 @@ export default async function ComparePlayersPage({
         title="Comparar jugadores"
         description={
           selectedTeamName
-            ? `Compañeros de ${selectedTeamName}. Elige 2 o 3 para comparar puntos, ataque, saque y recepción.`
+            ? `Compañeros de ${selectedTeamName}. Elige 2 o 3 para comparar puntos, ataque, saque, bloqueo, recepción y defensa.`
             : "Entra desde un equipo o una ficha de jugador para comparar a sus compañeros."
         }
       />

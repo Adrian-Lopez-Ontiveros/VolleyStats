@@ -10,6 +10,7 @@ import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/l
 import { formatJersey, initials } from "@/lib/utils";
 import {
   attackStatsFromEvents,
+  blockStatsFromEvents,
   defenseStatsFromEvents,
   formatAttackEfficiency,
   formatSkillRate,
@@ -39,9 +40,9 @@ type CompareRow = {
   player: ComparePlayer;
   points: number;
   errors: number;
-  blocks: number;
   attackLabel: string;
   serveLabel: string;
+  blockLabel: string;
   receptionLabel: string;
   defenseLabel: string;
   aces: number;
@@ -50,6 +51,7 @@ type CompareRow = {
     attack: number;
     aces: number;
     errors: number;
+    block: number;
     reception: number;
     defense: number;
   };
@@ -83,26 +85,28 @@ export function PlayerCompare({
         );
         const attack = attackStatsFromEvents(playerEvents);
         const serve = serveStatsFromEvents(playerEvents);
+        const block = blockStatsFromEvents(playerEvents);
         const reception = receptionStatsFromEvents(playerEvents);
         const defense = defenseStatsFromEvents(playerEvents);
         let points = 0;
         let errors = 0;
-        let blocks = 0;
         for (const event of playerEvents) {
           if (isOwnErrorType(event.point_type)) errors += 1;
           else if (isScoringAction(event.point_type) && scoresForActingTeam(event.point_type)) {
             points += 1;
           }
-          if (event.point_type === "block") blocks += 1;
         }
         return {
           player,
           points,
           errors,
-          blocks,
           aces: serve.aces,
           attackLabel: formatAttackEfficiency(attack.efficiency),
           serveLabel: `${formatSkillRate(serve.successRate)} · ${serve.aces} aces`,
+          blockLabel:
+            block.attempts === 0
+              ? "—"
+              : `${formatSkillRate(block.efficiency)} · ${block.points} pts`,
           receptionLabel: `${formatSkillRate(reception.positiveRate)} buenas`,
           defenseLabel: `${formatSkillRate(defense.positiveRate)} buenas`,
           chart: {
@@ -110,6 +114,7 @@ export function PlayerCompare({
             attack: attack.efficiency === null ? 0 : Math.round(attack.efficiency * 100),
             aces: serve.aces,
             errors,
+            block: block.efficiency === null ? 0 : Math.round(block.efficiency * 100),
             reception: reception.positiveRate === null ? 0 : Math.round(reception.positiveRate * 100),
             defense: defense.positiveRate === null ? 0 : Math.round(defense.positiveRate * 100),
           },
@@ -124,6 +129,7 @@ export function PlayerCompare({
       { key: "attack" as const, label: "ATK%" },
       { key: "aces" as const, label: "Aces" },
       { key: "errors" as const, label: "Errores" },
+      { key: "block" as const, label: "Bloq%" },
       { key: "reception" as const, label: "Rec buenas" },
       { key: "defense" as const, label: "Def buenas" },
     ];
@@ -147,7 +153,7 @@ export function PlayerCompare({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Elige 2 o 3 jugadores para compararlos. ATK%, Rec% y Def% son el porcentaje de acciones que no fueron error.
+        Elige 2 o 3 jugadores. Ataque y bloqueo comparan la eficiencia. Recepción y defensa, el porcentaje de buenas.
       </p>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -213,7 +219,7 @@ export function PlayerCompare({
                     <CompareLine label="Eff. ataque" value={row.attackLabel} />
                     <CompareLine label="Aces" value={String(row.aces)} />
                     <CompareLine label="Errores" value={String(row.errors)} />
-                    <CompareLine label="Bloqueos" value={String(row.blocks)} />
+                    <CompareLine label="Bloqueo" value={row.blockLabel} />
                     <CompareLine label="Saque" value={row.serveLabel} />
                     <CompareLine label="Recepción" value={row.receptionLabel} />
                     <CompareLine label="Defensa" value={row.defenseLabel} />
@@ -242,7 +248,7 @@ export function PlayerCompare({
                     ["Eff. ataque", rows.map((row) => row.attackLabel)],
                     ["Aces", rows.map((row) => String(row.aces))],
                     ["Errores", rows.map((row) => String(row.errors))],
-                    ["Bloqueos", rows.map((row) => String(row.blocks))],
+                    ["Bloqueo", rows.map((row) => row.blockLabel)],
                     ["Saque", rows.map((row) => row.serveLabel)],
                     ["Recepción", rows.map((row) => row.receptionLabel)],
                     ["Defensa", rows.map((row) => row.defenseLabel)],

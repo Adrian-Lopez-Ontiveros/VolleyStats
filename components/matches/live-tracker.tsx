@@ -831,52 +831,26 @@ export function LiveTracker({
       ) : null}
 
       {!finished ? (
-        <div className="flex items-center justify-center gap-2 rounded-2xl border bg-card px-3 py-2">
-          <span className="text-xs font-medium text-muted-foreground">Saca</span>
-          <button
-            type="button"
-            onClick={() => setServingOverride(match.home_team_id)}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-semibold",
-              servingTeamId === match.home_team_id
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            )}
-          >
-            {match.home_team.short_name || "Local"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setServingOverride(match.away_team_id)}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-semibold",
-              servingTeamId === match.away_team_id
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            )}
-          >
-            {match.away_team.short_name || "Visitante"}
-          </button>
-        </div>
-      ) : null}
-
-      {!finished ? (
-        <div className="space-y-2 rounded-2xl border bg-card px-3 py-3">
-          <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Rotación · zona de la colocadora. Al ganar el saque: 2 → 1 → 6 → 5 → 4 → 3
-          </p>
-          <RotationPicker
-            label={match.home_team.short_name || "Local"}
-            value={homeRotation}
-            disabled={false}
-            onChange={setHomeRotationOverride}
-          />
-          <RotationPicker
-            label={match.away_team.short_name || "Visitante"}
-            value={awayRotation}
-            disabled={false}
-            onChange={setAwayRotationOverride}
-          />
+        <div className="flex items-center gap-2 rounded-2xl border bg-card px-2 py-2">
+          <span className="w-8 shrink-0 text-[11px] font-medium leading-tight text-muted-foreground">
+            Saca
+          </span>
+          <div className="grid min-w-0 flex-1 gap-1.5 sm:grid-cols-2">
+            <ServeRotationTeam
+              label={match.home_team.short_name || "Local"}
+              serving={servingTeamId === match.home_team_id}
+              rotation={homeRotation}
+              onServe={() => setServingOverride(match.home_team_id)}
+              onRotation={setHomeRotationOverride}
+            />
+            <ServeRotationTeam
+              label={match.away_team.short_name || "Visitante"}
+              serving={servingTeamId === match.away_team_id}
+              rotation={awayRotation}
+              onServe={() => setServingOverride(match.away_team_id)}
+              onRotation={setAwayRotationOverride}
+            />
+          </div>
         </div>
       ) : null}
 
@@ -956,52 +930,59 @@ export function LiveTracker({
               )
             }
           />
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-12 px-1 text-[11px] leading-tight"
-              onClick={() =>
-                recordAction(
-                  padSide === "home" ? match.home_team_id : match.away_team_id,
-                  "opponent_point"
-                )
-              }
-            >
-              Punto del rival
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-12 px-1 text-[11px] leading-tight"
-              onClick={() => {
-                if (!padHasCourt || padFront.length === 0) {
-                  toast.error(
-                    "No hay línea de delante. Coloca la rotación en la pista antes de apuntar el block-out."
-                  );
-                  return;
+          <div className="flex items-stretch gap-2">
+            <div className="grid flex-1 grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 whitespace-normal px-1 text-[11px] leading-tight"
+                onClick={() =>
+                  recordAction(
+                    padSide === "home" ? match.home_team_id : match.away_team_id,
+                    "opponent_point"
+                  )
                 }
-                setBlockoutOpen(true);
-              }}
-            >
-              Block-out
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-12 px-1 text-[11px] leading-tight"
-              onClick={() =>
-                recordAction(
-                  padSide === "home" ? match.home_team_id : match.away_team_id,
-                  "opponent_error"
-                )
-              }
-            >
-              Error del rival
-            </Button>
+              >
+                Punto del rival
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 whitespace-normal px-1 text-[11px] leading-tight"
+                onClick={() => {
+                  if (!padHasCourt || padFront.length === 0) {
+                    toast.error(
+                      "No hay línea de delante. Coloca la rotación en la pista antes de apuntar el block-out."
+                    );
+                    return;
+                  }
+                  setBlockoutOpen(true);
+                }}
+              >
+                Block-out
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 whitespace-normal px-1 text-[11px] leading-tight"
+                onClick={() =>
+                  recordAction(
+                    padSide === "home" ? match.home_team_id : match.away_team_id,
+                    "opponent_error"
+                  )
+                }
+              >
+                Error del rival
+              </Button>
+            </div>
+            <UndoActionButton disabled={mergedEvents.length === 0} onClick={onUndo} />
           </div>
         </>
       )}
+
+      {finished || (lineupTeam && lineupTeamId) ? (
+        <UndoActionButton disabled={mergedEvents.length === 0} onClick={onUndo} />
+      ) : null}
 
       {homeHasCourt ? (
         <LiveTeamCourt
@@ -1101,16 +1082,6 @@ export function LiveTracker({
           onReset={() => resetTeam(match.away_team_id, match.away_team.name)}
         />
       )}
-
-      <Button
-        variant="outline"
-        className="w-full"
-        disabled={mergedEvents.length === 0}
-        onClick={onUndo}
-      >
-        <Undo2 className="h-4 w-4" />
-        Deshacer última acción
-      </Button>
 
       <PointHistory
         events={[...mergedEvents].reverse()}
@@ -1338,37 +1309,64 @@ export function LiveTracker({
   );
 }
 
-function RotationPicker({
+function UndoActionButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="h-12 w-[4.25rem] shrink-0 flex-col gap-0.5 whitespace-normal px-1 text-[10px] leading-none"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label="Deshacer última acción"
+    >
+      <Undo2 className="h-4 w-4" />
+      Deshacer
+    </Button>
+  );
+}
+
+function ServeRotationTeam({
   label,
-  value,
-  disabled,
-  onChange,
+  serving,
+  rotation,
+  onServe,
+  onRotation,
 }: {
   label: string;
-  value: number;
-  disabled: boolean;
-  onChange: (rotation: number) => void;
+  serving: boolean;
+  rotation: number;
+  onServe: () => void;
+  onRotation: (rotation: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-16 shrink-0 truncate text-[11px] font-medium text-muted-foreground">
+    <div className="flex min-w-0 items-center gap-1.5">
+      <button
+        type="button"
+        onClick={onServe}
+        aria-pressed={serving}
+        title={serving ? `${label} saca` : `Pasar el saque a ${label}`}
+        className={cn(
+          "h-8 w-14 shrink-0 truncate rounded-lg px-1.5 text-[11px] font-semibold",
+          serving ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+        )}
+      >
         {label}
-      </span>
-      <div className="grid flex-1 grid-cols-6 gap-1">
-        {ROTATION_PLAY_ORDER.map((rotation) => (
+      </button>
+      <div className="grid min-w-0 flex-1 grid-cols-6 gap-1">
+        {ROTATION_PLAY_ORDER.map((zone) => (
           <button
-            key={rotation}
+            key={zone}
             type="button"
-            disabled={disabled}
-            onClick={() => onChange(rotation)}
+            onClick={() => onRotation(zone)}
+            aria-label={`Rotación ${zone} de ${label}`}
             className={cn(
               "h-8 rounded-lg text-xs font-bold tabular-nums",
-              value === rotation
+              rotation === zone
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground"
             )}
           >
-            {rotation}
+            {zone}
           </button>
         ))}
       </div>
