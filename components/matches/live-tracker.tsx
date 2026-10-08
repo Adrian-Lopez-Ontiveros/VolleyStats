@@ -831,26 +831,47 @@ export function LiveTracker({
       ) : null}
 
       {!finished ? (
-        <div className="flex items-center gap-2 rounded-2xl border bg-card px-2 py-2">
-          <span className="w-8 shrink-0 text-[11px] font-medium leading-tight text-muted-foreground">
-            Saca
-          </span>
-          <div className="grid min-w-0 flex-1 gap-1.5 sm:grid-cols-2">
-            <ServeRotationTeam
-              label={match.home_team.short_name || "Local"}
-              serving={servingTeamId === match.home_team_id}
-              rotation={homeRotation}
-              onServe={() => setServingOverride(match.home_team_id)}
-              onRotation={setHomeRotationOverride}
-            />
-            <ServeRotationTeam
-              label={match.away_team.short_name || "Visitante"}
-              serving={servingTeamId === match.away_team_id}
-              rotation={awayRotation}
-              onServe={() => setServingOverride(match.away_team_id)}
-              onRotation={setAwayRotationOverride}
-            />
-          </div>
+        <div className="flex items-center justify-center gap-2 rounded-2xl border bg-card px-3 py-2">
+          <span className="text-xs font-medium text-muted-foreground">Saca</span>
+          <button
+            type="button"
+            onClick={() => setServingOverride(match.home_team_id)}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold",
+              servingTeamId === match.home_team_id
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {match.home_team.short_name || "Local"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setServingOverride(match.away_team_id)}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold",
+              servingTeamId === match.away_team_id
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {match.away_team.short_name || "Visitante"}
+          </button>
+        </div>
+      ) : null}
+
+      {!finished ? (
+        <div className="space-y-2 rounded-2xl border bg-card px-3 py-3">
+          <RotationPicker
+            label={match.home_team.short_name || "Local"}
+            value={homeRotation}
+            onChange={setHomeRotationOverride}
+          />
+          <RotationPicker
+            label={match.away_team.short_name || "Visitante"}
+            value={awayRotation}
+            onChange={setAwayRotationOverride}
+          />
         </div>
       ) : null}
 
@@ -1325,48 +1346,35 @@ function UndoActionButton({ disabled, onClick }: { disabled: boolean; onClick: (
   );
 }
 
-function ServeRotationTeam({
+function RotationPicker({
   label,
-  serving,
-  rotation,
-  onServe,
-  onRotation,
+  value,
+  onChange,
 }: {
   label: string;
-  serving: boolean;
-  rotation: number;
-  onServe: () => void;
-  onRotation: (rotation: number) => void;
+  value: number;
+  onChange: (rotation: number) => void;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      <button
-        type="button"
-        onClick={onServe}
-        aria-pressed={serving}
-        title={serving ? `${label} saca` : `Pasar el saque a ${label}`}
-        className={cn(
-          "h-8 w-14 shrink-0 truncate rounded-lg px-1.5 text-[11px] font-semibold",
-          serving ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
-        )}
-      >
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 truncate text-[11px] font-medium text-muted-foreground">
         {label}
-      </button>
-      <div className="grid min-w-0 flex-1 grid-cols-6 gap-1">
-        {ROTATION_PLAY_ORDER.map((zone) => (
+      </span>
+      <div className="grid flex-1 grid-cols-6 gap-1">
+        {ROTATION_PLAY_ORDER.map((rotation) => (
           <button
-            key={zone}
+            key={rotation}
             type="button"
-            onClick={() => onRotation(zone)}
-            aria-label={`Rotación ${zone} de ${label}`}
+            onClick={() => onChange(rotation)}
+            aria-label={`Rotación ${rotation} de ${label}`}
             className={cn(
               "h-8 rounded-lg text-xs font-bold tabular-nums",
-              rotation === zone
+              value === rotation
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-muted-foreground"
             )}
           >
-            {zone}
+            {rotation}
           </button>
         ))}
       </div>
