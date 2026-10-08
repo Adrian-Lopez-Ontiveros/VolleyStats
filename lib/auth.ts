@@ -182,6 +182,14 @@ export async function resolveViewerPlayerCategory(user: SessionUser | null): Pro
   return isTeamCategory(category) ? category : null;
 }
 
+export async function resolveViewerTeamCategory(user: SessionUser | null): Promise<TeamCategory | null> {
+  const playing = await resolveViewerPlayerCategory(user);
+  if (playing) return playing;
+  if (isTeamCategory(user?.profile.team?.category)) return user.profile.team.category;
+  if (isTeamCategory(user?.profile.coached_team?.category)) return user.profile.coached_team.category;
+  return null;
+}
+
 export async function peekPlayerCategory(playerId: string): Promise<TeamCategory | null> {
   const supabase = await createClient();
   const { data } = await supabase

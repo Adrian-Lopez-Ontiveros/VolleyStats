@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
+import { rewardFramesByPlayer } from "@/lib/reward-frames";
 import { getCategoryMeta } from "@/lib/categories";
 import {
   MATCH_WITH_TEAMS_SELECT,
@@ -99,7 +100,7 @@ export default async function TeamDetailPage({
   const playerIds = typedPlayers.map((player) => player.id);
 
   const matchIds = finishedMatches.map((item) => item.id);
-  const [{ data: events }, { data: teamMatchEvents }, { data: lineupRows }] = await Promise.all([
+  const [{ data: events }, { data: teamMatchEvents }, { data: lineupRows }, frames] = await Promise.all([
     canManage && playerIds.length > 0
       ? supabase
           .from("match_events")
@@ -119,6 +120,11 @@ export default async function TeamDetailPage({
           .eq("team_id", id)
           .in("match_id", matchIds)
       : Promise.resolve({ data: [] }),
+    rewardFramesByPlayer(
+      (ids) => supabase.from("players").select("id, user_id").in("id", ids),
+      (userIds) => supabase.from("user_progress").select("user_id, equipped_frame").in("user_id", userIds),
+      playerIds
+    ),
   ]);
 
   const seriesByPlayer = new Map<string, ReturnType<typeof buildPlayerMatchSeries>>();
@@ -351,7 +357,7 @@ export default async function TeamDetailPage({
             {ranked.length === 0 ? (
               <p className="text-sm text-muted-foreground">Este equipo todavía no tiene jugadores.</p>
             ) : (
-              <PlayerRankingTable players={ranked} />
+              <PlayerRankingTable players={ranked} frames={frames} />
             )}
           </section>
         ) : null}
@@ -377,6 +383,7 @@ export default async function TeamDetailPage({
                   key={player.id}
                   player={player}
                   href={`/jugadores/${player.id}`}
+                  frameId={frames[player.id] ?? null}
                   canEditJersey={canManage || user?.profile.player?.id === player.id}
                 />
               ))}

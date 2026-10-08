@@ -23,6 +23,7 @@ export function TeamsBrowser({
   currentPlayerId = null,
   initialCategory,
   loadError,
+  frames = {},
 }: {
   teams: Team[];
   players: Player[];
@@ -30,6 +31,7 @@ export function TeamsBrowser({
   currentPlayerId?: string | null;
   initialCategory: TeamCategory;
   loadError?: string;
+  frames?: Record<string, string>;
 }) {
   const [categoria, setCategoria] = useCategoryFilter(initialCategory);
   const activeCategory = parseCategory(typeof categoria === "string" ? categoria : initialCategory);
@@ -137,6 +139,7 @@ export function TeamsBrowser({
                     key={player.id}
                     player={player}
                     href={`/jugadores/${player.id}`}
+                    frameId={frames[player.id] ?? null}
                     canEditJersey={canManage || currentPlayerId === player.id}
                     subtitle={
                       canManage

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AppLogo } from "@/components/app-logo";
 import { getAppNavItems } from "@/components/layout/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FRAME_CLASS } from "@/lib/game";
 import { cn, initials } from "@/lib/utils";
 
 const NAV_LOGOS: Record<string, { src: string; className: string }> = {
@@ -22,7 +23,7 @@ export function BottomNav({
   isAdmin: boolean;
   isCoach?: boolean;
   isGuest?: boolean;
-  profile?: { name: string; avatarUrl: string | null } | null;
+  profile?: { name: string; avatarUrl: string | null; frameId?: string | null } | null;
 }) {
   const pathname = usePathname();
   const navItems = getAppNavItems({ isAdmin, isCoach, isGuest });
@@ -64,17 +65,7 @@ export function BottomNav({
                 )}
               >
                 {showProfile ? (
-                  <Avatar
-                    className={cn(
-                      "h-6 w-6 ring-2 ring-offset-1 ring-offset-background",
-                      active ? "ring-accent" : "ring-transparent"
-                    )}
-                  >
-                    <AvatarImage src={profile.avatarUrl ?? undefined} alt="" />
-                    <AvatarFallback className="text-[9px]">
-                      {initials(profile.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ProfilePhoto profile={profile} active={active} />
                 ) : logo ? (
                   <AppLogo src={logo.src} className={logo.className} />
                 ) : (
@@ -87,5 +78,37 @@ export function BottomNav({
         })}
       </ul>
     </nav>
+  );
+}
+
+function ProfilePhoto({
+  profile,
+  active,
+}: {
+  profile: { name: string; avatarUrl: string | null; frameId?: string | null };
+  active: boolean;
+}) {
+  const frame = profile.frameId ? FRAME_CLASS[profile.frameId] : null;
+  if (frame) {
+    return (
+      <span className={cn("block h-6 w-6 shrink-0 rounded-full", frame)}>
+        <Avatar className="h-full w-full">
+          <AvatarImage src={profile.avatarUrl ?? undefined} alt="" />
+          <AvatarFallback className="text-[9px]">{initials(profile.name)}</AvatarFallback>
+        </Avatar>
+      </span>
+    );
+  }
+
+  return (
+    <Avatar
+      className={cn(
+        "h-6 w-6 ring-2 ring-offset-1 ring-offset-background",
+        active ? "ring-accent" : "ring-transparent"
+      )}
+    >
+      <AvatarImage src={profile.avatarUrl ?? undefined} alt="" />
+      <AvatarFallback className="text-[9px]">{initials(profile.name)}</AvatarFallback>
+    </Avatar>
   );
 }

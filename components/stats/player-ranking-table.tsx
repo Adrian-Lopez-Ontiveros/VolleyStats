@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FramedAvatar } from "@/components/game/framed-avatar";
 import { formatEfficiency } from "@/lib/stats";
 import type { PlayerMatchSample, RankedPlayer } from "@/lib/stats";
 import { formatAttackEfficiency } from "@/lib/volleyball-stats";
-import { formatJersey, initials } from "@/lib/utils";
+import { formatJersey } from "@/lib/utils";
 
 function PlayerSparkline({ data }: { data: PlayerMatchSample[] }) {
   if (data.length < 2) {
@@ -90,7 +90,13 @@ function SortHeader({
   );
 }
 
-export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
+export function PlayerRankingTable({
+  players,
+  frames = {},
+}: {
+  players: RankedPlayer[];
+  frames?: Record<string, string>;
+}) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [direction, setDirection] = useState<"asc" | "desc">("desc");
 
@@ -156,10 +162,13 @@ export function PlayerRankingTable({ players }: { players: RankedPlayer[] }) {
                 <td className="px-3 py-2.5 text-center font-bold tabular-nums">{index + 1}</td>
                 <td className="px-2 py-2.5">
                   <Link href={`/jugadores/${player.id}`} className="flex items-center gap-2 hover:underline">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={player.avatar_url ?? undefined} alt={player.full_name} />
-                      <AvatarFallback>{initials(player.full_name)}</AvatarFallback>
-                    </Avatar>
+                    <FramedAvatar
+                      name={player.full_name}
+                      url={player.avatar_url}
+                      frameId={frames[player.id] ?? null}
+                      size="sm"
+                      className="h-8 w-8"
+                    />
                     <span className="font-medium">
                       {formatJersey(player.jersey_number)} {player.full_name}
                     </span>

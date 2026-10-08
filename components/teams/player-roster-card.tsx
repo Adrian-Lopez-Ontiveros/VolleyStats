@@ -3,12 +3,11 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FramedAvatar } from "@/components/game/framed-avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { setPlayerJersey } from "@/lib/actions/players";
 import { POSITION_LABELS } from "@/lib/constants";
-import { initials } from "@/lib/utils";
 import type { Player } from "@/lib/types";
 
 export function PlayerRosterCard({
@@ -16,11 +15,13 @@ export function PlayerRosterCard({
   href,
   canEditJersey,
   subtitle,
+  frameId = null,
 }: {
   player: Pick<Player, "id" | "full_name" | "jersey_number" | "position" | "avatar_url">;
   href: string;
   canEditJersey: boolean;
   subtitle?: string;
+  frameId?: string | null;
 }) {
   const [jersey, setJersey] = useState(player.jersey_number);
   const [editing, setEditing] = useState(false);
@@ -58,10 +59,12 @@ export function PlayerRosterCard({
     <Card className="h-full transition-transform active:scale-[0.99]">
       <CardContent className="flex items-center gap-3 p-4">
         <Link href={href} className="flex min-w-0 flex-1 items-center gap-3">
-          <Avatar className="h-12 w-12">
-            <AvatarImage src={player.avatar_url ?? undefined} alt={player.full_name} />
-            <AvatarFallback>{initials(player.full_name)}</AvatarFallback>
-          </Avatar>
+          <FramedAvatar
+            name={player.full_name}
+            url={player.avatar_url}
+            frameId={frameId}
+            size="md"
+          />
           <div className="min-w-0 flex-1">
             <p className="font-semibold">{player.full_name}</p>
             <p className="text-xs text-muted-foreground">

@@ -6,11 +6,9 @@ import { es } from "date-fns/locale";
 import { CalendarDays, Pencil } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { DeleteNewsButton } from "@/components/news/delete-news-button";
-import { NewsCover } from "@/components/news/news-cover";
 import { Button } from "@/components/ui/button";
 import { requireViewer } from "@/lib/auth";
 import { NEWS_SELECT } from "@/lib/constants";
-import { coverFrameFromNews } from "@/lib/news";
 import { createClient } from "@/lib/supabase/server";
 import type { ClubNews } from "@/lib/types";
 
@@ -43,14 +41,18 @@ export default async function NewsDetailPage({
       </div>
 
       <article className="min-w-0 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
-        <div className="overflow-hidden rounded-3xl shadow-card ring-1 ring-black/[0.06]">
-          <NewsCover
-            url={news.cover_url}
-            frame={coverFrameFromNews(news)}
-            alt={news.title}
-            className="aspect-[4/3] w-full sm:aspect-[16/9]"
-          />
-        </div>
+        <figure className="-mx-4 w-[calc(100%+2rem)] lg:mx-0 lg:w-full">
+          {news.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={news.cover_url}
+              alt={news.title}
+              className="mx-auto block h-auto max-h-[85dvh] w-auto max-w-full lg:rounded-3xl lg:shadow-card lg:ring-1 lg:ring-black/[0.06]"
+            />
+          ) : (
+            <div className="aspect-[16/9] bg-gradient-to-br from-primary via-primary to-accent/70 lg:rounded-3xl" />
+          )}
+        </figure>
 
         <div className="mt-6 rounded-3xl border bg-card px-5 py-6 shadow-card sm:px-7 sm:py-8 lg:mt-0">
           <header>
