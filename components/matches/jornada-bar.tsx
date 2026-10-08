@@ -14,9 +14,16 @@ export function JornadaBar({
   onChange: (jornada: number | null) => void;
 }) {
   const activeRef = useRef<HTMLButtonElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+    const scroller = scrollerRef.current;
+    const chip = activeRef.current;
+    if (!scroller || !chip) return;
+    const chipBox = chip.getBoundingClientRect();
+    const barBox = scroller.getBoundingClientRect();
+    const delta = chipBox.left - barBox.left - (barBox.width - chipBox.width) / 2;
+    scroller.scrollBy({ left: delta });
   }, [value]);
 
   return (
@@ -24,7 +31,7 @@ export function JornadaBar({
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Jornada
       </p>
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div ref={scrollerRef} className="flex gap-1 overflow-x-auto pb-1">
         <JornadaChip
           active={value == null}
           buttonRef={value == null ? activeRef : undefined}

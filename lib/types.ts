@@ -92,6 +92,10 @@ export type PlayerWithTeam = Player & {
   team: Team | null;
 };
 
+export type SessionPlayer = Player & {
+  team?: { id: string; category: TeamCategory | null } | null;
+};
+
 export type PlayerCardStats = {
   jump: number;
   attack: number;
@@ -133,7 +137,7 @@ export type Profile = {
 export type ProfileWithRelations = Profile & {
   team: Team | null;
   coached_team?: Team | null;
-  player: Player | null;
+  player: SessionPlayer | null;
 };
 
 export type UserProgress = {

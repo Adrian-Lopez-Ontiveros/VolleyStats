@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
+import { CategoryNav } from "@/components/category-nav";
 import { FmvLeagueSearch } from "@/components/matches/fmv-league-search";
 import { JornadaBar } from "@/components/matches/jornada-bar";
 import { LeagueStandings } from "@/components/matches/league-standings";
@@ -12,8 +12,19 @@ import { AppLogo } from "@/components/app-logo";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { Button } from "@/components/ui/button";
+import {
+  clearPartidosReturn,
+  peekPartidosScroll,
+  rememberPartidosHref,
+  rememberPartidosScroll,
+} from "@/components/matches/partidos-return";
 import { getCategoryMeta, type TeamCategory } from "@/lib/categories";
 import { federationRoundNumber, standingsThroughJornada } from "@/lib/federation/rounds";
+import {
+  buildPartidosHref,
+  type PartidosListView,
+  type PartidosPanel,
+} from "@/lib/partidos-view";
 import type { MatchWithTeams } from "@/lib/types";
 
 export function MatchesBrowser({
@@ -21,17 +32,26 @@ export function MatchesBrowser({
   canManage,
   isGuest = false,
   initialCategory,
+  initialJornada,
+  initialPanel,
+  initialListView,
   loadError,
 }: {
   matches: MatchWithTeams[];
   canManage: boolean;
   isGuest?: boolean;
   initialCategory: TeamCategory | "all";
+  initialJornada: number | null;
+  initialPanel: PartidosPanel;
+  initialListView: PartidosListView;
   loadError?: string;
 }) {
-  const [categoria, setCategoria] = useCategoryFilter(initialCategory);
-  const [panel, setPanel] = useState<"live" | "catalog">("catalog");
-  const [jornada, setJornada] = useState<number | null>(null);
+  const [categoria, setCategoria] = useState(initialCategory);
+  const [panel, setPanel] = useState<PartidosPanel>(initialPanel);
+  const [jornada, setJornada] = useState<number | null>(initialJornada);
+  const [listView, setListView] = useState<PartidosListView>(initialListView);
+  const placeSignature = `${initialCategory}|${initialJornada ?? ""}|${initialPanel}|${initialListView}`;
+  const seenPlace = useRef(placeSignature);
   const leagueCategory = categoria === "all" ? null : categoria;
   const categoryMatches = useMemo(
     () =>
@@ -62,10 +82,54 @@ export function MatchesBrowser({
     [categoryMatches, leagueCategory, jornada]
   );
 
+  useEffect(() => {
+    if (seenPlace.current === placeSignature) return;
+    seenPlace.current = placeSignature;
+    setCategoria(initialCategory);
+    setJornada(initialJornada);
+    setPanel(initialPanel);
+    setListView(initialListView);
+  }, [placeSignature, initialCategory, initialJornada, initialPanel, initialListView]);
+
+  useLayoutEffect(() => {
+    const y = peekPartidosScroll();
+    if (y == null) return;
+    if (y >= 1) window.scrollTo(0, y);
+    const timer = window.setTimeout(clearPartidosReturn, 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useLayoutEffect(() => {
+    const href = buildPartidosHref({
+      category: categoria,
+      jornada,
+      panel,
+      listView,
+    });
+    rememberPartidosHref(href);
+    const here = `${window.location.pathname}${window.location.search}`;
+    if (here !== href) {
+      const state =
+        window.history.state && typeof window.history.state === "object"
+          ? window.history.state
+          : {};
+      window.history.replaceState({ ...state }, "", href);
+    }
+  }, [categoria, jornada, panel, listView]);
+
+  useEffect(() => {
+    rememberPartidosScroll(window.scrollY);
+    const onScroll = () => rememberPartidosScroll(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   function selectCategory(next: TeamCategory | "all") {
     setPanel("catalog");
-    setJornada(null);
-    setCategoria(next);
+    if (next !== categoria) {
+      setJornada(null);
+      setCategoria(next);
+    }
   }
 
   const description =
@@ -136,6 +200,8 @@ export function MatchesBrowser({
       {panel === "live" ? (
         <MatchViews
           matches={liveMatches}
+          view={listView}
+          onViewChange={setListView}
           empty="Ahora mismo no hay ningún partido con seguimiento en vivo."
         />
       ) : leagueCategory ? (
@@ -143,6 +209,8 @@ export function MatchesBrowser({
           <JornadaBar value={jornada} onChange={setJornada} />
           <MatchViews
             matches={visibleMatches}
+            view={listView}
+            onViewChange={setListView}
             empty={
               jornada == null
                 ? "Todavía no hay partidos."

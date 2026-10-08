@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Medal, Plus } from "lucide-react";
 import { CategoryNav, useCategoryFilter } from "@/components/category-nav";
@@ -33,6 +33,14 @@ export function LeagueBrowser({
   loadError?: string;
 }) {
   const [categoria, setCategoria] = useCategoryFilter(initialCategory);
+  const seenCategory = useRef(initialCategory);
+
+  useEffect(() => {
+    if (seenCategory.current === initialCategory) return;
+    seenCategory.current = initialCategory;
+    setCategoria(initialCategory);
+  }, [initialCategory, setCategoria]);
+
   const activeCategory = parseCategory(typeof categoria === "string" ? categoria : initialCategory);
   const meta = getCategoryMeta(activeCategory);
 

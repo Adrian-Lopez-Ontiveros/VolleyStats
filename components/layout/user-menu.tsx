@@ -9,9 +9,9 @@ import {
   Menu,
   Newspaper,
   Shield,
-  Target,
   UserRound,
 } from "lucide-react";
+import { AppLogo } from "@/components/app-logo";
 import { logoutAction } from "@/lib/actions/auth";
 import { SHOW_TACTICS_NAV } from "@/components/layout/nav-items";
 import { hasCoachAccess } from "@/lib/constants";
@@ -56,7 +56,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/predicciones">
-            <Target className="h-4 w-4" />
+            <AppLogo src="/predictions-logo.png" className="h-4 w-4" />
             Predicciones
           </Link>
         </DropdownMenuItem>

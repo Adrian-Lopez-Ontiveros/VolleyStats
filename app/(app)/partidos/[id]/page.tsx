@@ -77,7 +77,7 @@ export default async function MatchDetailPage({
     return (
       <>
         <div className="mb-3">
-          <BackButton href="/partidos" />
+          <BackButton href="/partidos" restorePartidos />
         </div>
         <PageHeader
           title={`${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`}
@@ -170,7 +170,7 @@ export default async function MatchDetailPage({
   return (
     <>
       <div className="mb-3">
-        <BackButton href="/partidos" />
+        <BackButton href="/partidos" restorePartidos />
       </div>
       <PageHeader
         title={`${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`}

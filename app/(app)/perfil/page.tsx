@@ -180,7 +180,7 @@ export default async function ProfilePage() {
                 </Button>
               ) : null}
             </div>
-            <PlayerEvolutionPanel events={skillEvents} teamId={player.team_id} />
+            <PlayerEvolutionPanel playerId={player.id} events={skillEvents} teamId={player.team_id} />
           </div>
         </>
       ) : (

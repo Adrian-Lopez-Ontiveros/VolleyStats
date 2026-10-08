@@ -10,7 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
-import { canViewPlayerStats, requireViewer } from "@/lib/auth";
+import {
+  canViewPlayerStats,
+  ownPlayerId,
+  peekPlayerCategory,
+  requireViewer,
+  resolveViewerPlayerCategory,
+} from "@/lib/auth";
+import type { TeamCategory } from "@/lib/categories";
 import {
   PLAYER_CARD_SELECT,
   PLAYER_LINEUP_SELECT,
@@ -35,7 +42,15 @@ export default async function PlayerDetailPage({
   const { id } = await params;
   const viewer = await requireViewer();
   const { user, canManage } = viewer;
-  const canViewStats = canViewPlayerStats(viewer, id);
+  let viewerCategory: TeamCategory | null = null;
+  let targetCategory: TeamCategory | null = null;
+  if (!canManage && ownPlayerId(viewer) !== id) {
+    [viewerCategory, targetCategory] = await Promise.all([
+      resolveViewerPlayerCategory(user),
+      peekPlayerCategory(id),
+    ]);
+  }
+  const canViewStats = canViewPlayerStats(viewer, id, { viewerCategory, targetCategory });
   const supabase = await createClient();
   const playerSelect = canViewStats
     ? `${PLAYER_ROSTER_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})`
@@ -135,11 +150,12 @@ export default async function PlayerDetailPage({
       {canViewStats ? (
         <>
           <h2 className="mb-3 text-lg font-semibold">Evolución de rendimiento</h2>
-          <PlayerEvolutionPanel events={typedEvents} teamId={typed.team_id} />
+          <PlayerEvolutionPanel playerId={typed.id} events={typedEvents} teamId={typed.team_id} />
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Las estadísticas de cada jugador solo las ven el cuerpo técnico y el propio jugador.
+          Las estadísticas de cada jugador las ven el cuerpo técnico y el propio jugador. Quien
+          juega en senior también puede ver las del resto, menos las de las cadetes.
         </p>
       )}
 

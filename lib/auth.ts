@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isTeamCategory, type TeamCategory } from "@/lib/categories";
 import {
   SPECTATOR_COOKIE,
   PLAYER_ROSTER_SELECT,
@@ -10,7 +11,44 @@ import {
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { unwrapOne } from "@/lib/utils";
-import type { Player, ProfileWithRelations, SessionUser } from "@/lib/types";
+import type { Player, ProfileWithRelations, SessionPlayer, SessionUser } from "@/lib/types";
+
+type ServerClient = Awaited<ReturnType<typeof createClient>>;
+
+const SENIOR_CATEGORIES = new Set<TeamCategory>(["senior_masculino", "senior_femenino"]);
+
+function asSessionPlayer(row: unknown): SessionPlayer | null {
+  if (!row || typeof row !== "object") return null;
+  const record = row as Player & {
+    team?: { id?: string | null; category?: string | null } | { id?: string | null; category?: string | null }[] | null;
+  };
+  const team = unwrapOne(record.team);
+  return {
+    ...record,
+    team:
+      team?.id
+        ? { id: team.id, category: isTeamCategory(team.category) ? team.category : null }
+        : null,
+  };
+}
+
+async function loadLinkedPlayer(supabase: ServerClient, userId: string) {
+  const withTeam = await supabase
+    .from("players")
+    .select(`${PLAYER_ROSTER_SELECT}, team:teams!team_id(id, category)` as "*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!withTeam.error) return asSessionPlayer(withTeam.data);
+
+  const plain = await supabase
+    .from("players")
+    .select(PLAYER_ROSTER_SELECT as "*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return asSessionPlayer(plain.data);
+}
 
 export type Viewer = {
   user: SessionUser | null;
@@ -41,17 +79,13 @@ async function loadSessionUser(): Promise<SessionUser | null> {
 
   if (!user) return null;
 
-  const [{ data: profile, error: profileError }, { data: player }] = await Promise.all([
+  const [{ data: profile, error: profileError }, player] = await Promise.all([
     supabase
       .from("profiles")
       .select(PROFILE_SESSION_SELECT as "*")
       .eq("id", user.id)
       .maybeSingle(),
-    supabase
-      .from("players")
-      .select(PLAYER_ROSTER_SELECT as "*")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+    loadLinkedPlayer(supabase, user.id),
   ]);
 
   let resolved = profile;
@@ -74,7 +108,7 @@ async function loadSessionUser(): Promise<SessionUser | null> {
       ...typed,
       team: unwrapOne(typed.team),
       coached_team: unwrapOne(typed.coached_team ?? null),
-      player: (player as Player | null) ?? null,
+      player,
     },
   };
 }
@@ -83,19 +117,14 @@ async function tryLinkPlayer(session: SessionUser): Promise<SessionUser> {
   const supabase = await createClient();
   await supabase.rpc("link_profile_to_matching_player");
 
-  const { data: player } = await supabase
-    .from("players")
-    .select(PLAYER_ROSTER_SELECT as "*")
-    .eq("user_id", session.id)
-    .maybeSingle();
-
+  const player = await loadLinkedPlayer(supabase, session.id);
   if (!player) return session;
 
   return {
     ...session,
     profile: {
       ...session.profile,
-      player: player as Player,
+      player,
     },
   };
 }
@@ -131,9 +160,55 @@ export function ownPlayerId(viewer: Pick<Viewer, "user">) {
   return viewer.user?.profile.player?.id ?? null;
 }
 
-export function canViewPlayerStats(viewer: Pick<Viewer, "canManage" | "user">, playerId?: string | null) {
+export function viewerPlayerCategory(user: SessionUser | null | undefined): TeamCategory | null {
+  const player = user?.profile.player;
+  if (!player?.team_id) return null;
+  if (isTeamCategory(player.team?.category)) return player.team.category;
+  if (user?.profile.team?.id === player.team_id && isTeamCategory(user.profile.team.category)) {
+    return user.profile.team.category;
+  }
+  return null;
+}
+
+export async function resolveViewerPlayerCategory(user: SessionUser | null): Promise<TeamCategory | null> {
+  const direct = viewerPlayerCategory(user);
+  if (direct) return direct;
+  const teamId = user?.profile.player?.team_id;
+  if (!teamId) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase.from("teams").select("category").eq("id", teamId).maybeSingle();
+  const category = (data as { category?: string | null } | null)?.category;
+  return isTeamCategory(category) ? category : null;
+}
+
+export async function peekPlayerCategory(playerId: string): Promise<TeamCategory | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("players")
+    .select("team:teams!team_id(category)" as "*")
+    .eq("id", playerId)
+    .maybeSingle();
+  const team = unwrapOne(
+    (data as { team?: { category?: string | null } | { category?: string | null }[] | null } | null)?.team
+  );
+  return isTeamCategory(team?.category) ? team.category : null;
+}
+
+export function canViewPlayerStats(
+  viewer: Pick<Viewer, "canManage" | "user">,
+  playerId?: string | null,
+  access?: {
+    viewerCategory?: TeamCategory | null;
+    targetCategory?: TeamCategory | null;
+  }
+) {
   if (viewer.canManage) return true;
-  return Boolean(playerId && ownPlayerId(viewer) === playerId);
+  if (playerId && ownPlayerId(viewer) === playerId) return true;
+  const viewerCategory = access?.viewerCategory;
+  const targetCategory = access?.targetCategory;
+  if (!viewerCategory || !SENIOR_CATEGORIES.has(viewerCategory)) return false;
+  return Boolean(targetCategory && targetCategory !== "cadete_femenino");
 }
 
 export async function requireAdmin() {

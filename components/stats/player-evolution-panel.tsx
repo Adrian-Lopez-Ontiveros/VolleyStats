@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { EVOLUTION_METRICS, PlayerEvolutionChart } from "@/components/stats/charts";
 import { ChipRow, PhaseFilterBar } from "@/components/stats/phase-filter";
@@ -10,7 +10,12 @@ import { StatSummary } from "@/components/stats/stat-summary";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { Card, CardContent } from "@/components/ui/card";
 import { matchStatusMeta } from "@/lib/constants";
-import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/lib/stat-filters";
+import {
+  DEFAULT_PHASE_FILTER,
+  filterEventsByPhase,
+  type PhaseFilter,
+  type PossessionPhase,
+} from "@/lib/stat-filters";
 import { formatMatchWhen } from "@/lib/federation/schedule";
 import {
   buildPlayerMatchSeries,
@@ -67,6 +72,42 @@ export type PlayerStatEvent = {
 
 type MatchOption = { id: string; label: string; date: string };
 
+const EVOLUTION_STORAGE_PREFIX = "vs-evolution:";
+const DEFAULT_METRIC_KEYS = ["points", "attackEffPct", "errors"];
+const POSSESSIONS = new Set<string>(["all", "serving", "receiving"]);
+
+function readSavedEvolution(playerId: string): {
+  possession: PossessionPhase;
+  matchId: string;
+  metrics: string[];
+} | null {
+  try {
+    const raw = localStorage.getItem(`${EVOLUTION_STORAGE_PREFIX}${playerId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      possession?: unknown;
+      matchId?: unknown;
+      metrics?: unknown;
+    };
+    const possession =
+      typeof parsed.possession === "string" && POSSESSIONS.has(parsed.possession)
+        ? (parsed.possession as PossessionPhase)
+        : "all";
+    const matchId = typeof parsed.matchId === "string" && parsed.matchId ? parsed.matchId : "all";
+    const allowed = new Set<string>(EVOLUTION_METRICS.map((item) => item.key));
+    const metrics = Array.isArray(parsed.metrics)
+      ? parsed.metrics.filter((key): key is string => typeof key === "string" && allowed.has(key))
+      : [];
+    return {
+      possession,
+      matchId,
+      metrics: metrics.length > 0 ? metrics : DEFAULT_METRIC_KEYS,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function teamDisplayName(
   team?: { name?: string | null; short_name?: string | null } | null
 ) {
@@ -109,16 +150,19 @@ function buildMatchOptions(
 }
 
 export function PlayerEvolutionPanel({
+  playerId,
   events,
   teamId,
 }: {
+  playerId: string;
   events: PlayerStatEvent[];
   teamId?: string | null;
 }) {
   const [filter, setFilter] = useState<PhaseFilter>(DEFAULT_PHASE_FILTER);
   const [selectedMatchId, setSelectedMatchId] = useState<string>("all");
-  const [activeKeys, setActiveKeys] = useState<string[]>(["points", "attackEffPct", "errors"]);
+  const [activeKeys, setActiveKeys] = useState<string[]>(DEFAULT_METRIC_KEYS);
   const [errorsOpen, setErrorsOpen] = useState(false);
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
 
   const matchOptions = useMemo(
     () => buildMatchOptions(events, teamId),
@@ -162,6 +206,39 @@ export function PlayerEvolutionPanel({
   );
   const metrics = EVOLUTION_METRICS.filter((item) => activeKeys.includes(item.key));
 
+  useEffect(() => {
+    const saved = readSavedEvolution(playerId);
+    if (saved) {
+      setFilter({ sets: "all", possession: saved.possession });
+      setSelectedMatchId(saved.matchId);
+      setActiveKeys(saved.metrics);
+    } else {
+      setFilter(DEFAULT_PHASE_FILTER);
+      setSelectedMatchId("all");
+      setActiveKeys(DEFAULT_METRIC_KEYS);
+    }
+    setHydratedId(playerId);
+  }, [playerId]);
+
+  useEffect(() => {
+    if (hydratedId !== playerId) return;
+    const known =
+      selectedMatchId === "all" || matchOptions.some((item) => item.id === selectedMatchId);
+    if (!known) {
+      if (matchOptions.length === 0) return;
+      setSelectedMatchId("all");
+    }
+    const matchId = known ? selectedMatchId : "all";
+    try {
+      localStorage.setItem(
+        `${EVOLUTION_STORAGE_PREFIX}${playerId}`,
+        JSON.stringify({ possession: filter.possession, matchId, metrics: activeKeys })
+      );
+    } catch {
+      // Navegadores en modo privado pueden rechazar localStorage.
+    }
+  }, [hydratedId, playerId, filter.possession, selectedMatchId, activeKeys, matchOptions]);
+
   function toggleMetric(key: string) {
     setActiveKeys((current) => {
       if (current.includes(key)) {
@@ -169,6 +246,10 @@ export function PlayerEvolutionPanel({
       }
       return [...current, key];
     });
+  }
+
+  if (hydratedId !== playerId) {
+    return <div className="h-40 rounded-3xl bg-secondary/60" aria-hidden />;
   }
 
   return (

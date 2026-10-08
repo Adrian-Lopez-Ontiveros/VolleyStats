@@ -11,12 +11,22 @@ export function MatchViews({
   matches,
   linked = true,
   empty = "Todavía no hay partidos.",
+  view: controlledView,
+  onViewChange,
 }: {
   matches: MatchWithTeams[];
   linked?: boolean;
   empty?: string;
+  view?: "list" | "calendar";
+  onViewChange?: (view: "list" | "calendar") => void;
 }) {
-  const [view, setView] = useState<"list" | "calendar">("list");
+  const [innerView, setInnerView] = useState<"list" | "calendar">(controlledView ?? "list");
+  const view = controlledView ?? innerView;
+
+  function setView(next: "list" | "calendar") {
+    if (onViewChange) onViewChange(next);
+    else setInnerView(next);
+  }
 
   return (
     <>
