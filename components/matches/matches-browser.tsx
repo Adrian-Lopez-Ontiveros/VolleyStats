@@ -9,7 +9,6 @@ import { JornadaBar } from "@/components/matches/jornada-bar";
 import { LeagueStandings } from "@/components/matches/league-standings";
 import { MatchViews } from "@/components/matches/match-views";
 import { PageHeader } from "@/components/page-header";
-import { SectionLogo } from "@/components/section-logo";
 import { QueryError } from "@/components/query-error";
 import { Button } from "@/components/ui/button";
 import { getCategoryMeta, type TeamCategory } from "@/lib/categories";
@@ -80,7 +79,6 @@ export function MatchesBrowser({
       <PageHeader
         title="Partidos"
         description={description}
-        leading={<SectionLogo src="/partidos-logo.png" className="h-16 w-16" />}
         action={
           canManage ? (
             <Button asChild variant="accent" size="sm">

@@ -1,10 +1,17 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getAppNavItems } from "@/components/layout/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, initials } from "@/lib/utils";
+
+const NAV_LOGOS: Record<string, string> = {
+  "/partidos": "/partidos-logo.png",
+  "/liga": "/liga-logo.png",
+  "/predicciones": "/predictions-logo.png",
+};
 
 export function BottomNav({
   isAdmin,
@@ -43,6 +50,7 @@ export function BottomNav({
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
+          const logo = NAV_LOGOS[item.href];
           const showProfile = item.href === "/perfil" && profile;
           return (
             <li key={item.href}>
@@ -67,6 +75,14 @@ export function BottomNav({
                       {initials(profile.name)}
                     </AvatarFallback>
                   </Avatar>
+                ) : logo ? (
+                  <Image
+                    src={logo}
+                    alt=""
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 object-contain dark:invert"
+                  />
                 ) : (
                   <Icon className={cn("h-5 w-5", active && "stroke-[2.4]")} />
                 )}

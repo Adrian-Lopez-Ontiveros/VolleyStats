@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { GameLeaderboard } from "@/components/game/leaderboard";
-import { PredictionsLogo } from "@/components/game/predictions-logo";
 import { PredictionsBoard, QuinielaStrip } from "@/components/game/predictions-board";
 import { RewardsDisclosure } from "@/components/game/rewards-grid";
 import { PageHeader } from "@/components/page-header";
@@ -38,7 +37,6 @@ export default async function PredictionsPage() {
       <PageHeader
         title="Predicciones"
         description="Elige quién gana. Cada acierto suma 1 punto."
-        leading={<PredictionsLogo className="h-16 w-14" />}
       />
 
       <div className="space-y-8">
