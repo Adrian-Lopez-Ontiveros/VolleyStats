@@ -36,7 +36,7 @@ export type CardStatSlot = {
 export function cardStatSlots(position?: PlayerPosition | null): CardStatSlot[] {
   return CARD_STAT_KEYS.map((key) => {
     if (position === "libero" && key === "jump") return { key, label: "Reflejos", short: "REF" };
-    if (position === "libero" && key === "attack") return { key, label: "Apoyos", short: "APO" };
+    if (position === "libero" && key === "attack") return { key, label: "Apoyos", short: "APY" };
     if (position === "libero" && key === "block") return { key, label: "Colocación", short: "COL" };
     if (position === "colocador" && key === "reception") {
       return { key, label: "Colocación", short: "COL" };
