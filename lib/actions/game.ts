@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
-import { MATCH_LIST_SELECT, MATCH_LIST_SELECT_BASE } from "@/lib/constants";
+import { MATCH_LIST_VARIANTS, selectWithMatchFallback } from "@/lib/match-query";
 import { readUserProgress } from "@/lib/user-progress";
 import { involvesClubTeam } from "@/lib/federation/leagues";
 import {
@@ -153,19 +153,9 @@ export async function loadGamePageData() {
       supabase.from("user_progress").select(columns).eq("user_id", session.id).maybeSingle()
     ),
     supabase.from("user_rewards").select("user_id, reward_id, unlocked_at").eq("user_id", session.id),
-    supabase
-      .from("matches")
-      .select(MATCH_LIST_SELECT as "*")
-      .order("scheduled_at", { ascending: true })
-      .then(async (result) => {
-        if (result.error && /sets_to_win/i.test(result.error.message)) {
-          return supabase
-            .from("matches")
-            .select(MATCH_LIST_SELECT_BASE as "*")
-            .order("scheduled_at", { ascending: true });
-        }
-        return result;
-      }),
+    selectWithMatchFallback(MATCH_LIST_VARIANTS, (columns) =>
+      supabase.from("matches").select(columns as "*").order("scheduled_at", { ascending: true })
+    ),
     supabase
       .from("match_predictions")
       .select("id, user_id, match_id, predicted_winner_id, created_at, updated_at, resolved_at, is_correct, xp_awarded")

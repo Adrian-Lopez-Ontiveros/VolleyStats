@@ -16,12 +16,8 @@ import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
 import { rewardFramesByPlayer } from "@/lib/reward-frames";
 import { getCategoryMeta } from "@/lib/categories";
-import {
-  MATCH_WITH_TEAMS_SELECT,
-  PLAYER_PUBLIC_SELECT,
-  PLAYER_ROSTER_SELECT,
-  TEAM_SELECT,
-} from "@/lib/constants";
+import { PLAYER_PUBLIC_SELECT, PLAYER_ROSTER_SELECT, TEAM_SELECT } from "@/lib/constants";
+import { MATCH_DETAIL_VARIANTS, selectWithMatchFallback } from "@/lib/match-query";
 import { createClient } from "@/lib/supabase/server";
 import {
   buildPlayerMatchSeries,
@@ -71,11 +67,13 @@ export default async function TeamDetailPage({
         .select((canManage ? PLAYER_ROSTER_SELECT : PLAYER_PUBLIC_SELECT) as "*")
         .eq("team_id", id)
         .order("jersey_number", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("matches")
-        .select(MATCH_WITH_TEAMS_SELECT as "*")
-        .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
-        .order("scheduled_at", { ascending: true }),
+      selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
+        supabase
+          .from("matches")
+          .select(columns as "*")
+          .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
+          .order("scheduled_at", { ascending: true })
+      ),
     ]);
 
   if (teamError) {

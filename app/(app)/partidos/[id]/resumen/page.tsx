@@ -10,7 +10,8 @@ import { QueryError } from "@/components/query-error";
 import { requireCoach } from "@/lib/auth";
 import { buildBoxScore } from "@/lib/box-score";
 import { setterStartZone } from "@/lib/court";
-import { MATCH_EVENT_SELECT, MATCH_LINEUP_SELECT, MATCH_WITH_TEAMS_SELECT } from "@/lib/constants";
+import { MATCH_EVENT_SELECT, MATCH_LINEUP_SELECT } from "@/lib/constants";
+import { MATCH_DETAIL_VARIANTS, selectWithMatchFallback } from "@/lib/match-query";
 import { createClient } from "@/lib/supabase/server";
 import { overlayFinishedMatchScore } from "@/lib/volleyball";
 import type { MatchEventWithPlayer, MatchLineupEntry, MatchWithTeams, Player } from "@/lib/types";
@@ -27,7 +28,9 @@ export default async function MatchBoxScorePage({
   const supabase = await createClient();
 
   const [{ data: match, error: matchError }, { data: events }] = await Promise.all([
-    supabase.from("matches").select(MATCH_WITH_TEAMS_SELECT as "*").eq("id", id).maybeSingle(),
+    selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
+      supabase.from("matches").select(columns as "*").eq("id", id).maybeSingle()
+    ),
     supabase
       .from("match_events")
       .select(MATCH_EVENT_SELECT as "*")

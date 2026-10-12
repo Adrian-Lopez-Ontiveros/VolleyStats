@@ -15,7 +15,7 @@ import {
   ownPlayerId,
   peekPlayerCategory,
   requireViewer,
-  resolveViewerPlayerCategory,
+  resolveViewerTeamCategory,
 } from "@/lib/auth";
 import type { TeamCategory } from "@/lib/categories";
 import {
@@ -47,7 +47,7 @@ export default async function PlayerDetailPage({
   let targetCategory: TeamCategory | null = null;
   if (!canManage && ownPlayerId(viewer) !== id) {
     [viewerCategory, targetCategory] = await Promise.all([
-      resolveViewerPlayerCategory(user),
+      resolveViewerTeamCategory(user),
       peekPlayerCategory(id),
     ]);
   }
@@ -161,8 +161,8 @@ export default async function PlayerDetailPage({
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Las estadísticas de cada jugador las ven el cuerpo técnico y el propio jugador. Quien
-          juega en senior también puede ver las del resto, menos las de las cadetes.
+          Las estadísticas de cada jugador las ven el cuerpo técnico, el propio jugador y quien
+          juega en senior femenino. El senior masculino ve las del resto, menos las de las cadetes.
         </p>
       )}
 

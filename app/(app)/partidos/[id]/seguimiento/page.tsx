@@ -5,13 +5,8 @@ import { LiveTracker } from "@/components/matches/live-tracker";
 import { PageHeader } from "@/components/page-header";
 import { requireViewer } from "@/lib/auth";
 import { canTrackLiveMatch } from "@/lib/federation/leagues";
-import {
-  MATCH_EVENT_SELECT,
-  MATCH_LINEUP_SELECT,
-  MATCH_SUB_SELECT,
-  MATCH_WITH_TEAMS_SELECT,
-  PLAYER_LINEUP_SELECT,
-} from "@/lib/constants";
+import { MATCH_EVENT_SELECT, MATCH_LINEUP_SELECT, MATCH_SUB_SELECT, PLAYER_LINEUP_SELECT } from "@/lib/constants";
+import { MATCH_DETAIL_VARIANTS, selectWithMatchFallback } from "@/lib/match-query";
 import { createClient } from "@/lib/supabase/server";
 import { unwrapOne } from "@/lib/utils";
 import { isScoringAction } from "@/lib/volleyball";
@@ -34,11 +29,9 @@ export default async function LiveMatchPage({
   const { canManage } = await requireViewer();
   const supabase = await createClient();
 
-  const { data: match } = await supabase
-    .from("matches")
-    .select(MATCH_WITH_TEAMS_SELECT as "*")
-    .eq("id", id)
-    .maybeSingle();
+  const { data: match } = await selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
+    supabase.from("matches").select(columns as "*").eq("id", id).maybeSingle()
+  );
 
   if (!match) notFound();
 

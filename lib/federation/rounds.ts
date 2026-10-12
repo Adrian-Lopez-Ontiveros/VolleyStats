@@ -33,8 +33,15 @@ export function currentJornadaNumber(
   >[],
   category: TeamCategory
 ): number | null {
+  return currentJornadaFromRounds(
+    matches.filter((match) => Boolean(match.is_federation) && isCategoryMatch(match, category))
+  );
+}
+
+export function currentJornadaFromRounds(
+  matches: readonly Pick<MatchWithTeams, "status" | "scheduled_at" | "federation_round">[]
+): number | null {
   const rounds = matches
-    .filter((match) => Boolean(match.is_federation) && isCategoryMatch(match, category))
     .map((match) => ({ match, round: federationRoundNumber(match.federation_round) }))
     .filter((item): item is { match: (typeof matches)[number]; round: number } => item.round != null);
 

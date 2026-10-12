@@ -5,6 +5,8 @@ export type FmvBrowseMatch = {
   id: string;
   scheduledAt: string;
   location: string;
+  court: string;
+  referees: string;
   round: string;
   status: "live" | "scheduled" | "finished";
   homeSets: number;
@@ -55,6 +57,8 @@ export async function loadFmvLeague(groupId: string): Promise<FmvLeagueSnapshot>
       id: match.id,
       scheduledAt: match.scheduledAt,
       location: match.location,
+      court: match.court,
+      referees: match.referees,
       round: match.round,
       status: browseStatus(match, now),
       homeSets: match.homeSets ?? 0,

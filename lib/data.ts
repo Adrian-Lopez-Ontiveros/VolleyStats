@@ -1,12 +1,6 @@
 import { cache } from "react";
-import {
-  MATCH_LIST_SELECT,
-  MATCH_LIST_SELECT_BASE,
-  MATCH_STANDING_SELECT,
-  PLAYER_PUBLIC_SELECT,
-  PLAYER_ROSTER_SELECT,
-  TEAM_SELECT,
-} from "@/lib/constants";
+import { MATCH_STANDING_SELECT, PLAYER_PUBLIC_SELECT, PLAYER_ROSTER_SELECT, TEAM_SELECT } from "@/lib/constants";
+import { MATCH_LIST_VARIANTS, selectWithMatchFallback } from "@/lib/match-query";
 import { createClient } from "@/lib/supabase/server";
 
 export const getTeams = cache(async () => {
@@ -21,17 +15,9 @@ export const getClubTeams = cache(async () => {
 
 export const getMatchesList = cache(async () => {
   const supabase = await createClient();
-  const result = await supabase
-    .from("matches")
-    .select(MATCH_LIST_SELECT as "*")
-    .order("scheduled_at", { ascending: true });
-  if (result.error && /sets_to_win/i.test(result.error.message)) {
-    return supabase
-      .from("matches")
-      .select(MATCH_LIST_SELECT_BASE as "*")
-      .order("scheduled_at", { ascending: true });
-  }
-  return result;
+  return selectWithMatchFallback(MATCH_LIST_VARIANTS, (columns) =>
+    supabase.from("matches").select(columns as "*").order("scheduled_at", { ascending: true })
+  );
 });
 
 export const getFinishedMatches = cache(async () => {

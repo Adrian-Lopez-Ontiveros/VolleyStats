@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams } from "@/lib/types";
 import { MatchKindBadge, isFriendlyMatch } from "@/components/matches/match-kind";
+import { courtLabel, refereeLabel } from "@/lib/match-venue";
 import { TeamLogo } from "@/components/teams/team-logo";
 
 export function SeasonCalendar({
@@ -161,6 +162,7 @@ function CalendarMatch({ match, linked }: { match: MatchWithTeams; linked: boole
           />
         </span>
       </div>
+      <CalendarVenue match={match} />
     </>
   );
 
@@ -170,4 +172,10 @@ function CalendarMatch({ match, linked }: { match: MatchWithTeams; linked: boole
       {body}
     </Link>
   );
+}
+
+function CalendarVenue({ match }: { match: MatchWithTeams }) {
+  const text = [courtLabel(match.court), refereeLabel(match.referees)].filter(Boolean).join(" · ");
+  if (!text) return null;
+  return <p className="mt-1 text-[11px] leading-snug text-muted-foreground [overflow-wrap:anywhere]">{text}</p>;
 }

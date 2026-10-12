@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { involvesClubTeam } from "@/lib/federation/leagues";
 import { formatMatchWhen, madridCalendarKey } from "@/lib/federation/schedule";
+import { courtLabel } from "@/lib/match-venue";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { unwrapOne } from "@/lib/utils";
@@ -131,13 +132,24 @@ export async function sendDueMatchReminders() {
   const supabase = await notificationDb();
   const tomorrow = madridTomorrowKey();
 
-  const { data: matches, error } = await supabase
+  const reminderSelect =
+    "id, scheduled_at, location, court, notes, status, is_federation, reminder_sent_at, home_team:teams!matches_home_team_id_fkey(name, short_name, is_club_team), away_team:teams!matches_away_team_id_fkey(name, short_name, is_club_team)";
+  const reminderSelectBase =
+    "id, scheduled_at, location, notes, status, is_federation, reminder_sent_at, home_team:teams!matches_home_team_id_fkey(name, short_name, is_club_team), away_team:teams!matches_away_team_id_fkey(name, short_name, is_club_team)";
+  const first = await supabase
     .from("matches")
-    .select(
-      "id, scheduled_at, location, notes, status, is_federation, reminder_sent_at, home_team:teams!matches_home_team_id_fkey(name, short_name, is_club_team), away_team:teams!matches_away_team_id_fkey(name, short_name, is_club_team)"
-    )
+    .select(reminderSelect)
     .eq("status", "scheduled")
     .is("reminder_sent_at", null);
+  const loaded =
+    first.error && /court/i.test(first.error.message)
+      ? await supabase
+          .from("matches")
+          .select(reminderSelectBase)
+          .eq("status", "scheduled")
+          .is("reminder_sent_at", null)
+      : first;
+  const { data: matches, error } = loaded;
 
   if (error || !matches?.length) {
     return { sent: 0, matches: 0, error: error?.message };
@@ -148,6 +160,7 @@ export async function sendDueMatchReminders() {
       id: string;
       scheduled_at: string;
       location: string | null;
+      court?: string | null;
       notes: string | null;
       is_federation?: boolean;
       home_team: { name?: string; short_name?: string | null; is_club_team?: boolean } | { name?: string; short_name?: string | null; is_club_team?: boolean }[] | null;
@@ -170,8 +183,10 @@ export async function sendDueMatchReminders() {
       notes: match.notes,
       isFederation: match.is_federation,
     });
-    const place = match.location ? ` · ${match.location}` : "";
-    return `${home?.short_name || home?.name || "Local"} vs ${away?.short_name || away?.name || "Visitante"} · ${when}${place}`;
+    const courtText = courtLabel(match.court);
+    const place = [match.location?.trim(), courtText].filter(Boolean).join(" · ");
+    const where = place ? ` · ${place}` : "";
+    return `${home?.short_name || home?.name || "Local"} vs ${away?.short_name || away?.name || "Visitante"} · ${when}${where}`;
   });
 
   const title = due.length === 1 ? "Partido mañana" : "Partidos mañana";

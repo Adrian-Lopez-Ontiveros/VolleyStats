@@ -1,6 +1,7 @@
 import { fmvCrestUrl } from "@/lib/federation/crests";
 import { isClubTeamName } from "@/lib/federation/leagues";
-import { parseFmvSchedule, type FmvSchedulePrecision } from "@/lib/federation/schedule";
+import { cleanCourt, joinReferees } from "@/lib/match-venue";
+import { madridCalendarKey, parseFmvSchedule, type FmvSchedulePrecision } from "@/lib/federation/schedule";
 
 const FMV_API = "https://intranet.fmvoley.com/api";
 
@@ -37,6 +38,9 @@ export type FmvMatch = {
   scheduledAt: string;
   schedulePrecision: FmvSchedulePrecision;
   location: string;
+  court: string;
+  referees: string;
+  refereesKnown: boolean;
   round: string;
   homeSets: number | null;
   awaySets: number | null;
@@ -340,9 +344,68 @@ export async function fetchFmvMatches(
   }
 
   const fromCalendar = await fetchCalendarMatches(groupId);
-  if (fromCalendar.length) return fromCalendar;
+  if (fromCalendar.length) {
+    if (options?.scores) return fromCalendar;
+    return enrichUpcomingVenues(groupId, fromCalendar);
+  }
   if (options?.scores) return [];
   return fetchMatchesByRound(groupId);
+}
+
+// The calendar call omits referees and often leaves the court empty.
+// The next few jornadas come from the match endpoint, which has both.
+async function enrichUpcomingVenues(groupId: string, matches: FmvMatch[]): Promise<FmvMatch[]> {
+  try {
+    const today = madridCalendarKey(new Date().toISOString());
+    const fromDay = shiftIsoDay(today, -1);
+    const rounds = asArray(await fmvGet("competiciones/getJornadasGrupo", { grupoId: groupId }))
+      .map((item) => {
+        const round = asRecord(item);
+        return {
+          id: pickString(round, ["id", "idJornada", "jornadaId"]),
+          day: fmvDayKey(pickString(round, ["fecha"])),
+        };
+      })
+      .filter((round) => round.id && round.day && round.day >= fromDay)
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .slice(0, 4);
+    if (rounds.length === 0) return matches;
+
+    const detailed = (
+      await mapPool(rounds, 4, async (round) => {
+        const payload = await fmvGet("competiciones/getPartidosByJornada", { jornadaId: round.id });
+        return asArray(payload).map((item) => normalizeMatch(asRecord(item), ""));
+      })
+    ).flat();
+    const byId = new Map(detailed.filter((match) => match.id).map((match) => [match.id, match]));
+    return matches.map((match) => {
+      const extra = byId.get(match.id);
+      if (!extra) return match;
+      return {
+        ...match,
+        location: match.location || extra.location,
+        court: extra.court || match.court,
+        referees: extra.refereesKnown ? extra.referees : match.referees,
+        refereesKnown: extra.refereesKnown || match.refereesKnown,
+      };
+    });
+  } catch {
+    return matches;
+  }
+}
+
+function fmvDayKey(fecha: string) {
+  const match = fecha.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!match) return "";
+  return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+}
+
+function shiftIsoDay(isoDay: string, delta: number) {
+  const match = isoDay.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return isoDay;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + delta));
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
 }
 
 export async function resolveFmvTestLeague(): Promise<FmvCatalogPath> {
@@ -577,6 +640,7 @@ function normalizeMatch(row: Json, roundName: string, roundFecha = ""): FmvMatch
     diaHora: pickString(row, ["dia_hora", "diaHora"]),
     roundFecha,
   });
+  const officials = parseReferees(row);
 
   return {
     id: pickString(row, ["id", "idPartido", "partidoId"]),
@@ -586,15 +650,45 @@ function normalizeMatch(row: Json, roundName: string, roundFecha = ""): FmvMatch
     awayId,
     scheduledAt: schedule.scheduledAt,
     schedulePrecision: schedule.precision,
-    location: sanitizeLocation(
-      pickString(row, ["pabellon", "pista", "ubicacion", "lugar", "instalacion", "direccion"])
-    ),
+    location: sanitizeLocation(pickString(row, ["pabellon", "ubicacion", "lugar", "instalacion", "direccion"])),
+    court: cleanCourt(pickString(row, ["pista", "campo", "numPista", "numeroPista"])),
+    referees: officials.referees,
+    refereesKnown: officials.known,
     round: pickString(row, ["jornada", "ronda"]) || roundName,
     homeSets: finished ? homeSets : homeSets && homeSets > 0 ? homeSets : null,
     awaySets: finished ? awaySets : awaySets && awaySets > 0 ? awaySets : null,
     setScores,
     finished,
   };
+}
+
+const REFEREE_KEYS = [
+  "arb1",
+  "arb2",
+  "arb3",
+  "arb4",
+  "arbitro1",
+  "arbitro2",
+  "arbitro3",
+  "arbitro4",
+  "arbitro",
+  "arbitros",
+];
+
+function parseReferees(row: Json) {
+  const present = REFEREE_KEYS.filter((key) => Object.prototype.hasOwnProperty.call(row, key));
+  if (present.length === 0) return { known: false, referees: "" };
+  const names = present.flatMap((key) => refereeParts(row[key]));
+  return { known: true, referees: joinReferees(names) };
+}
+
+function refereeParts(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap((item) => refereeParts(item));
+  if (typeof value !== "string") return [];
+  return value
+    .split(/[,;/|\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 function sanitizeLocation(value: string) {

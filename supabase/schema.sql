@@ -124,6 +124,8 @@ create table if not exists public.matches (
   away_team_id uuid not null references public.teams (id) on delete restrict,
   scheduled_at timestamptz not null,
   location text,
+  court text,
+  referees text,
   status public.match_status not null default 'scheduled',
   home_sets int not null default 0,
   away_sets int not null default 0,

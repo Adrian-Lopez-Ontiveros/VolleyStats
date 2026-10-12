@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { courtLabel, refereeLabel } from "@/lib/match-venue";
 import { cn } from "@/lib/utils";
 
 function placeLinks(location: string) {
@@ -21,6 +22,41 @@ function placeLinks(location: string) {
       href: `https://maps.apple.com/?daddr=${query}`,
     },
   ];
+}
+
+export function MatchVenueLine({
+  location,
+  court,
+  referees,
+  className,
+  align = "center",
+}: {
+  location?: string | null;
+  court?: string | null;
+  referees?: string | null;
+  className?: string;
+  align?: "center" | "start";
+}) {
+  const place = location?.trim() ?? "";
+  const courtText = courtLabel(court);
+  const officials = refereeLabel(referees);
+  if (!place && !courtText && !officials) return null;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-0.5",
+        align === "center" ? "items-center text-center" : "items-start text-left"
+      )}
+    >
+      {place ? <MatchPlaceLink location={place} className={cn("text-xs", className)} /> : null}
+      {courtText || officials ? (
+        <p className="text-[11px] leading-snug text-muted-foreground [overflow-wrap:anywhere]">
+          {[courtText, officials].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 export function MatchPlaceLink({

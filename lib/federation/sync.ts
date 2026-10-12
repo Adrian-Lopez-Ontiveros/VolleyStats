@@ -405,7 +405,10 @@ async function updateExistingFederationMatch(
     .select("id", { count: "exact", head: true })
     .eq("match_id", existing.id);
   if (countError) throw new Error(countError.message);
-  if ((count ?? 0) > 0) return "matchesSkipped";
+  if ((count ?? 0) > 0) {
+    await updateMatchFields(supabase, existing.id, venueColumns(match));
+    return "matchesSkipped";
+  }
 
   const scores =
     match.finished && match.setScores.length > 0
@@ -422,22 +425,51 @@ async function updateExistingFederationMatch(
           }
         : {};
 
-  const { error } = await supabase
-    .from("matches")
-    .update({
-      scheduled_at: match.scheduledAt,
-      location: match.location || null,
-      federation_round: match.round,
-      is_federation: true,
-      notes: federationNotesForSchedule(match.schedulePrecision, existing.notes),
-      ...scores,
-    })
-    .eq("id", existing.id);
-  if (error) throw new Error(error.message);
+  await updateMatchFields(supabase, existing.id, {
+    scheduled_at: match.scheduledAt,
+    location: match.location || null,
+    federation_round: match.round,
+    is_federation: true,
+    notes: federationNotesForSchedule(match.schedulePrecision, existing.notes),
+    ...venueColumns(match),
+    ...scores,
+  });
   if ((scores as { status?: string }).status === "finished") {
     await supabase.rpc("game_resolve_match_predictions", { p_match_id: existing.id });
   }
   return "matchesUpdated";
+}
+
+function venueColumns(match: FmvMatch) {
+  const columns: Record<string, string | null> = {};
+  if (match.court) columns.court = match.court;
+  if (match.refereesKnown) columns.referees = match.referees || null;
+  return columns;
+}
+
+async function updateMatchFields(
+  supabase: SupabaseClient,
+  id: string,
+  payload: Record<string, unknown>
+) {
+  if (Object.keys(payload).length === 0) return;
+  const { error } = await supabase.from("matches").update(payload).eq("id", id);
+  if (!error) return;
+  if (/court|referees/i.test(error.message)) {
+    const rest = withoutVenueColumns(payload);
+    if (Object.keys(rest).length === 0) return;
+    const retry = await supabase.from("matches").update(rest).eq("id", id);
+    if (retry.error) throw new Error(retry.error.message);
+    return;
+  }
+  throw new Error(error.message);
+}
+
+function withoutVenueColumns(payload: Record<string, unknown>) {
+  const rest = { ...payload };
+  delete rest.court;
+  delete rest.referees;
+  return rest;
 }
 
 async function removeRivalsOutsideGroup(
@@ -586,27 +618,27 @@ async function upsertFederationMatch(
       .from("match_events")
       .select("id", { count: "exact", head: true })
       .eq("match_id", existing.id);
-    if ((count ?? 0) > 0) return "matchesSkipped";
+    if ((count ?? 0) > 0) {
+      await updateMatchFields(supabase, existing.id, venueColumns(match));
+      return "matchesSkipped";
+    }
 
-    const { error } = await supabase
-      .from("matches")
-      .update({
-        scheduled_at: match.scheduledAt,
-        location: match.location || null,
-        federation_round: match.round,
-        is_federation: true,
-        notes: federationNotesForSchedule(match.schedulePrecision, existing.notes),
-        ...scores,
-      })
-      .eq("id", existing.id);
-    if (error) throw new Error(error.message);
+    await updateMatchFields(supabase, existing.id, {
+      scheduled_at: match.scheduledAt,
+      location: match.location || null,
+      federation_round: match.round,
+      is_federation: true,
+      notes: federationNotesForSchedule(match.schedulePrecision, existing.notes),
+      ...venueColumns(match),
+      ...scores,
+    });
     if ((scores as { status?: string }).status === "finished") {
       await supabase.rpc("game_resolve_match_predictions", { p_match_id: existing.id });
     }
     return "matchesUpdated";
   }
 
-  const { error } = await supabase.from("matches").insert({
+  const row = {
     home_team_id: home.id,
     away_team_id: away.id,
     scheduled_at: match.scheduledAt,
@@ -615,9 +647,16 @@ async function upsertFederationMatch(
     federation_match_id: match.id,
     federation_round: match.round,
     notes: federationNotesForSchedule(match.schedulePrecision),
+    ...venueColumns(match),
     ...scores,
-  });
-  if (error) throw new Error(error.message);
+  };
+  const { error } = await supabase.from("matches").insert(row);
+  if (error && /court|referees/i.test(error.message)) {
+    const retry = await supabase.from("matches").insert(withoutVenueColumns(row));
+    if (retry.error) throw new Error(retry.error.message);
+  } else if (error) {
+    throw new Error(error.message);
+  }
   return "matchesCreated";
 }
 

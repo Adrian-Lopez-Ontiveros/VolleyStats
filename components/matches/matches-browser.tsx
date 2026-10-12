@@ -19,7 +19,7 @@ import {
   rememberPartidosScroll,
 } from "@/components/matches/partidos-return";
 import { getCategoryMeta, type TeamCategory } from "@/lib/categories";
-import { federationRoundNumber, standingsThroughJornada } from "@/lib/federation/rounds";
+import { currentJornadaNumber, federationRoundNumber, standingsThroughJornada } from "@/lib/federation/rounds";
 import {
   buildPartidosHref,
   type PartidosListView,
@@ -126,10 +126,9 @@ export function MatchesBrowser({
 
   function selectCategory(next: TeamCategory | "all") {
     setPanel("catalog");
-    if (next !== categoria) {
-      setJornada(null);
-      setCategoria(next);
-    }
+    if (next === categoria) return;
+    setCategoria(next);
+    setJornada(next === "all" ? null : currentJornadaNumber(matches, next));
   }
 
   const description =

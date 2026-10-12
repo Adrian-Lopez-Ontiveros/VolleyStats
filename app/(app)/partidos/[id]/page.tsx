@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MatchKindBadge } from "@/components/matches/match-kind";
-import { MatchPlaceLink } from "@/components/matches/match-place-link";
+import { MatchVenueLine } from "@/components/matches/match-place-link";
 import { formatMatchWhen, stripFmvScheduleNote } from "@/lib/federation/schedule";
 import { MatchAdminActions } from "@/components/matches/match-admin-actions";
 import { BoxScoreCard } from "@/components/matches/box-score";
@@ -30,9 +30,9 @@ import {
   MATCH_EVENT_SELECT,
   MATCH_LINEUP_SELECT,
   MATCH_SUB_SELECT,
-  MATCH_WITH_TEAMS_SELECT,
   PLAYER_LINEUP_SELECT,
 } from "@/lib/constants";
+import { MATCH_DETAIL_VARIANTS, selectWithMatchFallback } from "@/lib/match-query";
 import { createClient } from "@/lib/supabase/server";
 import { isScoringAction, overlayFinishedMatchScore } from "@/lib/volleyball";
 import type {
@@ -55,7 +55,9 @@ export default async function MatchDetailPage({
   const supabase = await createClient();
 
   const [{ data: match, error: matchError }, { data: events }] = await Promise.all([
-    supabase.from("matches").select(MATCH_WITH_TEAMS_SELECT as "*").eq("id", id).maybeSingle(),
+    selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
+      supabase.from("matches").select(columns as "*").eq("id", id).maybeSingle()
+    ),
     supabase
       .from("match_events")
       .select(MATCH_EVENT_SELECT as "*")
@@ -91,9 +93,12 @@ export default async function MatchDetailPage({
           <LiveScoreFollow match={typedMatch} events={publicEvents} />
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
-            {typedMatch.location ? (
-              <MatchPlaceLink location={typedMatch.location} className="text-sm" />
-            ) : null}
+            <MatchVenueLine
+              location={typedMatch.location}
+              court={typedMatch.court}
+              referees={typedMatch.referees}
+              className="text-sm"
+            />
           </div>
           {notes ? (
             <Card>
@@ -192,9 +197,12 @@ export default async function MatchDetailPage({
         <Scoreboard match={typedMatch} />
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
-          {typedMatch.location ? (
-            <MatchPlaceLink location={typedMatch.location} className="text-sm" />
-          ) : null}
+          <MatchVenueLine
+            location={typedMatch.location}
+            court={typedMatch.court}
+            referees={typedMatch.referees}
+            className="text-sm"
+          />
         </div>
 
         {notes ? (

@@ -215,6 +215,7 @@ export function canViewPlayerStats(
   if (playerId && ownPlayerId(viewer) === playerId) return true;
   const viewerCategory = access?.viewerCategory;
   const targetCategory = access?.targetCategory;
+  if (viewerCategory === "senior_femenino") return true;
   if (!viewerCategory || !SENIOR_CATEGORIES.has(viewerCategory)) return false;
   return Boolean(targetCategory && targetCategory !== "cadete_femenino");
 }

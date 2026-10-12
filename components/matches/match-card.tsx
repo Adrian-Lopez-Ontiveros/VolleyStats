@@ -5,7 +5,7 @@ import { formatMatchWhen } from "@/lib/federation/schedule";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MatchKindBadge, cnMatchCard, isFriendlyMatch } from "@/components/matches/match-kind";
-import { MatchPlaceLink } from "@/components/matches/match-place-link";
+import { MatchVenueLine } from "@/components/matches/match-place-link";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams, Team } from "@/lib/types";
@@ -93,11 +93,7 @@ export const MatchCard = memo(function MatchCard({
             {summary}
           </Link>
         )}
-        {match.location ? (
-          <div className="flex justify-center">
-            <MatchPlaceLink location={match.location} className="text-xs" />
-          </div>
-        ) : null}
+        <MatchVenueLine location={match.location} court={match.court} referees={match.referees} />
       </CardContent>
     </Card>
   );

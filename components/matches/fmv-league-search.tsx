@@ -15,7 +15,7 @@ import {
   browseFmvTypes,
 } from "@/lib/actions/fmv-browse";
 import type { FmvLeagueSnapshot } from "@/lib/federation/browse";
-import { federationRoundNumber, standingsFromLeagueMatches } from "@/lib/federation/rounds";
+import { currentJornadaFromRounds, federationRoundNumber, standingsFromLeagueMatches } from "@/lib/federation/rounds";
 import { FMV_WEEKEND_NOTE } from "@/lib/federation/schedule";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
@@ -48,6 +48,8 @@ function toCardMatch(match: FmvLeagueSnapshot["matches"][number]): MatchWithTeam
     away_team_id: away.id,
     scheduled_at: match.scheduledAt,
     location: match.location || null,
+    court: match.court || null,
+    referees: match.referees || null,
     status: match.status,
     home_sets: match.homeSets,
     away_sets: match.awaySets,
@@ -203,7 +205,18 @@ export function FmvLeagueSearch() {
     const result = await browseFmvLeague(nextGroupId);
     if (id !== requestId.current) return;
     if ("error" in result) setError(result.error);
-    else setLeague(result);
+    else {
+      setLeague(result);
+      setJornada(
+        currentJornadaFromRounds(
+          result.matches.map((match) => ({
+            status: match.status,
+            scheduled_at: match.scheduledAt,
+            federation_round: match.round,
+          }))
+        )
+      );
+    }
     setLoadingLeague(false);
   }
 

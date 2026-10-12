@@ -215,6 +215,8 @@ export type Match = {
   away_team_id: string;
   scheduled_at: string;
   location: string | null;
+  court?: string | null;
+  referees?: string | null;
   status: MatchStatus;
   home_sets: number;
   away_sets: number;

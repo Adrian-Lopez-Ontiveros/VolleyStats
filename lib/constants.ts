@@ -238,11 +238,17 @@ export const TEAM_SUMMARY_SELECT =
 export const MATCH_LIST_SELECT_BASE =
   `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, is_federation, federation_round, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
 
-export const MATCH_LIST_SELECT =
+export const MATCH_LIST_SELECT_NO_VENUE =
   `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, is_federation, federation_round, sets_to_win, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
 
-export const MATCH_WITH_TEAMS_SELECT =
+export const MATCH_LIST_SELECT =
+  `id, home_team_id, away_team_id, scheduled_at, location, court, referees, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, is_federation, federation_round, sets_to_win, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
+
+export const MATCH_WITH_TEAMS_SELECT_NO_VENUE =
   `id, home_team_id, away_team_id, scheduled_at, location, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, created_at, is_federation, federation_match_id, federation_round, sets_to_win, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
+
+export const MATCH_WITH_TEAMS_SELECT =
+  `id, home_team_id, away_team_id, scheduled_at, location, court, referees, status, home_sets, away_sets, current_set, home_points, away_points, set_scores, notes, created_at, is_federation, federation_match_id, federation_round, sets_to_win, home_team:teams!matches_home_team_id_fkey(${TEAM_SUMMARY_SELECT}), away_team:teams!matches_away_team_id_fkey(${TEAM_SUMMARY_SELECT})` as const;
 
 export const MATCH_STANDING_SELECT =
   "home_team_id, away_team_id, status, home_sets, away_sets, set_scores, is_federation" as const;
