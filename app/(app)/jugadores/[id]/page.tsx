@@ -161,8 +161,8 @@ export default async function PlayerDetailPage({
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Las estadísticas de cada jugador las ven el cuerpo técnico, el propio jugador y quien
-          juega en senior femenino. El senior masculino ve las del resto, menos las de las cadetes.
+          Las estadísticas de cada jugador las ven el cuerpo técnico y el propio jugador. El
+          senior masculino también puede ver las del resto, menos las de las cadetes.
         </p>
       )}
 

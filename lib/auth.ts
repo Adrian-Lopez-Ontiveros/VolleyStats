@@ -15,7 +15,7 @@ import type { Player, ProfileWithRelations, SessionPlayer, SessionUser } from "@
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
-const SENIOR_CATEGORIES = new Set<TeamCategory>(["senior_masculino", "senior_femenino"]);
+const SENIOR_CATEGORIES = new Set<TeamCategory>(["senior_masculino"]);
 
 function asSessionPlayer(row: unknown): SessionPlayer | null {
   if (!row || typeof row !== "object") return null;
@@ -215,7 +215,6 @@ export function canViewPlayerStats(
   if (playerId && ownPlayerId(viewer) === playerId) return true;
   const viewerCategory = access?.viewerCategory;
   const targetCategory = access?.targetCategory;
-  if (viewerCategory === "senior_femenino") return true;
   if (!viewerCategory || !SENIOR_CATEGORIES.has(viewerCategory)) return false;
   return Boolean(targetCategory && targetCategory !== "cadete_femenino");
 }
