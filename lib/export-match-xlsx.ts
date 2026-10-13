@@ -2,6 +2,7 @@ import type ExcelJS from "exceljs";
 import { APP_NAME } from "@/lib/constants";
 import { downloadBlob } from "@/lib/download-pdf";
 import {
+  blockoutActionDetail,
   sumPlayerRows,
   type MatchExcelPlayerRow,
   type MatchExcelReport,
@@ -86,9 +87,10 @@ const COL = {
   defAvg: 37,
   defGoodPct: 38,
   defBadPct: 39,
+  blkOut: 40,
 } as const;
 
-const LAST_COL = COL.defBadPct;
+const LAST_COL = COL.blkOut;
 
 const GROUPS: { title: string; fill: string; font: string; start: number; end: number }[] = [
   { title: "JUGADOR", fill: NAVY, font: WHITE, start: 1, end: 7 },
@@ -97,6 +99,7 @@ const GROUPS: { title: string; fill: string; font: string; start: number; end: n
   { title: "BLOQUEO", fill: CYAN, font: NAVY, start: 18, end: 23 },
   { title: "RECEPCIÓN", fill: SKY, font: WHITE, start: 24, end: 31 },
   { title: "DEFENSA", fill: SLATE_700, font: WHITE, start: 32, end: 39 },
+  { title: "BLOCK-OUT", fill: ROSE, font: WHITE, start: 40, end: 40 },
 ];
 
 const SUBHEADERS = [
@@ -139,6 +142,7 @@ const SUBHEADERS = [
   "Media",
   "% buenas",
   "% malas",
+  "Veces",
 ];
 
 function fillSolid(argb: string) {
@@ -496,6 +500,7 @@ function writePlayerRow(
     index === "pct" ? "" : player.defenseAverage ?? "",
     rateValue(player.defense.positiveRate),
     rateValue(player.defense.negativeRate),
+    index === "pct" ? "" : player.blockouts,
   ];
 
   const pctCols = new Set<number>([
@@ -551,6 +556,7 @@ function writePlayerRow(
       }
       if (col === COL.recAvg) fill = avgFill(player.receptionAverage);
       if (col === COL.defAvg) fill = avgFill(player.defenseAverage);
+      if (col === COL.blkOut && player.blockouts > 0) fill = ROSE_SOFT;
     }
     if (pctCols.has(col) && value !== "") numFmt = "0%";
     if (avgCols.has(col) && typeof value === "number") numFmt = "0.0";
@@ -588,6 +594,7 @@ function applyPlayerWidths(sheet: Worksheet) {
   widths[COL.defAvg] = 8;
   widths[COL.defGoodPct] = 10;
   widths[COL.defBadPct] = 10;
+  widths[COL.blkOut] = 8;
   for (const [col, width] of Object.entries(widths)) {
     sheet.getColumn(Number(col)).width = width;
   }
@@ -641,6 +648,7 @@ function writePlayerTable(
   if (lastData >= firstData) {
     addDataBars(sheet, firstData, lastData, COL.pts, NAVY);
     addDataBars(sheet, firstData, lastData, COL.atkPts, ORANGE);
+    addDataBars(sheet, firstData, lastData, COL.blkOut, ROSE);
   }
   applyPlayerWidths(sheet);
   return row;
@@ -662,6 +670,8 @@ function clubMetricRows(report: MatchExcelReport) {
     ["Acierto saque", club.serve.successRate, "pct"],
     ["Bloqueo", blockActionLine(club.block), "text"],
     ["Eff. bloqueo", club.block.efficiency, "pct"],
+    ["Block-outs del rival", club.blockouts],
+    ["A quién", blockoutActionDetail(clubPlayers(report)), "text"],
     ["Recepción", receptionActionLine(club.reception), "text"],
     ["% buenas recepción", club.reception.positiveRate, "pct"],
     ["% malas recepción", club.reception.negativeRate, "bad"],
@@ -861,6 +871,7 @@ function writeSetsSheet(workbook: Workbook, report: MatchExcelReport) {
     { label: "Saques", pick: (s) => s.serve.attempts },
     { label: "Eff. bloqueo", pick: (s) => s.block.efficiency, pct: true },
     { label: "Bloqueos", pick: (s) => s.block.attempts },
+    { label: "Block-outs", pick: (s) => s.blockouts },
     { label: "% buenas recepción", pick: (s) => s.reception.positiveRate, pct: true },
     { label: "% malas recepción", pick: (s) => s.reception.negativeRate, pct: true, invert: true },
     { label: "% buenas defensa", pick: (s) => s.defense.positiveRate, pct: true },
@@ -1057,9 +1068,9 @@ function writeChartsSheet(
     bold: true,
     align: "left",
   });
-  merge(sheet, row, 1, row, 5);
+  merge(sheet, row, 1, row, 6);
   row += 1;
-  ["Jugador", "Pts", "Err", "Bal", "Eff. ataque"].forEach((label, index) => {
+  ["Jugador", "Pts", "Err", "Bal", "Eff. ataque", "Block-outs"].forEach((label, index) => {
     paint(sheet, row, index + 1, label, { fill: SLATE_700, color: WHITE, bold: true });
   });
   row += 1;
@@ -1077,9 +1088,38 @@ function writeChartsSheet(
       numFmt: "0%",
       fill: rateFill(player.attack.efficiency),
     });
+    paint(sheet, row, 6, player.blockouts, {
+      fill: player.blockouts > 0 ? ROSE_SOFT : WHITE,
+    });
     row += 1;
   }
   if (top.length) addDataBars(sheet, dataStart, row - 1, 2, ORANGE);
+
+  const blocked = [...players]
+    .filter((player) => player.blockouts > 0)
+    .sort((a, b) => b.blockouts - a.blockouts || a.name.localeCompare(b.name, "es"));
+  if (blocked.length > 0) {
+    row += 2;
+    paint(sheet, row, 1, `Block-outs del rival · ${report.clubLabel}`, {
+      fill: ROSE,
+      color: WHITE,
+      bold: true,
+      align: "left",
+    });
+    merge(sheet, row, 1, row, 3);
+    row += 1;
+    ["Jugador", "Block-outs"].forEach((label, index) => {
+      paint(sheet, row, index + 1, label, { fill: SLATE_700, color: WHITE, bold: true, align: index === 0 ? "left" : "center" });
+    });
+    row += 1;
+    const blockoutStart = row;
+    for (const player of blocked) {
+      paint(sheet, row, 1, player.name, { align: "left", fill: row % 2 ? WHITE : SLATE_50 });
+      paint(sheet, row, 2, player.blockouts, { fill: ROSE_SOFT, bold: true });
+      row += 1;
+    }
+    addDataBars(sheet, blockoutStart, row - 1, 2, ROSE);
+  }
 
   row += 2;
   paint(sheet, row, 1, "Calidad de recepción (buenas y medias / malas y errores)", {
@@ -1393,6 +1433,19 @@ function renderCharts(report: MatchExcelReport): ChartPng[] {
       color: "#F97316",
     });
     if (pointsChart) charts.push(pointsChart);
+  }
+  const blocked = [...players]
+    .filter((player) => player.blockouts > 0)
+    .sort((a, b) => b.blockouts - a.blockouts || a.name.localeCompare(b.name, "es"))
+    .slice(0, 8);
+  if (blocked.length) {
+    const blockoutChart = horizontalBarChart({
+      title: `Block-outs del rival · ${report.clubLabel}`,
+      labels: blocked.map((player) => player.name),
+      values: blocked.map((player) => player.blockouts),
+      color: "#E11D48",
+    });
+    if (blockoutChart) charts.push(blockoutChart);
   }
   const recChart = stackedBarChart({
     title: `Calidad de recepción · ${report.clubLabel}`,

@@ -15,6 +15,7 @@ import {
   attackStatsFromEvents,
   bestAndWorstRotations,
   blockActionLine,
+  blockoutCount,
   blockStatsFromEvents,
   defenseActionLine,
   defenseStatsFromEvents,
@@ -73,6 +74,8 @@ export type TeamSkillTotals = {
   receptionAverage: number | null;
   defenseAverage: number | null;
   block: BlockStats;
+  /** Veces que el rival ha hecho block-out a este equipo. El punto es del rival. */
+  blockouts: number;
   ownErrors: number;
   possession: TeamPossessionStats;
 };
@@ -95,6 +98,7 @@ export type MatchExcelPlayerRow = {
   receptionAverage: number | null;
   defense: DefenseStats;
   defenseAverage: number | null;
+  blockouts: number;
 };
 
 export type MatchExcelSetRow = {
@@ -238,6 +242,7 @@ function teamSkillsFromEvents(
     receptionAverage: skillQualityAverage(reception),
     defenseAverage: skillQualityAverage(defense),
     block,
+    blockouts: blockoutCount(teamEvents),
     ownErrors: ownErrorCount(teamEvents),
     possession: side,
   };
@@ -272,9 +277,11 @@ function buildPlayerRow(
   const block = blockStatsFromEvents(types);
   let points = 0;
   let errors = 0;
+  let blockouts = 0;
   const sets = new Set<number>();
   for (const event of events) {
     sets.add(event.set_number);
+    if (event.point_type === "blockout") blockouts += 1;
     if (isOwnErrorType(event.point_type)) errors += 1;
     else if (isScoringAction(event.point_type) && scoresForActingTeam(event.point_type)) {
       points += 1;
@@ -298,6 +305,7 @@ function buildPlayerRow(
     receptionAverage: skillQualityAverage(reception),
     defense,
     defenseAverage: skillQualityAverage(defense),
+    blockouts,
   };
 }
 
@@ -432,6 +440,17 @@ function buildNarrative(input: {
       `Bloqueo: ${formatSkillRate(input.club.block.efficiency)} de acierto. ${blockActionLine(input.club.block)}.`
     );
   }
+  if (input.club.blockouts > 0) {
+    const blocked = [...input.players]
+      .filter((player) => player.blockouts > 0)
+      .sort((a, b) => b.blockouts - a.blockouts || a.name.localeCompare(b.name, "es"));
+    const who = blocked.map((player) => `${player.name} ${player.blockouts}`).join(", ");
+    lines.push(
+      `El rival hizo ${input.club.blockouts} ${
+        input.club.blockouts === 1 ? "block-out" : "block-outs"
+      }${who ? `: ${who}` : ""}.`
+    );
+  }
   if (input.club.reception.total > 0) {
     lines.push(
       `Recepción: ${receptionActionLine(input.club.reception)}. Media ${formatAvg(input.club.receptionAverage)} sobre 3.`
@@ -518,6 +537,14 @@ function buildInsights(input: {
   if (blocker && blocker.block.points >= 2) {
     insights.push(`Bloqueo: ${blocker.name}, ${blockActionLine(blocker.block)}.`);
   }
+  const blocked = [...input.players]
+    .filter((player) => player.blockouts > 0)
+    .sort((a, b) => b.blockouts - a.blockouts || a.name.localeCompare(b.name, "es"));
+  if (blocked.length > 0) {
+    insights.push(
+      `Block-outs del rival: ${blocked.map((player) => `${player.name} ${player.blockouts}`).join(", ")}.`
+    );
+  }
   const { best, worst } = bestAndWorstRotations(input.rotations);
   if (best && worst && best.rotation !== worst.rotation) {
     insights.push(
@@ -531,7 +558,7 @@ function buildInsights(input: {
       `Muchos puntos llegaron por error rival (${input.club.origins.opponentError}) frente a ${input.club.origins.attack} de ataque.`
     );
   }
-  return insights.slice(0, 6);
+  return insights.slice(0, 7);
 }
 
 function buildHighlights(
@@ -578,6 +605,11 @@ function buildHighlights(
     label: "Bloqueo",
     value: formatSkillRate(club.block.efficiency),
     detail: blockActionLine(club.block),
+  });
+  highlights.push({
+    label: "Block-outs",
+    value: String(club.blockouts),
+    detail: blockoutActionDetail(players),
   });
   highlights.push({
     label: "Recepción",
@@ -844,6 +876,11 @@ const GLOSSARY: MatchExcelGlossaryRow[] = [
       "(Puntos de bloqueo + continuaciones) / intentos. El toque, el error y el block-out del rival no cuentan como acierto nuestro.",
   },
   {
+    term: "Block-out",
+    meaning:
+      "El rival nos bloquea el ataque y se lleva el punto. Se apunta a quién de las nuestras se lo han hecho. No suma como punto ni como error de esa jugadora, ni como bloqueo nuestro.",
+  },
+  {
     term: "Recepción / defensa",
     meaning:
       "% buenas es (buenas + medias) / total. % malas es (malas + errores) / total.",
@@ -886,7 +923,22 @@ export function emptyPlayerTotals(): MatchExcelPlayerRow {
     receptionAverage: null,
     defense: emptyDefenseStats(),
     defenseAverage: null,
+    blockouts: 0,
   };
+}
+
+export function blockoutActionDetail(players: MatchExcelPlayerRow[]) {
+  const rows = [...players]
+    .filter((player) => player.blockouts > 0)
+    .sort((a, b) => b.blockouts - a.blockouts || a.name.localeCompare(b.name, "es"));
+  if (rows.length === 0) return "Sin block-outs";
+  return rows
+    .map((player) =>
+      player.jersey != null
+        ? `#${player.jersey} ${player.name} ${player.blockouts}`
+        : `${player.name} ${player.blockouts}`
+    )
+    .join(" · ");
 }
 
 export function sumPlayerRows(rows: MatchExcelPlayerRow[]): MatchExcelPlayerRow {
@@ -905,6 +957,7 @@ export function sumPlayerRows(rows: MatchExcelPlayerRow[]): MatchExcelPlayerRow 
     total.block.continuations += row.block.continuations;
     total.block.touches += row.block.touches;
     total.block.errors += row.block.errors;
+    total.blockouts += row.blockouts;
     total.reception.good += row.reception.good;
     total.reception.medium += row.reception.medium;
     total.reception.bad += row.reception.bad;

@@ -12,6 +12,8 @@ import { countChartPointTypes, topMatchScorers } from "@/lib/stats";
 import { DEFAULT_PHASE_FILTER, filterEventsByPhase, type PhaseFilter } from "@/lib/stat-filters";
 import {
   attackStatsFromEvents,
+  blockoutCount,
+  blockoutsByPlayer,
   blockStatsFromEvents,
   defenseStatsFromEvents,
   filterTeamEvents,
@@ -113,6 +115,7 @@ export function MatchStatsPanel({
           reception={homeReception}
           defense={homeDefense}
         />
+        <BlockoutCard events={homeEvents} />
         <PossessionCards
           sideOut={homePossession.sideOut}
           breakPoint={homePossession.breakPoint}
@@ -128,6 +131,7 @@ export function MatchStatsPanel({
           reception={awayReception}
           defense={awayDefense}
         />
+        <BlockoutCard events={awayEvents} />
         <PossessionCards
           sideOut={awayPossession.sideOut}
           breakPoint={awayPossession.breakPoint}
@@ -195,6 +199,7 @@ export function MatchStatsPanel({
           blocks={homeCounts.block}
           aces={homeServe.aces}
           errors={homeCounts.error}
+          blockouts={blockoutCount(homeEvents)}
         />
         <TeamMiniStats
           label={awayLabel}
@@ -202,6 +207,7 @@ export function MatchStatsPanel({
           blocks={awayCounts.block}
           aces={awayServe.aces}
           errors={awayCounts.error}
+          blockouts={blockoutCount(awayEvents)}
         />
       </div>
 
@@ -235,12 +241,14 @@ function TeamMiniStats({
   blocks,
   aces,
   errors,
+  blockouts,
 }: {
   label: string;
   attacks: number;
   blocks: number;
   aces: number;
   errors: number;
+  blockouts: number;
 }) {
   return (
     <Card>
@@ -250,6 +258,38 @@ function TeamMiniStats({
         <p className="text-muted-foreground">Bloqueos {blocks}</p>
         <p className="text-muted-foreground">Aces {aces}</p>
         <p className="text-muted-foreground">Errores {errors}</p>
+        <p className="text-muted-foreground">Block-outs {blockouts}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BlockoutCard({ events }: { events: MatchEventWithPlayer[] }) {
+  const rows = blockoutsByPlayer(events);
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Block-outs del rival
+        </p>
+        <p className="mt-1 text-2xl font-bold tabular-nums">{total}</p>
+        {total === 0 ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">Sin block-outs</p>
+        ) : (
+          <ul className="mt-2 space-y-1">
+            {rows.map((row) => (
+              <li key={row.playerId} className="flex items-center justify-between gap-3 text-sm">
+                <Link href={`/jugadores/${row.playerId}`} className="min-w-0 truncate font-medium hover:underline">
+                  {row.name} {row.jersey != null ? formatJersey(row.jersey) : ""}
+                </Link>
+                <span className="shrink-0 tabular-nums text-rose-700 dark:text-rose-300">
+                  {row.count}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );

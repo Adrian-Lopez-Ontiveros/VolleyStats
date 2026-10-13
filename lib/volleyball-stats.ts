@@ -257,6 +257,62 @@ export function blockActionLine(stats: BlockStats) {
   ])}`;
 }
 
+export type BlockoutRow = {
+  playerId: string;
+  name: string;
+  jersey: number | null;
+  count: number;
+};
+
+type BlockoutEvent = {
+  point_type: PointType;
+  player_id?: string | null;
+  player?: { full_name: string; jersey_number: number | null } | null;
+};
+
+/** Veces que el rival nos ha hecho block-out. No es un punto de bloqueo nuestro. */
+export function blockoutCount(events: { point_type: PointType }[]) {
+  return events.filter((event) => event.point_type === "blockout").length;
+}
+
+export function blockoutsByPlayer(events: BlockoutEvent[]): BlockoutRow[] {
+  const rows = new Map<string, BlockoutRow>();
+  for (const event of events) {
+    if (event.point_type !== "blockout" || !event.player_id) continue;
+    const current = rows.get(event.player_id);
+    if (current) {
+      current.count += 1;
+      continue;
+    }
+    rows.set(event.player_id, {
+      playerId: event.player_id,
+      name: event.player?.full_name || "Jugador",
+      jersey: event.player?.jersey_number ?? null,
+      count: 1,
+    });
+  }
+  return [...rows.values()].sort(
+    (a, b) => b.count - a.count || a.name.localeCompare(b.name, "es")
+  );
+}
+
+export function blockoutPlayerLabel(row: BlockoutRow) {
+  const name = row.jersey != null ? `#${row.jersey} ${row.name}` : row.name;
+  return `${name} ${row.count}`;
+}
+
+export function blockoutWhoLine(rows: BlockoutRow[]) {
+  if (rows.length === 0) return "Sin block-outs";
+  return rows.map((row) => blockoutPlayerLabel(row)).join(" · ");
+}
+
+export function blockoutActionLine(count: number, rows: BlockoutRow[] = []) {
+  if (count === 0) return "Sin block-outs";
+  const total = `${counted(count, "block-out", "block-outs")} del rival`;
+  if (rows.length === 0) return total;
+  return `${total}: ${blockoutWhoLine(rows)}`;
+}
+
 function gradeActionLine(
   stats: ReceptionStats,
   nounSingular: string,

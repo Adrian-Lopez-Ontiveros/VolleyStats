@@ -177,32 +177,31 @@ export function PlayerEvolutionPanel({
     [matchOptions]
   );
 
-  const matchFiltered = useMemo(() => {
-    if (selectedMatchId === "all") return events;
-    return events.filter((event) => event.match_id === selectedMatchId);
-  }, [events, selectedMatchId]);
-
-  const filtered = useMemo(
+  const byPossession = useMemo(
     () =>
-      filterEventsByPhase(
-        matchFiltered,
-        { sets: "all", possession: filter.possession },
-        teamId
-      ),
-    [matchFiltered, filter.possession, teamId]
+      filterEventsByPhase(events, { sets: "all", possession: filter.possession }, teamId),
+    [events, filter.possession, teamId]
   );
-  const series = useMemo(() => buildPlayerMatchSeries(filtered), [filtered]);
+  const cardEvents = useMemo(() => {
+    if (selectedMatchId === "all") return byPossession;
+    return byPossession.filter((event) => event.match_id === selectedMatchId);
+  }, [byPossession, selectedMatchId]);
+  const personalEvents = useMemo(() => {
+    if (selectedMatchId !== "all") return cardEvents;
+    return byPossession.filter((event) => unwrapOne(event.match)?.is_federation === true);
+  }, [byPossession, cardEvents, selectedMatchId]);
+  const series = useMemo(() => buildPlayerMatchSeries(personalEvents), [personalEvents]);
   const matchCards = useMemo(
-    () => buildPlayerMatchCards(filtered, teamId),
-    [filtered, teamId]
+    () => buildPlayerMatchCards(cardEvents, teamId),
+    [cardEvents, teamId]
   );
   const totals = useMemo(() => summarizePlayerSeries(series), [series]);
   const errorBreakdown = useMemo(
     () =>
-      errorBreakdownFromEvents(filtered, (matchId) => {
+      errorBreakdownFromEvents(personalEvents, (matchId) => {
         return matchOptions.find((item) => item.id === matchId)?.label ?? "Partido";
       }),
-    [filtered, matchOptions]
+    [personalEvents, matchOptions]
   );
   const metrics = EVOLUTION_METRICS.filter((item) => activeKeys.includes(item.key));
 
@@ -290,6 +289,13 @@ export function PlayerEvolutionPanel({
         })}
       </div>
 
+      {selectedMatchId === "all" ? (
+        <p className="text-sm text-muted-foreground">
+          La gráfica y los totales cuentan solo los partidos de liga. Abajo están todos los
+          partidos, también los amistosos.
+        </p>
+      ) : null}
+
       <Card>
         <CardContent className="p-4">
           <PlayerEvolutionChart data={series} metrics={metrics} />
@@ -300,23 +306,23 @@ export function PlayerEvolutionPanel({
         items={[
           {
             label: "Acciones totales",
-            value: filtered.length,
+            value: personalEvents.length,
             accent: true,
           },
           { label: "Puntos", value: totals.points },
           {
             label: "Puntos de ataque",
-            value: attackStatsFromEvents(filtered).kills,
+            value: attackStatsFromEvents(personalEvents).kills,
           },
           {
             label: "Puntos de bloqueo",
-            value: filtered.filter(
+            value: personalEvents.filter(
               (event) => event.point_type === "block"
             ).length,
           },
           {
             label: "Puntos de saque",
-            value: serveStatsFromEvents(filtered).aces,
+            value: serveStatsFromEvents(personalEvents).aces,
           },
           {
             label: "Errores",
@@ -325,7 +331,7 @@ export function PlayerEvolutionPanel({
           },
           {
             label: "Eff. ataque",
-            value: formatAttackEfficiency(attackStatsFromEvents(filtered).efficiency),
+            value: formatAttackEfficiency(attackStatsFromEvents(personalEvents).efficiency),
           },
         ]}
       />
@@ -338,11 +344,11 @@ export function PlayerEvolutionPanel({
       />
 
       <AttackServeCards
-        attack={attackStatsFromEvents(filtered)}
-        serve={serveStatsFromEvents(filtered)}
-        block={blockStatsFromEvents(filtered)}
-        reception={receptionStatsFromEvents(filtered)}
-        defense={defenseStatsFromEvents(filtered)}
+        attack={attackStatsFromEvents(personalEvents)}
+        serve={serveStatsFromEvents(personalEvents)}
+        block={blockStatsFromEvents(personalEvents)}
+        reception={receptionStatsFromEvents(personalEvents)}
+        defense={defenseStatsFromEvents(personalEvents)}
       />
 
       <section>
@@ -414,6 +420,7 @@ type PlayerMatchCardModel = {
   block: BlockStats;
   reception: ReceptionStats;
   defense: DefenseStats;
+  friendly: boolean;
 };
 
 function sideTeam(team: PlayerStatTeam | null, fallback: string): SideTeam {
@@ -505,6 +512,7 @@ function buildPlayerMatchCards(events: PlayerStatEvent[], teamId?: string | null
       block: blockStatsFromEvents(list),
       reception: receptionStatsFromEvents(list),
       defense: defenseStatsFromEvents(list),
+      friendly: match?.is_federation !== true,
     });
   }
 
@@ -550,6 +558,7 @@ function PlayerMatchCard({ card }: { card: PlayerMatchCardModel }) {
           <p className="mt-0.5 text-[11px] font-medium capitalize text-muted-foreground">
             {card.when}
             {card.venue ? ` · ${card.venue}` : ""}
+            {card.friendly ? " · Amistoso" : ""}
           </p>
           <p className="mt-1 text-[11px] font-semibold tabular-nums text-muted-foreground">
             {card.points} {card.points === 1 ? "pt" : "pts"} del jugador

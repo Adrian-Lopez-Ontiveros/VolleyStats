@@ -3,6 +3,9 @@ import {
   attackActionLine,
   attackStatsFromEvents,
   blockActionLine,
+  blockoutActionLine,
+  blockoutCount,
+  blockoutsByPlayer,
   blockStatsFromEvents,
   defenseActionLine,
   defenseStatsFromEvents,
@@ -37,6 +40,7 @@ export type BoxScorePlayer = {
   defenseErrors: number;
   defenseTotal: number;
   defenseEfficiency: number | null;
+  blockouts: number;
 };
 
 export type BoxScoreHighlight = {
@@ -93,6 +97,7 @@ export function buildMatchPlayerLines(events: MatchEventWithPlayer[]): BoxScoreP
           defenseErrors: 0,
           defenseTotal: 0,
           defenseEfficiency: null,
+          blockouts: 0,
         },
         types: [],
       };
@@ -118,6 +123,7 @@ export function buildMatchPlayerLines(events: MatchEventWithPlayer[]): BoxScoreP
     if (event.point_type === "defense_medium") row.line.defenseMedium += 1;
     if (event.point_type === "defense_bad") row.line.defenseBad += 1;
     if (event.point_type === "defense_error") row.line.defenseErrors += 1;
+    if (event.point_type === "blockout") row.line.blockouts += 1;
   }
 
   return [...byPlayer.values()]
@@ -155,6 +161,8 @@ export function buildBoxScore(
   const clubAttack = attackStatsFromEvents(clubEvents);
   const clubServe = serveStatsFromEvents(clubEvents);
   const clubBlock = blockStatsFromEvents(clubEvents);
+  const clubBlockouts = blockoutsByPlayer(clubEvents);
+  const clubBlockoutTotal = blockoutCount(clubEvents);
   const clubReception = receptionStatsFromEvents(clubEvents);
   const clubDefense = defenseStatsFromEvents(clubEvents);
   const homeRotations = rotationStatsForTeam(
@@ -221,6 +229,11 @@ export function buildBoxScore(
     label: "Bloqueo",
     value: formatSkillRate(clubBlock.efficiency),
     detail: blockActionLine(clubBlock),
+  });
+  highlights.push({
+    label: "Block-outs",
+    value: String(clubBlockoutTotal),
+    detail: blockoutActionLine(clubBlockoutTotal, clubBlockouts),
   });
   highlights.push({
     label: "% buenas rec",
