@@ -59,6 +59,14 @@ export function PlayerCardForm({
     reception: card?.reception ?? DEFAULT_CARD_STATS.reception,
     defense: card?.defense ?? DEFAULT_CARD_STATS.defense,
   });
+  const [statDrafts, setStatDrafts] = useState<Record<keyof PlayerCardStats, string>>(() => ({
+    jump: String(card?.jump ?? DEFAULT_CARD_STATS.jump),
+    attack: String(card?.attack ?? DEFAULT_CARD_STATS.attack),
+    block: String(card?.block ?? DEFAULT_CARD_STATS.block),
+    serve: String(card?.serve ?? DEFAULT_CARD_STATS.serve),
+    reception: String(card?.reception ?? DEFAULT_CARD_STATS.reception),
+    defense: String(card?.defense ?? DEFAULT_CARD_STATS.defense),
+  }));
   const [lockRating, setLockRating] = useState(card?.rating_override != null);
   const [ratingOverride, setRatingOverride] = useState(
     card?.rating_override != null ? String(card.rating_override) : ""
@@ -81,8 +89,19 @@ export function PlayerCardForm({
   );
 
   function setStat(key: keyof PlayerCardStats, raw: string) {
-    const value = clampCardStat(Number(raw));
-    setStats((current) => ({ ...current, [key]: value }));
+    const digits = raw.replace(/\D/g, "").slice(0, 3);
+    setStatDrafts((current) => ({ ...current, [key]: digits }));
+    setStats((current) => ({
+      ...current,
+      [key]: digits === "" ? 1 : clampCardStat(Number(digits)),
+    }));
+  }
+
+  function blurStat(key: keyof PlayerCardStats) {
+    setStatDrafts((current) => {
+      if (current[key] === "") return current;
+      return { ...current, [key]: String(clampCardStat(Number(current[key]))) };
+    });
   }
 
   async function onUpload(file?: File) {
@@ -301,8 +320,10 @@ export function PlayerCardForm({
             <StatSlider
               key={slot.key}
               label={slot.label}
+              draft={statDrafts[slot.key]}
               value={stats[slot.key]}
               onChange={(value) => setStat(slot.key, value)}
+              onBlur={() => blurStat(slot.key)}
             />
           ))}
         </div>
@@ -361,23 +382,29 @@ export function PlayerCardForm({
 
 function StatSlider({
   label,
+  draft,
   value,
   onChange,
+  onBlur,
 }: {
   label: string;
+  draft: string;
   value: number;
   onChange: (value: string) => void;
+  onBlur: () => void;
 }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <Label>{label}</Label>
         <Input
-          type="number"
-          min={1}
-          max={99}
-          value={value}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          aria-label={label}
+          value={draft}
           onChange={(event) => onChange(event.target.value)}
+          onBlur={onBlur}
           className={cnStat(value)}
         />
       </div>
