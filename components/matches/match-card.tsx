@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MatchKindBadge, cnMatchCard, isFriendlyMatch } from "@/components/matches/match-kind";
 import { MatchVenueLine } from "@/components/matches/match-place-link";
+import { SetScoreLine } from "@/components/matches/set-score-line";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams, Team } from "@/lib/types";
@@ -80,6 +81,7 @@ export const MatchCard = memo(function MatchCard({
         </div>
         <TeamSide team={match.away_team} align="left" caption="Visitante" />
       </div>
+      <SetScoreLine scores={match.set_scores} />
     </>
   );
 

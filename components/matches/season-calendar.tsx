@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { MatchWithTeams } from "@/lib/types";
 import { MatchKindBadge, isFriendlyMatch } from "@/components/matches/match-kind";
+import { SetScoreLine } from "@/components/matches/set-score-line";
 import { courtLabel, refereeLabel } from "@/lib/match-venue";
 import { TeamLogo } from "@/components/teams/team-logo";
 
@@ -162,6 +163,7 @@ function CalendarMatch({ match, linked }: { match: MatchWithTeams; linked: boole
           />
         </span>
       </div>
+      <SetScoreLine scores={match.set_scores} className="mt-1" />
       <CalendarVenue match={match} />
     </>
   );

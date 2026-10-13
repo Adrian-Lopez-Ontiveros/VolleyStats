@@ -43,9 +43,9 @@ export function StandingsTable({ rows }: { rows: StandingRow[] }) {
   return (
     <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
       <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-        <table className="w-max min-w-full border-collapse text-sm">
+        <table className="w-max min-w-full border-collapse text-sm text-card-foreground">
           <thead>
-            <tr className="border-b bg-secondary text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b bg-secondary text-[11px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-foreground/80">
               <th className="sticky left-0 z-20 w-10 bg-secondary px-1.5 py-3 text-center md:w-12 md:px-3">
                 #
               </th>
@@ -95,14 +95,14 @@ export function StandingsTable({ rows }: { rows: StandingRow[] }) {
                       tone
                     )}
                   >
-                    <span className="text-base font-black tabular-nums text-primary md:text-lg">
+                    <span className="text-base font-black tabular-nums text-primary dark:text-orange-100 md:text-lg">
                       {row.leaguePoints}
                     </span>
                   </td>
                   {DETAIL_COLUMNS.map((column) => (
                     <td
                       key={column.key}
-                      className="whitespace-nowrap px-2.5 py-2.5 text-center tabular-nums"
+                      className="whitespace-nowrap px-2.5 py-2.5 text-center font-medium tabular-nums text-foreground"
                     >
                       {column.signed ? formatSigned(row[column.key]) : row[column.key]}
                     </td>
@@ -143,11 +143,11 @@ function TeamName({ row }: { row: StandingRow }) {
 function PositionBadge({ position }: { position: number }) {
   const tone =
     position === 1
-      ? "bg-amber-100 text-amber-950"
+      ? "bg-amber-100 text-amber-950 dark:bg-amber-300/25 dark:text-amber-50"
       : position === 2
-        ? "bg-slate-200 text-slate-800"
+        ? "bg-slate-200 text-slate-800 dark:bg-slate-300/25 dark:text-slate-50"
         : position === 3
-          ? "bg-orange-100 text-orange-950"
+          ? "bg-orange-100 text-orange-950 dark:bg-orange-300/25 dark:text-orange-50"
           : "text-foreground";
 
   return (
