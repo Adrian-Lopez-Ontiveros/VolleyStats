@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { cn, initials } from "@/lib/utils";
 import { POSITION_LABELS } from "@/lib/constants";
 import {
@@ -41,137 +41,27 @@ const TIER_FRAME: Record<ReturnType<typeof cardTier>, string> = {
   bronze: "player-card-bronze shadow-[0_18px_40px_-16px_rgba(11,31,58,0.45)]",
 };
 
-const SIDE_FLAMES = [
-  { top: "0%", width: 52, height: 64, tilt: -16, delay: "0s", duration: "0.42s" },
-  { top: "18%", width: 40, height: 50, tilt: 12, delay: "0.11s", duration: "0.56s" },
-  { top: "34%", width: 58, height: 72, tilt: -8, delay: "0.23s", duration: "0.38s" },
-  { top: "52%", width: 44, height: 56, tilt: 18, delay: "0.07s", duration: "0.62s" },
-  { top: "70%", width: 48, height: 58, tilt: -14, delay: "0.19s", duration: "0.48s" },
-  { top: "86%", width: 36, height: 46, tilt: 8, delay: "0.31s", duration: "0.52s" },
+const STREAK_LICKS = [
+  { delay: "0s", height: 28 },
+  { delay: "-0.48s", height: 18 },
+  { delay: "-0.96s", height: 34 },
+  { delay: "-1.44s", height: 22 },
+  { delay: "-1.92s", height: 30 },
+  { delay: "-2.4s", height: 16 },
 ] as const;
 
-const RISING_FLAMES = [
-  { delay: "0s", duration: "1.25s", width: 42, height: 52, tilt: -10 },
-  { delay: "0.16s", duration: "1.45s", width: 30, height: 40, tilt: 14 },
-  { delay: "0.32s", duration: "1.15s", width: 50, height: 60, tilt: -18 },
-  { delay: "0.48s", duration: "1.35s", width: 28, height: 36, tilt: 6 },
-  { delay: "0.64s", duration: "1.5s", width: 46, height: 56, tilt: -4 },
-  { delay: "0.8s", duration: "1.2s", width: 34, height: 44, tilt: 16 },
-  { delay: "0.96s", duration: "1.4s", width: 52, height: 62, tilt: -12 },
-  { delay: "1.1s", duration: "1.28s", width: 32, height: 42, tilt: 9 },
-] as const;
-
-const EMBERS = [
-  { delay: "0s", duration: "0.85s", bottom: "4%" },
-  { delay: "0.2s", duration: "1.1s", bottom: "24%" },
-  { delay: "0.38s", duration: "0.75s", bottom: "48%" },
-  { delay: "0.55s", duration: "1s", bottom: "10%" },
-  { delay: "0.72s", duration: "0.9s", bottom: "66%" },
-  { delay: "0.9s", duration: "1.15s", bottom: "36%" },
-] as const;
-
-function FlameTongue({ delay, duration }: { delay: string; duration: string }) {
+function StreakFire() {
   return (
-    <svg
-      viewBox="0 0 90 64"
-      className="player-card-flame"
-      style={{ animationDelay: delay, animationDuration: duration }}
-    >
-      <path
-        fill="#c2410c"
-        d="M86 12C56 2 34 16 20 14C10 12 1 24 9 33C1 39 10 52 26 49C42 62 66 54 86 56C66 46 74 34 62 28C74 22 70 15 86 12Z"
-      />
-      <path
-        fill="#f97316"
-        d="M74 16C50 8 32 20 22 20C12 20 6 30 14 36C8 42 18 50 32 47C46 56 62 48 74 50C60 42 66 32 74 26C66 22 70 18 74 16Z"
-      />
-      <path
-        fill="#fde047"
-        d="M48 24C34 18 20 28 18 34C12 40 24 48 36 44C28 36 34 28 48 24Z"
-      />
-      <path fill="#fff7c2" d="M30 30C22 28 14 34 16 38C20 42 30 40 32 36C34 33 32 31 30 30Z" />
-    </svg>
-  );
-}
-
-function flameSlotStyle(angle: number, delay: string, duration: string, top: string, width: number, height: number): CSSProperties {
-  return {
-    top,
-    width,
-    height,
-    animationDelay: delay,
-    animationDuration: duration,
-    "--flame-tilt": `${angle}deg`,
-  } as CSSProperties;
-}
-
-function SideFlames() {
-  return (
-    <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
-      <span className="player-card-flame-wash player-card-flame-wash-left" />
-      <span className="player-card-flame-wash player-card-flame-wash-right" />
-      {SIDE_FLAMES.map((flame) => (
+    <div className="player-card-streak" aria-hidden>
+      <span className="player-card-streak-glow" />
+      <span className="player-card-streak-ring player-card-streak-red" />
+      <span className="player-card-streak-ring" />
+      <span className="player-card-streak-ring player-card-streak-hot" />
+      {STREAK_LICKS.map((lick) => (
         <span
-          key={`left-${flame.top}`}
-          className="player-card-flame-slot player-card-flame-slot-left"
-          style={flameSlotStyle(flame.tilt, flame.delay, flame.duration, flame.top, flame.width, flame.height)}
-        >
-          <FlameTongue delay={flame.delay} duration={`${Number.parseFloat(flame.duration) * 0.72}s`} />
-        </span>
-      ))}
-      {SIDE_FLAMES.map((flame) => (
-        <span
-          key={`right-${flame.top}`}
-          className="player-card-flame-slot player-card-flame-slot-right"
-          style={flameSlotStyle(180 - flame.tilt, flame.delay, flame.duration, flame.top, flame.width, flame.height)}
-        >
-          <FlameTongue delay={flame.delay} duration={`${Number.parseFloat(flame.duration) * 0.72}s`} />
-        </span>
-      ))}
-      {RISING_FLAMES.map((flame) => (
-        <span
-          key={`rise-left-${flame.delay}`}
-          className="player-card-flame-rise player-card-flame-rise-left"
-          style={{
-            width: flame.width,
-            height: flame.height,
-            animationDelay: flame.delay,
-            animationDuration: flame.duration,
-          }}
-        >
-          <span className="player-card-flame-turn" style={{ transform: `rotate(${flame.tilt}deg)` }}>
-            <FlameTongue delay={flame.delay} duration="0.34s" />
-          </span>
-        </span>
-      ))}
-      {RISING_FLAMES.map((flame) => (
-        <span
-          key={`rise-right-${flame.delay}`}
-          className="player-card-flame-rise player-card-flame-rise-right"
-          style={{
-            width: flame.width,
-            height: flame.height,
-            animationDelay: flame.delay,
-            animationDuration: flame.duration,
-          }}
-        >
-          <span className="player-card-flame-turn" style={{ transform: `rotate(${180 - flame.tilt}deg)` }}>
-            <FlameTongue delay={flame.delay} duration="0.34s" />
-          </span>
-        </span>
-      ))}
-      {EMBERS.map((ember) => (
-        <span
-          key={`ember-left-${ember.delay}`}
-          className="player-card-ember player-card-ember-left"
-          style={{ bottom: ember.bottom, animationDelay: ember.delay, animationDuration: ember.duration }}
-        />
-      ))}
-      {EMBERS.map((ember) => (
-        <span
-          key={`ember-right-${ember.delay}`}
-          className="player-card-ember player-card-ember-right"
-          style={{ bottom: ember.bottom, animationDelay: ember.delay, animationDuration: ember.duration }}
+          key={lick.delay}
+          className="player-card-streak-lick"
+          style={{ animationDelay: lick.delay, height: lick.height }}
         />
       ))}
     </div>
@@ -266,13 +156,13 @@ export function PlayerCardVisual({
       id={captureId}
       className={cn(
         "relative w-full overflow-visible",
-        isLider ? "max-w-[352px] px-9" : "max-w-[280px]",
+        isLider ? "max-w-[336px] px-7" : "max-w-[280px]",
         className
       )}
       aria-label={`Cromo de ${data.fullName}`}
     >
       <div className="relative">
-      {isLider ? <SideFlames /> : null}
+      {isLider ? <StreakFire /> : null}
       <div className={cn("relative z-[1] rounded-[1.35rem] p-[3px]", skin?.frame ?? TIER_FRAME[tier])}>
         <div
           className={cn(

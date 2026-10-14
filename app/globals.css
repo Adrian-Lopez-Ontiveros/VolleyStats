@@ -295,160 +295,158 @@
   100% { background-position: 0% 40%; }
 }
 
-@keyframes player-card-flame-lick {
-  0% { transform: scaleX(0.45) scaleY(0.7) translateX(4px); opacity: 0.35; }
-  16% { transform: scaleX(1.4) scaleY(1.05) translateX(-10px); opacity: 1; }
-  34% { transform: scaleX(0.62) scaleY(1.45) translateX(-2px); opacity: 0.62; }
-  52% { transform: scaleX(1.55) scaleY(0.68) translateX(-14px); opacity: 1; }
-  73% { transform: scaleX(0.7) scaleY(1.25) translateX(-6px); opacity: 0.78; }
-  100% { transform: scaleX(0.45) scaleY(0.7) translateX(4px); opacity: 0.35; }
+@property --streak-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
 }
 
-@keyframes player-card-flame-sway {
-  0%, 100% { transform: rotate(var(--flame-tilt, 0deg)) translateY(2px); }
-  50% { transform: rotate(calc(var(--flame-tilt, 0deg) + 18deg)) translateY(-12px); }
+@property --streak-hot-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
 }
 
-@keyframes player-card-flame-wash {
-  from { background-position: 0 0; }
-  to { background-position: 0 -56px; }
+@keyframes player-card-streak-spin {
+  to { --streak-angle: 360deg; }
 }
 
-@keyframes player-card-flame-rise-left {
-  0% { transform: translate3d(8px, 30px, 0) scale(0.5); opacity: 0; }
-  8% { opacity: 1; }
-  32% { transform: translate3d(-4px, -130px, 0) scale(1.08); opacity: 1; }
-  66% { transform: translate3d(-16px, -270px, 0) scale(0.86); opacity: 0.9; }
-  100% { transform: translate3d(-8px, -430px, 0) scale(0.4); opacity: 0; }
+@keyframes player-card-streak-hot-spin {
+  to { --streak-hot-angle: -360deg; }
 }
 
-@keyframes player-card-flame-rise-right {
-  0% { transform: translate3d(-8px, 30px, 0) scale(0.5); opacity: 0; }
-  8% { opacity: 1; }
-  32% { transform: translate3d(4px, -130px, 0) scale(1.08); opacity: 1; }
-  66% { transform: translate3d(16px, -270px, 0) scale(0.86); opacity: 0.9; }
-  100% { transform: translate3d(8px, -430px, 0) scale(0.4); opacity: 0; }
+@keyframes player-card-streak-orbit {
+  to { offset-distance: 100%; }
 }
 
-@keyframes player-card-ember-left {
-  0% { transform: translate3d(0, 8px, 0) scale(0.7); opacity: 0; }
-  12% { opacity: 1; }
-  100% { transform: translate3d(-22px, -240px, 0) scale(0.25); opacity: 0; }
+@keyframes player-card-streak-flicker {
+  0%, 100% { transform: scaleY(0.72) scaleX(0.86); opacity: 0.7; }
+  40% { transform: scaleY(1.18) scaleX(1); opacity: 1; }
+  70% { transform: scaleY(0.84) scaleX(1.08); opacity: 0.82; }
 }
 
-@keyframes player-card-ember-right {
-  0% { transform: translate3d(0, 8px, 0) scale(0.7); opacity: 0; }
-  12% { opacity: 1; }
-  100% { transform: translate3d(22px, -240px, 0) scale(0.25); opacity: 0; }
-}
-
-.player-card-flame-wash {
+.player-card-streak {
   position: absolute;
-  top: 4%;
-  bottom: 4%;
-  width: 1.7rem;
-  filter: blur(6px);
-  background-repeat: repeat-y;
-  background-size: 100% 56px;
-  animation: player-card-flame-wash 0.55s linear infinite;
+  inset: -16px;
+  z-index: 0;
+  border-radius: 2rem;
+  pointer-events: none;
 }
 
-.player-card-flame-wash-left {
-  left: -0.95rem;
-  background-image: repeating-linear-gradient(
-    180deg,
-    transparent 0 6px,
-    #ef4444 12px,
-    #fde047 24px,
-    #f97316 36px,
-    transparent 50px 56px
+.player-card-streak-glow,
+.player-card-streak-ring {
+  position: absolute;
+  border-radius: inherit;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.player-card-streak-glow {
+  inset: -6px;
+  padding: 16px;
+  filter: blur(8px);
+  opacity: 0.95;
+  background: conic-gradient(
+    from var(--streak-angle),
+    #c2410c 0deg,
+    #facc15 40deg,
+    #fde047 70deg,
+    #fb923c 110deg,
+    #f59e0b 160deg,
+    #fde047 210deg,
+    #f97316 260deg,
+    #facc15 310deg,
+    #c2410c 360deg
   );
+  animation: player-card-streak-spin 2.2s linear infinite;
 }
 
-.player-card-flame-wash-right {
-  right: -0.95rem;
-  background-image: repeating-linear-gradient(
-    180deg,
-    transparent 0 8px,
-    #fb923c 16px,
-    #fde047 26px,
-    #ef4444 38px,
-    transparent 48px 56px
+.player-card-streak-ring {
+  inset: 1px;
+  padding: 7px;
+  background: conic-gradient(
+    from var(--streak-angle),
+    #7f1d1d 0deg,
+    #ea580c 36deg,
+    #fde047 70deg,
+    #f97316 104deg,
+    #b91c1c 146deg,
+    #facc15 186deg,
+    #fff3bf 206deg,
+    #f97316 236deg,
+    #dc2626 280deg,
+    #fbbf24 318deg,
+    #7f1d1d 360deg
   );
+  animation: player-card-streak-spin 1.55s linear infinite;
 }
 
-.player-card-flame-slot {
+.player-card-streak-red {
+  inset: 6px;
+  padding: 5px;
+  filter: blur(0.6px);
+  background: conic-gradient(
+    from var(--streak-angle),
+    #7f1d1d 0deg,
+    #ef4444 50deg,
+    #b91c1c 100deg,
+    #f97316 150deg,
+    #991b1b 210deg,
+    #ef4444 270deg,
+    #c2410c 320deg,
+    #7f1d1d 360deg
+  );
+  animation-duration: 1.9s;
+  animation-direction: reverse;
+}
+
+.player-card-streak-hot {
+  inset: -2px;
+  padding: 9px;
+  filter: blur(1px);
+  background: conic-gradient(
+    from var(--streak-hot-angle),
+    transparent 0 28deg,
+    #fde047 48deg,
+    #fff6c2 64deg,
+    transparent 86deg 150deg,
+    #facc15 168deg,
+    #fff3bf 184deg,
+    transparent 206deg 300deg,
+    #fde047 322deg,
+    transparent 348deg 360deg
+  );
+  animation: player-card-streak-hot-spin 0.95s linear infinite;
+}
+
+.player-card-streak-lick {
   position: absolute;
-}
-
-.player-card-flame-slot-left {
-  left: -1.7rem;
-  transform-origin: 100% 70%;
-  animation: player-card-flame-sway 0.5s ease-in-out infinite;
-}
-
-.player-card-flame-slot-right {
-  right: -1.7rem;
-  transform-origin: 0% 70%;
-  animation: player-card-flame-sway 0.5s ease-in-out infinite;
-}
-
-.player-card-flame-rise {
-  position: absolute;
-  bottom: -8%;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-.player-card-flame-rise-left {
-  left: -1.45rem;
-  transform-origin: 100% 80%;
-  animation-name: player-card-flame-rise-left;
-}
-
-.player-card-flame-rise-right {
-  right: -1.45rem;
-  transform-origin: 0% 80%;
-  animation-name: player-card-flame-rise-right;
-}
-
-.player-card-flame-turn {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.player-card-ember {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: #fff7c2;
-  box-shadow: 0 0 6px 2px #f97316;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-.player-card-ember-left {
-  left: -0.35rem;
-  animation-name: player-card-ember-left;
-}
-
-.player-card-ember-right {
-  right: -0.35rem;
-  animation-name: player-card-ember-right;
-}
-
-.player-card-flame {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  transform-origin: 100% 50%;
-  filter: blur(0.35px) drop-shadow(0 0 6px rgba(249, 115, 22, 0.9));
-  animation-name: player-card-flame-lick;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 24px;
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
+  background: radial-gradient(
+    ellipse at 50% 78%,
+    #fff8d6 0%,
+    #fde047 22%,
+    #f97316 52%,
+    rgba(220, 38, 38, 0) 76%
+  );
+  filter: blur(0.7px);
+  transform-origin: 50% 100%;
+  offset-path: inset(4px round 1.7rem);
+  offset-rotate: auto 90deg;
+  offset-anchor: 50% 100%;
+  animation:
+    player-card-streak-orbit 2.8s linear infinite,
+    player-card-streak-flicker 0.38s linear infinite;
 }
 
 .player-card-skin-lider {
@@ -483,26 +481,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .player-card-skin-lider,
-  .player-card-flame,
-  .player-card-flame-wash,
-  .player-card-flame-rise,
-  .player-card-ember {
+  .player-card-streak-glow,
+  .player-card-streak-ring,
+  .player-card-streak-lick {
     animation: none;
-  }
-
-  .player-card-flame-slot-left,
-  .player-card-flame-slot-right {
-    animation: none;
-    transform: rotate(var(--flame-tilt, 0deg));
-  }
-
-  .player-card-flame {
-    opacity: 0.9;
-  }
-
-  .player-card-flame-rise,
-  .player-card-ember {
-    opacity: 0;
   }
 }
 
