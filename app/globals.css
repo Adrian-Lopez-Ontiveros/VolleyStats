@@ -296,57 +296,84 @@
 }
 
 @keyframes player-card-flame-lick {
-  0%, 100% {
-    transform: scaleX(0.9) scaleY(0.94);
-    opacity: 0.78;
-  }
-  46% {
-    transform: scaleX(1.16) scaleY(1.05);
-    opacity: 1;
-  }
-  74% {
-    transform: scaleX(0.96) scaleY(1.12);
-    opacity: 0.86;
-  }
+  0% { transform: scaleX(0.45) scaleY(0.7) translateX(4px); opacity: 0.35; }
+  16% { transform: scaleX(1.4) scaleY(1.05) translateX(-10px); opacity: 1; }
+  34% { transform: scaleX(0.62) scaleY(1.45) translateX(-2px); opacity: 0.62; }
+  52% { transform: scaleX(1.55) scaleY(0.68) translateX(-14px); opacity: 1; }
+  73% { transform: scaleX(0.7) scaleY(1.25) translateX(-6px); opacity: 0.78; }
+  100% { transform: scaleX(0.45) scaleY(0.7) translateX(4px); opacity: 0.35; }
+}
+
+@keyframes player-card-flame-sway {
+  0%, 100% { transform: rotate(var(--flame-tilt, 0deg)) translateY(2px); }
+  50% { transform: rotate(calc(var(--flame-tilt, 0deg) + 18deg)) translateY(-12px); }
 }
 
 @keyframes player-card-flame-wash {
-  0%, 100% { opacity: 0.45; transform: scaleY(0.94); }
-  50% { opacity: 0.9; transform: scaleY(1); }
+  from { background-position: 0 0; }
+  to { background-position: 0 -56px; }
+}
+
+@keyframes player-card-flame-rise-left {
+  0% { transform: translate3d(8px, 30px, 0) scale(0.5); opacity: 0; }
+  8% { opacity: 1; }
+  32% { transform: translate3d(-4px, -130px, 0) scale(1.08); opacity: 1; }
+  66% { transform: translate3d(-16px, -270px, 0) scale(0.86); opacity: 0.9; }
+  100% { transform: translate3d(-8px, -430px, 0) scale(0.4); opacity: 0; }
+}
+
+@keyframes player-card-flame-rise-right {
+  0% { transform: translate3d(-8px, 30px, 0) scale(0.5); opacity: 0; }
+  8% { opacity: 1; }
+  32% { transform: translate3d(4px, -130px, 0) scale(1.08); opacity: 1; }
+  66% { transform: translate3d(16px, -270px, 0) scale(0.86); opacity: 0.9; }
+  100% { transform: translate3d(8px, -430px, 0) scale(0.4); opacity: 0; }
+}
+
+@keyframes player-card-ember-left {
+  0% { transform: translate3d(0, 8px, 0) scale(0.7); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate3d(-22px, -240px, 0) scale(0.25); opacity: 0; }
+}
+
+@keyframes player-card-ember-right {
+  0% { transform: translate3d(0, 8px, 0) scale(0.7); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate3d(22px, -240px, 0) scale(0.25); opacity: 0; }
 }
 
 .player-card-flame-wash {
   position: absolute;
-  top: 7%;
-  bottom: 7%;
-  width: 1.35rem;
-  filter: blur(7px);
-  animation: player-card-flame-wash 1.6s ease-in-out infinite;
+  top: 4%;
+  bottom: 4%;
+  width: 1.7rem;
+  filter: blur(6px);
+  background-repeat: repeat-y;
+  background-size: 100% 56px;
+  animation: player-card-flame-wash 0.55s linear infinite;
 }
 
 .player-card-flame-wash-left {
-  left: -0.85rem;
-  background: linear-gradient(
+  left: -0.95rem;
+  background-image: repeating-linear-gradient(
     180deg,
-    transparent 0%,
-    #f97316 14%,
-    #fde047 38%,
-    #ef4444 62%,
-    #fb923c 84%,
-    transparent 100%
+    transparent 0 6px,
+    #ef4444 12px,
+    #fde047 24px,
+    #f97316 36px,
+    transparent 50px 56px
   );
 }
 
 .player-card-flame-wash-right {
-  right: -0.85rem;
-  background: linear-gradient(
+  right: -0.95rem;
+  background-image: repeating-linear-gradient(
     180deg,
-    transparent 0%,
-    #fb923c 12%,
-    #ef4444 40%,
-    #fde047 66%,
-    #f97316 86%,
-    transparent 100%
+    transparent 0 8px,
+    #fb923c 16px,
+    #fde047 26px,
+    #ef4444 38px,
+    transparent 48px 56px
   );
 }
 
@@ -356,10 +383,60 @@
 
 .player-card-flame-slot-left {
   left: -1.7rem;
+  transform-origin: 100% 70%;
+  animation: player-card-flame-sway 0.5s ease-in-out infinite;
 }
 
 .player-card-flame-slot-right {
   right: -1.7rem;
+  transform-origin: 0% 70%;
+  animation: player-card-flame-sway 0.5s ease-in-out infinite;
+}
+
+.player-card-flame-rise {
+  position: absolute;
+  bottom: -8%;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.player-card-flame-rise-left {
+  left: -1.45rem;
+  transform-origin: 100% 80%;
+  animation-name: player-card-flame-rise-left;
+}
+
+.player-card-flame-rise-right {
+  right: -1.45rem;
+  transform-origin: 0% 80%;
+  animation-name: player-card-flame-rise-right;
+}
+
+.player-card-flame-turn {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.player-card-ember {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #fff7c2;
+  box-shadow: 0 0 6px 2px #f97316;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.player-card-ember-left {
+  left: -0.35rem;
+  animation-name: player-card-ember-left;
+}
+
+.player-card-ember-right {
+  right: -0.35rem;
+  animation-name: player-card-ember-right;
 }
 
 .player-card-flame {
@@ -368,9 +445,9 @@
   height: 100%;
   overflow: visible;
   transform-origin: 100% 50%;
-  filter: blur(0.45px) drop-shadow(0 0 5px rgba(249, 115, 22, 0.75));
+  filter: blur(0.35px) drop-shadow(0 0 6px rgba(249, 115, 22, 0.9));
   animation-name: player-card-flame-lick;
-  animation-timing-function: ease-in-out;
+  animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
 
@@ -386,7 +463,7 @@
     #9a3412 100%
   );
   background-size: 280% 280%;
-  animation: player-card-flames 2.6s ease-in-out infinite;
+  animation: player-card-flames 1.15s linear infinite;
 }
 
 .player-card-surface-lider {
@@ -407,12 +484,25 @@
 @media (prefers-reduced-motion: reduce) {
   .player-card-skin-lider,
   .player-card-flame,
-  .player-card-flame-wash {
+  .player-card-flame-wash,
+  .player-card-flame-rise,
+  .player-card-ember {
     animation: none;
   }
 
+  .player-card-flame-slot-left,
+  .player-card-flame-slot-right {
+    animation: none;
+    transform: rotate(var(--flame-tilt, 0deg));
+  }
+
   .player-card-flame {
-    opacity: 0.88;
+    opacity: 0.9;
+  }
+
+  .player-card-flame-rise,
+  .player-card-ember {
+    opacity: 0;
   }
 }
 

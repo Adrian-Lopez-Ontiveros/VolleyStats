@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { cn, initials } from "@/lib/utils";
 import { POSITION_LABELS } from "@/lib/constants";
 import {
@@ -42,11 +42,32 @@ const TIER_FRAME: Record<ReturnType<typeof cardTier>, string> = {
 };
 
 const SIDE_FLAMES = [
-  { top: "2%", width: 54, height: 62, tilt: -18, delay: "0s", duration: "1.05s" },
-  { top: "20%", width: 42, height: 48, tilt: 12, delay: "0.26s", duration: "0.84s" },
-  { top: "36%", width: 60, height: 74, tilt: -6, delay: "0.1s", duration: "1.14s" },
-  { top: "56%", width: 48, height: 56, tilt: 16, delay: "0.4s", duration: "0.92s" },
-  { top: "74%", width: 46, height: 52, tilt: -12, delay: "0.16s", duration: "1.02s" },
+  { top: "0%", width: 52, height: 64, tilt: -16, delay: "0s", duration: "0.42s" },
+  { top: "18%", width: 40, height: 50, tilt: 12, delay: "0.11s", duration: "0.56s" },
+  { top: "34%", width: 58, height: 72, tilt: -8, delay: "0.23s", duration: "0.38s" },
+  { top: "52%", width: 44, height: 56, tilt: 18, delay: "0.07s", duration: "0.62s" },
+  { top: "70%", width: 48, height: 58, tilt: -14, delay: "0.19s", duration: "0.48s" },
+  { top: "86%", width: 36, height: 46, tilt: 8, delay: "0.31s", duration: "0.52s" },
+] as const;
+
+const RISING_FLAMES = [
+  { delay: "0s", duration: "1.25s", width: 42, height: 52, tilt: -10 },
+  { delay: "0.16s", duration: "1.45s", width: 30, height: 40, tilt: 14 },
+  { delay: "0.32s", duration: "1.15s", width: 50, height: 60, tilt: -18 },
+  { delay: "0.48s", duration: "1.35s", width: 28, height: 36, tilt: 6 },
+  { delay: "0.64s", duration: "1.5s", width: 46, height: 56, tilt: -4 },
+  { delay: "0.8s", duration: "1.2s", width: 34, height: 44, tilt: 16 },
+  { delay: "0.96s", duration: "1.4s", width: 52, height: 62, tilt: -12 },
+  { delay: "1.1s", duration: "1.28s", width: 32, height: 42, tilt: 9 },
+] as const;
+
+const EMBERS = [
+  { delay: "0s", duration: "0.85s", bottom: "4%" },
+  { delay: "0.2s", duration: "1.1s", bottom: "24%" },
+  { delay: "0.38s", duration: "0.75s", bottom: "48%" },
+  { delay: "0.55s", duration: "1s", bottom: "10%" },
+  { delay: "0.72s", duration: "0.9s", bottom: "66%" },
+  { delay: "0.9s", duration: "1.15s", bottom: "36%" },
 ] as const;
 
 function FlameTongue({ delay, duration }: { delay: string; duration: string }) {
@@ -73,6 +94,17 @@ function FlameTongue({ delay, duration }: { delay: string; duration: string }) {
   );
 }
 
+function flameSlotStyle(angle: number, delay: string, duration: string, top: string, width: number, height: number): CSSProperties {
+  return {
+    top,
+    width,
+    height,
+    animationDelay: delay,
+    animationDuration: duration,
+    "--flame-tilt": `${angle}deg`,
+  } as CSSProperties;
+}
+
 function SideFlames() {
   return (
     <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
@@ -82,29 +114,65 @@ function SideFlames() {
         <span
           key={`left-${flame.top}`}
           className="player-card-flame-slot player-card-flame-slot-left"
-          style={{
-            top: flame.top,
-            width: flame.width,
-            height: flame.height,
-            transform: `rotate(${flame.tilt}deg)`,
-          }}
+          style={flameSlotStyle(flame.tilt, flame.delay, flame.duration, flame.top, flame.width, flame.height)}
         >
-          <FlameTongue delay={flame.delay} duration={flame.duration} />
+          <FlameTongue delay={flame.delay} duration={`${Number.parseFloat(flame.duration) * 0.72}s`} />
         </span>
       ))}
       {SIDE_FLAMES.map((flame) => (
         <span
           key={`right-${flame.top}`}
           className="player-card-flame-slot player-card-flame-slot-right"
+          style={flameSlotStyle(180 - flame.tilt, flame.delay, flame.duration, flame.top, flame.width, flame.height)}
+        >
+          <FlameTongue delay={flame.delay} duration={`${Number.parseFloat(flame.duration) * 0.72}s`} />
+        </span>
+      ))}
+      {RISING_FLAMES.map((flame) => (
+        <span
+          key={`rise-left-${flame.delay}`}
+          className="player-card-flame-rise player-card-flame-rise-left"
           style={{
-            top: flame.top,
             width: flame.width,
             height: flame.height,
-            transform: `rotate(${180 - flame.tilt}deg)`,
+            animationDelay: flame.delay,
+            animationDuration: flame.duration,
           }}
         >
-          <FlameTongue delay={flame.delay} duration={flame.duration} />
+          <span className="player-card-flame-turn" style={{ transform: `rotate(${flame.tilt}deg)` }}>
+            <FlameTongue delay={flame.delay} duration="0.34s" />
+          </span>
         </span>
+      ))}
+      {RISING_FLAMES.map((flame) => (
+        <span
+          key={`rise-right-${flame.delay}`}
+          className="player-card-flame-rise player-card-flame-rise-right"
+          style={{
+            width: flame.width,
+            height: flame.height,
+            animationDelay: flame.delay,
+            animationDuration: flame.duration,
+          }}
+        >
+          <span className="player-card-flame-turn" style={{ transform: `rotate(${180 - flame.tilt}deg)` }}>
+            <FlameTongue delay={flame.delay} duration="0.34s" />
+          </span>
+        </span>
+      ))}
+      {EMBERS.map((ember) => (
+        <span
+          key={`ember-left-${ember.delay}`}
+          className="player-card-ember player-card-ember-left"
+          style={{ bottom: ember.bottom, animationDelay: ember.delay, animationDuration: ember.duration }}
+        />
+      ))}
+      {EMBERS.map((ember) => (
+        <span
+          key={`ember-right-${ember.delay}`}
+          className="player-card-ember player-card-ember-right"
+          style={{ bottom: ember.bottom, animationDelay: ember.delay, animationDuration: ember.duration }}
+        />
       ))}
     </div>
   );
