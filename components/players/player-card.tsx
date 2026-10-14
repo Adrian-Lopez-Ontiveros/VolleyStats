@@ -41,6 +41,75 @@ const TIER_FRAME: Record<ReturnType<typeof cardTier>, string> = {
   bronze: "player-card-bronze shadow-[0_18px_40px_-16px_rgba(11,31,58,0.45)]",
 };
 
+const SIDE_FLAMES = [
+  { top: "2%", width: 54, height: 62, tilt: -18, delay: "0s", duration: "1.05s" },
+  { top: "20%", width: 42, height: 48, tilt: 12, delay: "0.26s", duration: "0.84s" },
+  { top: "36%", width: 60, height: 74, tilt: -6, delay: "0.1s", duration: "1.14s" },
+  { top: "56%", width: 48, height: 56, tilt: 16, delay: "0.4s", duration: "0.92s" },
+  { top: "74%", width: 46, height: 52, tilt: -12, delay: "0.16s", duration: "1.02s" },
+] as const;
+
+function FlameTongue({ delay, duration }: { delay: string; duration: string }) {
+  return (
+    <svg
+      viewBox="0 0 90 64"
+      className="player-card-flame"
+      style={{ animationDelay: delay, animationDuration: duration }}
+    >
+      <path
+        fill="#c2410c"
+        d="M86 12C56 2 34 16 20 14C10 12 1 24 9 33C1 39 10 52 26 49C42 62 66 54 86 56C66 46 74 34 62 28C74 22 70 15 86 12Z"
+      />
+      <path
+        fill="#f97316"
+        d="M74 16C50 8 32 20 22 20C12 20 6 30 14 36C8 42 18 50 32 47C46 56 62 48 74 50C60 42 66 32 74 26C66 22 70 18 74 16Z"
+      />
+      <path
+        fill="#fde047"
+        d="M48 24C34 18 20 28 18 34C12 40 24 48 36 44C28 36 34 28 48 24Z"
+      />
+      <path fill="#fff7c2" d="M30 30C22 28 14 34 16 38C20 42 30 40 32 36C34 33 32 31 30 30Z" />
+    </svg>
+  );
+}
+
+function SideFlames() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+      <span className="player-card-flame-wash player-card-flame-wash-left" />
+      <span className="player-card-flame-wash player-card-flame-wash-right" />
+      {SIDE_FLAMES.map((flame) => (
+        <span
+          key={`left-${flame.top}`}
+          className="player-card-flame-slot player-card-flame-slot-left"
+          style={{
+            top: flame.top,
+            width: flame.width,
+            height: flame.height,
+            transform: `rotate(${flame.tilt}deg)`,
+          }}
+        >
+          <FlameTongue delay={flame.delay} duration={flame.duration} />
+        </span>
+      ))}
+      {SIDE_FLAMES.map((flame) => (
+        <span
+          key={`right-${flame.top}`}
+          className="player-card-flame-slot player-card-flame-slot-right"
+          style={{
+            top: flame.top,
+            width: flame.width,
+            height: flame.height,
+            transform: `rotate(${180 - flame.tilt}deg)`,
+          }}
+        >
+          <FlameTongue delay={flame.delay} duration={flame.duration} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function PlayerCardVisual({
   data,
   captureId,
@@ -81,6 +150,7 @@ export function PlayerCardVisual({
     : null;
   const tier = cardTier(rating);
   const skin = cardSkin(data.cardStyle);
+  const isLider = data.cardStyle === "card_lider";
   const shownName = resolveCardName(data.fullName, data.nameMode, data.displayName);
   const photo = !photoFailed && data.photoUrl ? data.photoUrl : null;
   const logo = !logoFailed && data.teamLogoUrl ? data.teamLogoUrl : null;
@@ -126,10 +196,16 @@ export function PlayerCardVisual({
   return (
     <article
       id={captureId}
-      className={cn("w-full max-w-[280px] overflow-visible", className)}
+      className={cn(
+        "relative w-full overflow-visible",
+        isLider ? "max-w-[352px] px-9" : "max-w-[280px]",
+        className
+      )}
       aria-label={`Cromo de ${data.fullName}`}
     >
-      <div className={cn("rounded-[1.35rem] p-[3px]", skin?.frame ?? TIER_FRAME[tier])}>
+      <div className="relative">
+      {isLider ? <SideFlames /> : null}
+      <div className={cn("relative z-[1] rounded-[1.35rem] p-[3px]", skin?.frame ?? TIER_FRAME[tier])}>
         <div
           className={cn(
             "relative overflow-hidden rounded-[1.2rem] text-white",
@@ -173,8 +249,14 @@ export function PlayerCardVisual({
                   </span>
                 </div>
               )}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#0b1f3a] to-transparent" />
             </div>
+
+            <div
+              className={cn(
+                "player-card-photo-fade pointer-events-none absolute inset-x-0 bottom-0 z-[6]",
+                isLider && "player-card-photo-fade-lider"
+              )}
+            />
 
             <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-3 pt-3">
               <div className="min-w-[4.5rem] rounded-xl bg-[#0b1f3a]/80 px-2 py-1.5">
@@ -261,6 +343,7 @@ export function PlayerCardVisual({
             </div>
           </div>
         </div>
+      </div>
       </div>
     </article>
   );
