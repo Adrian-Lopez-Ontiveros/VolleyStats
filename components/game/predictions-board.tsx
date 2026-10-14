@@ -6,13 +6,16 @@ import { Check, X } from "lucide-react";
 import { AppLogo } from "@/components/app-logo";
 import { toast } from "sonner";
 import { saveMatchPrediction } from "@/lib/actions/game";
+import { setsToWinOf } from "@/lib/constants";
 import { formatMatchWhen } from "@/lib/federation/schedule";
 import { isPredictionLocked, predictionLocksAt } from "@/lib/game";
 import {
   clearPredictionDraft,
   getPredictionDraft,
   setPredictionDraft,
+  type PredictionDraft,
 } from "@/lib/prediction-drafts";
+import { exactScoreOptions, isExactScoreForWinner } from "@/lib/prediction-score";
 import { cn } from "@/lib/utils";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +41,8 @@ export function PredictionsBoard({
         />
         <h3 className="text-lg font-bold">Aún no hay jornada para predecir</h3>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Cuando salga el próximo partido del club, elige aquí quién gana. Un acierto suma 1 punto.
+          Cuando salga el próximo partido del club, elige aquí quién gana y, si quieres, el resultado.
+          El equipo suma 1 punto y el marcador exacto suma 2.
         </p>
       </div>
     );
@@ -67,7 +71,8 @@ export function PredictionsBoard({
             </div>
             {phase === "open" ? (
               <p className="text-sm text-muted-foreground">
-                Toca el escudo del equipo que crees que gana. Se cierra 5 minutos antes del saque.
+                Toca el escudo del equipo que crees que gana y, si quieres, el resultado. El equipo suma
+                1 punto y el marcador exacto suma 2. Se cierra 5 minutos antes del saque.
               </p>
             ) : null}
             <div className="space-y-3">
@@ -89,7 +94,15 @@ export function PredictionsBoard({
   );
 }
 
-export function QuinielaStrip({ hits, played }: { hits: number; played: number }) {
+export function QuinielaStrip({
+  points,
+  hits,
+  played,
+}: {
+  points: number;
+  hits: number;
+  played: number;
+}) {
   const rate = played > 0 ? Math.round((hits / played) * 100) : null;
 
   return (
@@ -99,9 +112,9 @@ export function QuinielaStrip({ hits, played }: { hits: number; played: number }
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200">
             Tu quiniela
           </p>
-          <p className="mt-1 text-4xl font-black tabular-nums leading-none">{hits}</p>
+          <p className="mt-1 text-4xl font-black tabular-nums leading-none">{points}</p>
           <p className="mt-1 text-sm text-orange-100">
-            {hits === 1 ? "punto" : "puntos"} · {played} {played === 1 ? "pronóstico" : "pronósticos"}
+            {points === 1 ? "punto" : "puntos"} · {played} {played === 1 ? "pronóstico" : "pronósticos"}
           </p>
         </div>
         <div className="rounded-2xl bg-white/10 px-4 py-3 text-center">
@@ -134,6 +147,29 @@ function jornadaPhase(jornada: JornadaBoard, now: number) {
   return "closed" as const;
 }
 
+type LocalPick = {
+  winnerId: string | null;
+  homeSets: number | null;
+  awaySets: number | null;
+};
+
+function localPickFromPrediction(prediction: MatchPrediction | null): LocalPick {
+  return {
+    winnerId: prediction?.predicted_winner_id ?? null,
+    homeSets: prediction?.predicted_home_sets ?? null,
+    awaySets: prediction?.predicted_away_sets ?? null,
+  };
+}
+
+function pickKey(pick: LocalPick) {
+  return `${pick.winnerId ?? ""}:${pick.homeSets ?? ""}-${pick.awaySets ?? ""}`;
+}
+
+function draftFromPick(pick: LocalPick): PredictionDraft | null {
+  if (!pick.winnerId) return null;
+  return { winnerId: pick.winnerId, homeSets: pick.homeSets, awaySets: pick.awaySets };
+}
+
 function PredictionMatch({
   match,
   prediction,
@@ -147,18 +183,20 @@ function PredictionMatch({
   canPredict: boolean;
   now: number;
 }) {
+  const setsToWin = setsToWinOf(match);
   const timeLocked = match.status === "scheduled" && isPredictionLocked(match.scheduled_at, now);
   const locked = match.status !== "scheduled" || !canPredict || timeLocked;
-  const serverId = prediction?.predicted_winner_id ?? null;
-  const [selectedId, setSelectedId] = useState(serverId);
-  const desiredRef = useRef(serverId);
-  const savedRef = useRef(serverId);
+  const serverPick = localPickFromPrediction(prediction);
+  const [selected, setSelected] = useState(serverPick);
+  const desiredRef = useRef(serverPick);
+  const savedRef = useRef(serverPick);
   const savingRef = useRef(false);
+  const selectedId = selected.winnerId;
   const liveSplit = applyOwnVote(
     split,
     match.home_team_id,
     match.away_team_id,
-    serverId,
+    serverPick.winnerId,
     selectedId
   );
   const total = liveSplit.home + liveSplit.away;
@@ -172,25 +210,27 @@ function PredictionMatch({
   async function flush() {
     if (locked || savingRef.current) return;
     const next = desiredRef.current;
-    if (!next || next === savedRef.current) return;
+    if (!next.winnerId || pickKey(next) === pickKey(savedRef.current)) return;
 
     savingRef.current = true;
-    const result = await saveMatchPrediction(match.id, next);
+    const result = await saveMatchPrediction(match.id, next.winnerId, next.homeSets, next.awaySets);
     savingRef.current = false;
 
     if ("error" in result && result.error) {
-      if (desiredRef.current === next) {
+      if (pickKey(desiredRef.current) === pickKey(next)) {
         desiredRef.current = savedRef.current;
-        setSelectedId(savedRef.current);
-        clearPredictionDraft(match.id, next);
+        setSelected(savedRef.current);
+        const failed = draftFromPick(next);
+        if (failed) clearPredictionDraft(match.id, failed);
         toast.error(result.error);
       }
       return;
     }
 
     savedRef.current = next;
-    if (desiredRef.current === next) {
-      clearPredictionDraft(match.id, next);
+    if (pickKey(desiredRef.current) === pickKey(next)) {
+      const saved = draftFromPick(next);
+      if (saved) clearPredictionDraft(match.id, saved);
     } else {
       void flush();
     }
@@ -198,31 +238,63 @@ function PredictionMatch({
 
   useEffect(() => {
     if (locked) {
-      savedRef.current = serverId;
-      desiredRef.current = serverId;
-      setSelectedId(serverId);
+      savedRef.current = serverPick;
+      desiredRef.current = serverPick;
+      setSelected(serverPick);
       return;
     }
     const draft = getPredictionDraft(match.id);
-    if (draft) {
-      desiredRef.current = draft;
-      setSelectedId(draft);
+    if (
+      draft &&
+      (draft.winnerId === match.home_team_id || draft.winnerId === match.away_team_id)
+    ) {
+      const side = draft.winnerId === match.home_team_id ? "home" : "away";
+      const scoreOk =
+        draft.homeSets != null &&
+        draft.awaySets != null &&
+        isExactScoreForWinner({ home: draft.homeSets, away: draft.awaySets }, side, setsToWin);
+      const next: LocalPick = {
+        winnerId: draft.winnerId,
+        homeSets: scoreOk ? draft.homeSets : null,
+        awaySets: scoreOk ? draft.awaySets : null,
+      };
+      setPredictionDraft(match.id, {
+        winnerId: draft.winnerId,
+        homeSets: next.homeSets,
+        awaySets: next.awaySets,
+      });
+      desiredRef.current = next;
+      setSelected(next);
       void flush();
       return;
     }
-    savedRef.current = serverId;
-    desiredRef.current = serverId;
-    setSelectedId(serverId);
+    savedRef.current = serverPick;
+    desiredRef.current = serverPick;
+    setSelected(serverPick);
     // hydrate from local draft; do not let a stale server payload overwrite a newer pick
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match.id, locked]);
 
+  function remember(next: LocalPick) {
+    desiredRef.current = next;
+    setSelected(next);
+    const draft = draftFromPick(next);
+    if (draft) setPredictionDraft(match.id, draft);
+    void flush();
+  }
+
   function pick(teamId: string) {
     if (locked || teamId === selectedId) return;
-    desiredRef.current = teamId;
-    setSelectedId(teamId);
-    setPredictionDraft(match.id, teamId);
-    void flush();
+    remember({ winnerId: teamId, homeSets: null, awaySets: null });
+  }
+
+  function pickScore(home: number, away: number) {
+    if (locked || !selectedId) return;
+    if (selected.homeSets === home && selected.awaySets === away) {
+      remember({ winnerId: selectedId, homeSets: null, awaySets: null });
+      return;
+    }
+    remember({ winnerId: selectedId, homeSets: home, awaySets: away });
   }
 
   const homePercent = total ? Math.round((liveSplit.home / total) * 100) : 0;
@@ -230,6 +302,23 @@ function PredictionMatch({
   const homeResult = pickResult(winnerId, match.home_team_id, selectedId);
   const awayResult = pickResult(winnerId, match.away_team_id, selectedId);
   const closing = !locked && canPredict ? closesIn(match.scheduled_at, now) : null;
+  const scoreSide =
+    selectedId === match.home_team_id ? "home" : selectedId === match.away_team_id ? "away" : null;
+  const saidScore =
+    selected.homeSets != null && selected.awaySets != null
+      ? `${selected.homeSets}–${selected.awaySets}`
+      : null;
+  const showScores = scoreSide != null && (!locked || saidScore != null);
+  const scoreOptions = scoreSide ? exactScoreOptions(scoreSide, setsToWin) : [];
+  const teamHit =
+    match.status !== "finished"
+      ? false
+      : prediction?.is_correct != null
+        ? prediction.is_correct
+        : winnerId != null && selectedId === winnerId;
+  const exactHit =
+    teamHit && saidScore != null && selected.homeSets === match.home_sets && selected.awaySets === match.away_sets;
+  const finishedLabel = finishedCopy(match.home_sets, match.away_sets, Boolean(prediction || selectedId), teamHit, exactHit, saidScore);
 
   return (
     <Card className="overflow-hidden">
@@ -265,6 +354,45 @@ function PredictionMatch({
           />
         </div>
 
+        {showScores ? (
+          <div className="space-y-1.5">
+            <p className="text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Resultado exacto{locked ? "" : " · opcional"}
+            </p>
+            <div className={cn("grid gap-2", scoreOptions.length === 2 ? "grid-cols-2" : "grid-cols-3")}>
+              {scoreOptions.map((option) => {
+                const chosen = selected.homeSets === option.home && selected.awaySets === option.away;
+                const exact = match.status === "finished" && chosen && exactHit;
+                const wrong = match.status === "finished" && chosen && !exactHit;
+                return (
+                  <button
+                    key={`${option.home}-${option.away}`}
+                    type="button"
+                    onClick={() => pickScore(option.home, option.away)}
+                    disabled={locked}
+                    aria-pressed={chosen}
+                    aria-label={`Resultado ${option.home} a ${option.away}`}
+                    className={cn(
+                      "rounded-xl border px-2 py-2 text-sm font-black tabular-nums transition-colors",
+                      chosen &&
+                        !exact &&
+                        !wrong &&
+                        "border-orange-500 bg-orange-50 text-orange-950 ring-2 ring-orange-400/70 dark:bg-orange-500/15 dark:text-orange-50 dark:ring-orange-400/40",
+                      exact && "border-emerald-600 bg-emerald-50 text-emerald-950 dark:bg-emerald-500/15 dark:text-emerald-50",
+                      wrong && "border-rose-400 bg-rose-50 text-rose-950 dark:bg-rose-500/15 dark:text-rose-50",
+                      !chosen && "bg-background hover:border-orange-300",
+                      locked && "cursor-default",
+                      !locked && "active:scale-[0.98]"
+                    )}
+                  >
+                    {option.home}–{option.away}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {total > 0 ? (
           <div>
             <div className="flex h-2 overflow-hidden rounded-full bg-secondary">
@@ -286,19 +414,14 @@ function PredictionMatch({
           <p
             className={cn(
               "rounded-xl px-3 py-2 text-center text-sm font-semibold",
-              prediction?.is_correct
+              teamHit
                 ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-100"
-                : prediction
+                : prediction || selectedId
                   ? "bg-rose-500/10 text-rose-800 dark:text-rose-100"
                   : "bg-secondary text-secondary-foreground"
             )}
           >
-            {match.home_sets}–{match.away_sets}
-            {prediction?.is_correct
-              ? " · Acertaste, +1 punto"
-              : prediction
-                ? " · Esta vez no"
-                : " · No pronosticaste"}
+            {finishedLabel}
           </p>
         ) : match.status === "live" ? (
           <p className="text-center text-xs font-semibold text-orange-700 dark:text-orange-200">
@@ -314,6 +437,23 @@ function PredictionMatch({
       </CardContent>
     </Card>
   );
+}
+
+function finishedCopy(
+  homeSets: number,
+  awaySets: number,
+  hasPick: boolean,
+  teamHit: boolean,
+  exactHit: boolean,
+  saidScore: string | null
+) {
+  const score = `${homeSets}–${awaySets}`;
+  if (!hasPick) return `${score} · No pronosticaste`;
+  if (!teamHit) return saidScore ? `${score} · Esta vez no · dijiste ${saidScore}` : `${score} · Esta vez no`;
+  if (exactHit) return `${score} · Resultado exacto, +2 puntos`;
+  return saidScore
+    ? `${score} · Acertaste el equipo (dijiste ${saidScore}), +1 punto`
+    : `${score} · Acertaste el equipo, +1 punto`;
 }
 
 function pickResult(winnerId: string | null, teamId: string, selectedId: string | null) {

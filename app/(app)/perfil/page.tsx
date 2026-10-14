@@ -18,6 +18,7 @@ import {
   hasCoachAccess,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import { missingPredictionScoreColumn, predictionTablePoints } from "@/lib/prediction-score";
 import { readUserProgress } from "@/lib/user-progress";
 import type { PlayerCard } from "@/lib/types";
 
@@ -52,11 +53,21 @@ export default async function ProfilePage() {
     readUserProgress((columns) =>
       supabase.from("user_progress").select(columns).eq("user_id", user.id).maybeSingle()
     ),
-    supabase
-      .from("match_predictions")
-      .select("is_correct")
-      .eq("user_id", user.id)
-      .not("is_correct", "is", null),
+    (async () => {
+      const full = await supabase
+        .from("match_predictions")
+        .select("is_correct, points")
+        .eq("user_id", user.id)
+        .not("is_correct", "is", null);
+      if (full.error && missingPredictionScoreColumn(full.error.message)) {
+        return supabase
+          .from("match_predictions")
+          .select("is_correct")
+          .eq("user_id", user.id)
+          .not("is_correct", "is", null);
+      }
+      return full;
+    })(),
     supabase.from("user_rewards").select("reward_id").eq("user_id", user.id),
   ]);
   const notifyEnabled = Boolean(
@@ -64,7 +75,10 @@ export default async function ProfilePage() {
   );
   const playerCard = (cardResult.data as PlayerCard | null) ?? null;
   const progress = progressResult.data;
-  const resolvedPreds = (predsResult.data ?? []) as { is_correct: boolean | null }[];
+  const resolvedPreds = (predsResult.data ?? []) as {
+    is_correct: boolean | null;
+    points?: number | null;
+  }[];
   const unlockedIds = (
     (rewardsResult.error ? [] : rewardsResult.data ?? []) as { reward_id?: unknown }[]
   )
@@ -72,6 +86,7 @@ export default async function ProfilePage() {
     .filter((id): id is string => typeof id === "string");
   const predPlayed = resolvedPreds.length;
   const predHits = resolvedPreds.filter((row) => row.is_correct).length;
+  const predPoints = resolvedPreds.reduce((sum, row) => sum + predictionTablePoints(row), 0);
   const predRate = predPlayed > 0 ? Math.round((predHits / predPlayed) * 100) : null;
 
   return (
@@ -132,7 +147,7 @@ export default async function ProfilePage() {
                 <p className="text-sm font-semibold">Aciertos en predicciones</p>
                 <p className="text-xs text-muted-foreground">
                   {predPlayed > 0
-                    ? `${predHits} de ${predPlayed} ${predPlayed === 1 ? "pronóstico" : "pronósticos"}`
+                    ? `${predPoints} ${predPoints === 1 ? "punto" : "puntos"} · ${predHits} de ${predPlayed} ${predPlayed === 1 ? "pronóstico" : "pronósticos"}`
                     : "Todavía no hay pronósticos resueltos"}
                 </p>
               </div>

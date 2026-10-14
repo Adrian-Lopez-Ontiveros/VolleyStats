@@ -295,6 +295,9 @@ export const USER_PROGRESS_SELECT =
 export const MATCH_PREDICTION_SELECT =
   "id, user_id, match_id, predicted_winner_id, created_at, updated_at, resolved_at, is_correct, xp_awarded" as const;
 
+export const MATCH_PREDICTION_SELECT_SCORE =
+  "id, user_id, match_id, predicted_winner_id, predicted_home_sets, predicted_away_sets, created_at, updated_at, resolved_at, is_correct, points, xp_awarded" as const;
+
 export const TRAINING_LIST_SELECT =
   "id, name, scheduled_at, team_id, notes, created_by, created_at, updated_at, team:teams(id, name, short_name, category), files:training_files(id)" as const;
 

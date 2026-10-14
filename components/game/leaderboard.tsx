@@ -15,7 +15,7 @@ export function GameLeaderboard({
       <div className="rounded-3xl border bg-card px-6 py-8 text-center shadow-card">
         <p className="text-base font-bold">La clasificación está vacía</p>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          Cuando se cierren los partidos, cada acierto suma 1 punto y aquí se ordena la afición.
+          Acertar el equipo suma 1 punto. Si también aciertas el resultado, sumas 2.
         </p>
       </div>
     );

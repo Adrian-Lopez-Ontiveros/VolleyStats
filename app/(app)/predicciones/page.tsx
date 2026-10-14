@@ -6,6 +6,7 @@ import { AppLogo } from "@/components/app-logo";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { loadGamePageData } from "@/lib/actions/game";
+import { predictionTablePoints } from "@/lib/prediction-score";
 import type { MatchPrediction } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Predicciones" };
@@ -37,12 +38,15 @@ export default async function PredictionsPage() {
     <>
       <PageHeader
         title="Predicciones"
-        description="Elige quién gana. Cada acierto suma 1 punto."
+        description="Elige quién gana y, si quieres, el resultado. El equipo suma 1 punto y el marcador exacto suma 2."
         leading={<AppLogo src="/predictions-logo.png" className="mt-0.5 h-12 w-11 text-foreground" />}
       />
 
       <div className="space-y-8">
         <QuinielaStrip
+          points={Object.values(predictionMap)
+            .filter((row) => row.is_correct != null)
+            .reduce((sum, row) => sum + predictionTablePoints(row), 0)}
           hits={Object.values(predictionMap).filter((row) => row.is_correct).length}
           played={Object.values(predictionMap).filter((row) => row.is_correct != null).length}
         />

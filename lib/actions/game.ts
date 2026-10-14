@@ -3,6 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { MATCH_LIST_VARIANTS, selectWithMatchFallback } from "@/lib/match-query";
+import { MATCH_PREDICTION_SELECT, MATCH_PREDICTION_SELECT_SCORE, setsToWinOf } from "@/lib/constants";
+import {
+  cleanPredictedSets,
+  missingPredictionScoreArgs,
+  missingPredictionScoreColumn,
+  predictionTablePoints,
+} from "@/lib/prediction-score";
 import { readUserProgress } from "@/lib/user-progress";
 import { involvesClubTeam } from "@/lib/federation/leagues";
 import {
@@ -67,12 +74,17 @@ export async function claimDailyCheckin(): Promise<CheckinResult | null> {
   return result;
 }
 
-export async function saveMatchPrediction(matchId: string, winnerId: string) {
+export async function saveMatchPrediction(
+  matchId: string,
+  winnerId: string,
+  homeSets?: number | null,
+  awaySets?: number | null
+) {
   await requireUser();
   const supabase = await createClient();
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("id, status, scheduled_at")
+    .select("id, status, scheduled_at, home_team_id, away_team_id, sets_to_win, is_federation")
     .eq("id", matchId)
     .maybeSingle();
   if (matchError || !match) return { error: matchError?.message ?? "Partido no encontrado" };
@@ -82,10 +94,38 @@ export async function saveMatchPrediction(matchId: string, winnerId: string) {
   if (isPredictionLocked(match.scheduled_at)) {
     return { error: "Las predicciones se cierran 5 minutos antes del partido" };
   }
-  const { error } = await supabase.rpc("game_save_prediction", {
+  const winnerIsHome = winnerId === match.home_team_id;
+  if (!winnerIsHome && winnerId !== match.away_team_id) {
+    return { error: "Elige el equipo local o el visitante" };
+  }
+  const cleaned = cleanPredictedSets(
+    winnerIsHome ? "home" : "away",
+    setsToWinOf(match),
+    homeSets,
+    awaySets
+  );
+  if ("error" in cleaned) return cleaned;
+
+  const saved = await supabase.rpc("game_save_prediction", {
     p_match_id: matchId,
     p_winner_id: winnerId,
+    p_home_sets: cleaned.home,
+    p_away_sets: cleaned.away,
   });
+  let error = saved.error;
+  if (error && missingPredictionScoreArgs(error.message)) {
+    if (cleaned.home != null || cleaned.away != null) {
+      return {
+        error:
+          "Falta ejecutar la migración supabase/migrations/037_prediction_exact_score.sql para guardar el resultado.",
+      };
+    }
+    const retry = await supabase.rpc("game_save_prediction", {
+      p_match_id: matchId,
+      p_winner_id: winnerId,
+    });
+    error = retry.error;
+  }
   if (error) {
     return { error: error.message.replace(/^.*:\s*/, "") || "No se pudo guardar la predicción" };
   }
@@ -135,6 +175,29 @@ export async function resolvePendingPredictions() {
   return { success: true };
 }
 
+function asInt(value: unknown) {
+  if (typeof value === "number" && Number.isInteger(value)) return value;
+  if (typeof value === "string" && /^-?\d+$/.test(value)) return Number(value);
+  return null;
+}
+
+function asPrediction(row: Record<string, unknown>): MatchPrediction {
+  return {
+    id: String(row.id),
+    user_id: String(row.user_id),
+    match_id: String(row.match_id),
+    predicted_winner_id: String(row.predicted_winner_id),
+    predicted_home_sets: asInt(row.predicted_home_sets),
+    predicted_away_sets: asInt(row.predicted_away_sets),
+    created_at: String(row.created_at ?? ""),
+    updated_at: String(row.updated_at ?? ""),
+    resolved_at: typeof row.resolved_at === "string" ? row.resolved_at : null,
+    is_correct: typeof row.is_correct === "boolean" ? row.is_correct : null,
+    points: asInt(row.points),
+    xp_awarded: Number(row.xp_awarded ?? 0),
+  };
+}
+
 export async function loadGamePageData() {
   const session = await requireUser();
   const supabase = await createClient();
@@ -156,10 +219,19 @@ export async function loadGamePageData() {
     selectWithMatchFallback(MATCH_LIST_VARIANTS, (columns) =>
       supabase.from("matches").select(columns as "*").order("scheduled_at", { ascending: true })
     ),
-    supabase
-      .from("match_predictions")
-      .select("id, user_id, match_id, predicted_winner_id, created_at, updated_at, resolved_at, is_correct, xp_awarded")
-      .eq("user_id", session.id),
+    (async () => {
+      const full = await supabase
+        .from("match_predictions")
+        .select(MATCH_PREDICTION_SELECT_SCORE)
+        .eq("user_id", session.id);
+      if (full.error && missingPredictionScoreColumn(full.error.message)) {
+        return supabase
+          .from("match_predictions")
+          .select(MATCH_PREDICTION_SELECT)
+          .eq("user_id", session.id);
+      }
+      return full;
+    })(),
     supabase
       .from("user_progress")
       .select("user_id, xp, level, current_streak, equipped_title, equipped_frame"),
@@ -177,7 +249,7 @@ export async function loadGamePageData() {
   }
 
   const clubMatches = ((matches ?? []) as MatchWithTeams[]).filter(involvesClubTeam);
-  const mine = (predictions ?? []) as MatchPrediction[];
+  const mine = ((predictions ?? []) as Record<string, unknown>[]).map(asPrediction);
   const byMatch = new Map(mine.map((row) => [row.match_id, row]));
 
   const groups = new Map<string, MatchWithTeams[]>();
@@ -226,16 +298,23 @@ export async function loadGamePageData() {
   ];
 
   const scoreByUser = new Map<string, { points: number; played: number }>();
-  const { data: allPreds } = await supabase
+  const fullScores = await supabase
     .from("match_predictions")
-    .select("user_id, is_correct")
+    .select("user_id, is_correct, points")
     .not("is_correct", "is", null);
-  for (const row of allPreds ?? []) {
-    const pred = row as { user_id: string; is_correct: boolean | null };
+  const scoreQuery =
+    fullScores.error && missingPredictionScoreColumn(fullScores.error.message)
+      ? await supabase
+          .from("match_predictions")
+          .select("user_id, is_correct")
+          .not("is_correct", "is", null)
+      : fullScores;
+  for (const row of scoreQuery.data ?? []) {
+    const pred = row as { user_id: string; is_correct: boolean | null; points?: number | null };
     if (pred.is_correct == null) continue;
     const current = scoreByUser.get(pred.user_id) ?? { points: 0, played: 0 };
     current.played += 1;
-    if (pred.is_correct) current.points += 1;
+    current.points += predictionTablePoints(pred);
     scoreByUser.set(pred.user_id, current);
   }
 

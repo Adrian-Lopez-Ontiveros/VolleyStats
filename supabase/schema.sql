@@ -1296,12 +1296,34 @@ create table if not exists public.match_predictions (
   user_id uuid not null references public.profiles (id) on delete cascade,
   match_id uuid not null references public.matches (id) on delete cascade,
   predicted_winner_id uuid not null references public.teams (id) on delete restrict,
+  predicted_home_sets smallint,
+  predicted_away_sets smallint,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   resolved_at timestamptz,
   is_correct boolean,
+  points smallint,
   xp_awarded int not null default 0,
-  unique (user_id, match_id)
+  unique (user_id, match_id),
+  constraint match_predictions_score_check check (
+    (
+      predicted_home_sets is null
+      and predicted_away_sets is null
+    )
+    or (
+      predicted_home_sets is not null
+      and predicted_away_sets is not null
+      and (
+        (predicted_home_sets = 3 and predicted_away_sets in (0, 1, 2))
+        or (predicted_away_sets = 3 and predicted_home_sets in (0, 1, 2))
+        or (predicted_home_sets = 2 and predicted_away_sets in (0, 1))
+        or (predicted_away_sets = 2 and predicted_home_sets in (0, 1))
+      )
+    )
+  ),
+  constraint match_predictions_points_check check (
+    points is null or points in (0, 1, 2)
+  )
 );
 
 create index if not exists idx_xp_events_user on public.xp_events (user_id, created_at desc);
@@ -1782,7 +1804,7 @@ begin
 
   if match_row.status = 'cancelled' then
     update public.match_predictions
-    set resolved_at = now(), is_correct = null, xp_awarded = 0
+    set resolved_at = now(), is_correct = null, points = null, xp_awarded = 0
     where match_id = p_match_id
       and resolved_at is null;
     return jsonb_build_object('ok', true, 'voided', true);
@@ -1809,7 +1831,15 @@ begin
   loop
     if pred.predicted_winner_id = winner then
       update public.match_predictions
-      set resolved_at = now(), is_correct = true, xp_awarded = 25
+      set resolved_at = now(),
+          is_correct = true,
+          points = case
+            when pred.predicted_home_sets = match_row.home_sets
+             and pred.predicted_away_sets = match_row.away_sets
+            then 2
+            else 1
+          end,
+          xp_awarded = 25
       where id = pred.id;
       perform public.game_add_xp(
         pred.user_id,
@@ -1820,7 +1850,7 @@ begin
       awarded := awarded + 1;
     else
       update public.match_predictions
-      set resolved_at = now(), is_correct = false, xp_awarded = 0
+      set resolved_at = now(), is_correct = false, points = 0, xp_awarded = 0
       where id = pred.id;
     end if;
     perform public.game_unlock_rewards(pred.user_id);
@@ -1931,7 +1961,14 @@ as $$
   limit 1;
 $$;
 
-create or replace function public.game_save_prediction(p_match_id uuid, p_winner_id uuid)
+drop function if exists public.game_save_prediction(uuid, uuid);
+
+create function public.game_save_prediction(
+  p_match_id uuid,
+  p_winner_id uuid,
+  p_home_sets int default null,
+  p_away_sets int default null
+)
 returns jsonb
 language plpgsql
 security definer
@@ -1941,6 +1978,7 @@ declare
   uid uuid := auth.uid();
   match_row public.matches%rowtype;
   nearest text;
+  sets_needed int;
 begin
   if uid is null then
     raise exception 'not authenticated';
@@ -1953,9 +1991,35 @@ begin
   if match_row.status <> 'scheduled' then
     raise exception 'Las predicciones se cierran cuando el partido empieza';
   end if;
+  if match_row.scheduled_at is null
+     or match_row.scheduled_at - interval '5 minutes' <= now() then
+    raise exception 'Las predicciones se cierran 5 minutos antes del partido';
+  end if;
   if p_winner_id is distinct from match_row.home_team_id
      and p_winner_id is distinct from match_row.away_team_id then
     raise exception 'Elige el equipo local o el visitante';
+  end if;
+
+  sets_needed := case
+    when match_row.is_federation then 3
+    when match_row.sets_to_win = 2 then 2
+    else 3
+  end;
+
+  if p_home_sets is not null or p_away_sets is not null then
+    if p_home_sets is null or p_away_sets is null then
+      raise exception 'El resultado exacto tiene que incluir los dos números';
+    elsif p_winner_id = match_row.home_team_id then
+      if p_home_sets is distinct from sets_needed
+         or p_away_sets < 0
+         or p_away_sets >= sets_needed then
+        raise exception 'Ese resultado no vale si gana el local';
+      end if;
+    elsif p_away_sets is distinct from sets_needed
+       or p_home_sets < 0
+       or p_home_sets >= sets_needed then
+      raise exception 'Ese resultado no vale si gana el visitante';
+    end if;
   end if;
 
   nearest := public.game_nearest_jornada_key();
@@ -1968,10 +2032,18 @@ begin
   values (uid)
   on conflict (user_id) do nothing;
 
-  insert into public.match_predictions (user_id, match_id, predicted_winner_id)
-  values (uid, p_match_id, p_winner_id)
+  insert into public.match_predictions (
+    user_id,
+    match_id,
+    predicted_winner_id,
+    predicted_home_sets,
+    predicted_away_sets
+  )
+  values (uid, p_match_id, p_winner_id, p_home_sets, p_away_sets)
   on conflict (user_id, match_id) do update
-    set predicted_winner_id = excluded.predicted_winner_id
+    set predicted_winner_id = excluded.predicted_winner_id,
+        predicted_home_sets = excluded.predicted_home_sets,
+        predicted_away_sets = excluded.predicted_away_sets
     where public.match_predictions.resolved_at is null;
 
   if not found then
@@ -1980,12 +2052,18 @@ begin
 
   perform public.game_unlock_rewards(uid);
 
-  return jsonb_build_object('ok', true, 'match_id', p_match_id, 'winner_id', p_winner_id);
+  return jsonb_build_object(
+    'ok', true,
+    'match_id', p_match_id,
+    'winner_id', p_winner_id,
+    'home_sets', p_home_sets,
+    'away_sets', p_away_sets
+  );
 end;
 $$;
 
 grant execute on function public.game_nearest_jornada_key() to authenticated;
-grant execute on function public.game_save_prediction(uuid, uuid) to authenticated;
+grant execute on function public.game_save_prediction(uuid, uuid, int, int) to authenticated;
 
 create or replace function public.game_claim_jersey_xp()
 returns jsonb

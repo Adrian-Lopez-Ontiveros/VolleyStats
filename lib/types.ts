@@ -165,10 +165,14 @@ export type MatchPrediction = {
   user_id: string;
   match_id: string;
   predicted_winner_id: string;
+  predicted_home_sets?: number | null;
+  predicted_away_sets?: number | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
   is_correct: boolean | null;
+  /** Puntos de la clasificación: 2 resultado exacto, 1 solo equipo, 0 fallo. */
+  points?: number | null;
   xp_awarded: number;
 };
 
