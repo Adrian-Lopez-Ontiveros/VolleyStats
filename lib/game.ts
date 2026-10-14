@@ -98,6 +98,13 @@ export const GAME_REWARDS: GameReward[] = [
     hint: "10 predicciones acertadas",
   },
   {
+    id: "title_exacto",
+    kind: "title",
+    label: "Exacto",
+    description: "Tres marcadores clavados. El acierto de equipo no cuenta.",
+    hint: "3 resultados exactos",
+  },
+  {
     id: "card_quiniela",
     kind: "card",
     label: "Cromo quiniela",
@@ -126,6 +133,27 @@ export const GAME_REWARDS: GameReward[] = [
     hint: "50 predicciones acertadas",
   },
   {
+    id: "card_marcador",
+    kind: "card",
+    label: "Cromo marcador",
+    description: "El cromo pasa a granate. Solo cuentan los resultados exactos.",
+    hint: "5 resultados exactos",
+  },
+  {
+    id: "card_pleno",
+    kind: "card",
+    label: "Cromo pleno",
+    description: "El cromo pasa a escarlata. Solo cuentan los resultados exactos.",
+    hint: "10 resultados exactos",
+  },
+  {
+    id: "card_infalible",
+    kind: "card",
+    label: "Cromo infalible",
+    description: "El cromo pasa a rubí. Solo cuentan los resultados exactos.",
+    hint: "25 resultados exactos",
+  },
+  {
     id: "frame_naranja",
     kind: "frame",
     label: "Marco naranja",
@@ -145,6 +173,13 @@ export const GAME_REWARDS: GameReward[] = [
     label: "Marco oro",
     description: "Brilla en el vestuario digital.",
     hint: "Alcanza el nivel 12",
+  },
+  {
+    id: "frame_escarlata",
+    kind: "frame",
+    label: "Marco escarlata",
+    description: "Aro de quien clava el marcador. El acierto de equipo no cuenta.",
+    hint: "15 resultados exactos",
   },
   {
     id: "badge_checkin",
@@ -201,6 +236,13 @@ export const GAME_REWARDS: GameReward[] = [
     label: "Vidente",
     description: "Veinticinco aciertos acumulados.",
     hint: "25 predicciones acertadas",
+  },
+  {
+    id: "badge_marcador",
+    kind: "badge",
+    label: "Primer marcador",
+    description: "Clavaste un resultado. Acertar solo el equipo no vale.",
+    hint: "1 resultado exacto",
   },
 ];
 
@@ -302,4 +344,6 @@ export const FRAME_CLASS: Record<string, string> = {
   frame_naranja: "bg-gradient-to-br from-orange-400 to-orange-600 p-[3px] shadow-[0_0_0_1px_rgba(234,88,12,0.35)]",
   frame_violeta: "bg-gradient-to-br from-violet-400 to-fuchsia-600 p-[3px] shadow-[0_0_0_1px_rgba(124,58,237,0.35)]",
   frame_oro: "bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 p-[3px] shadow-[0_0_12px_rgba(251,191,36,0.55)]",
+  frame_escarlata:
+    "bg-gradient-to-br from-rose-300 via-red-500 to-rose-900 p-[3px] shadow-[0_0_12px_rgba(225,29,72,0.5)]",
 };

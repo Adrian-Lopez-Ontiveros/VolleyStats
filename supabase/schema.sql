@@ -1444,6 +1444,7 @@ declare
   hits int := 0;
   picks int := 0;
   perfects int := 0;
+  exact_hits int := 0;
   newly text[] := '{}';
   rid text;
 begin
@@ -1452,8 +1453,11 @@ begin
     return newly;
   end if;
 
-  select count(*) filter (where is_correct), count(*)
-  into hits, picks
+  select
+    count(*) filter (where is_correct),
+    count(*),
+    count(*) filter (where points = 2)
+  into hits, picks, exact_hits
   from public.match_predictions
   where user_id = p_user_id;
 
@@ -1489,6 +1493,12 @@ begin
       union all select 'card_profeta' where hits >= 10
       union all select 'card_vidente' where hits >= 25
       union all select 'card_leyenda' where hits >= 50
+      union all select 'badge_marcador' where exact_hits >= 1
+      union all select 'title_exacto' where exact_hits >= 3
+      union all select 'card_marcador' where exact_hits >= 5
+      union all select 'card_pleno' where exact_hits >= 10
+      union all select 'frame_escarlata' where exact_hits >= 15
+      union all select 'card_infalible' where exact_hits >= 25
       union all select 'title_oraculo' where perfects >= 1
       union all select 'badge_perfect' where perfects >= 1
     ) x

@@ -204,6 +204,60 @@
     );
 }
 
+.player-card-skin-marcador {
+  background-image: linear-gradient(160deg, #fecdd3 0%, #be123c 46%, #4c0519 100%);
+}
+
+.player-card-surface-marcador {
+  background-color: #4c0519;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(251, 113, 133, 0.38), transparent 58%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(136, 19, 55, 0.28), transparent 50%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 255, 255, 0.035) 11px,
+      rgba(255, 255, 255, 0.035) 12px
+    );
+}
+
+.player-card-skin-pleno {
+  background-image: linear-gradient(160deg, #fecaca 0%, #ef4444 42%, #7f1d1d 100%);
+}
+
+.player-card-surface-pleno {
+  background-color: #450a0a;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(248, 113, 113, 0.42), transparent 58%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(239, 68, 68, 0.2), transparent 50%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 255, 255, 0.04) 11px,
+      rgba(255, 255, 255, 0.04) 12px
+    );
+}
+
+.player-card-skin-infalible {
+  background-image: linear-gradient(160deg, #ffe4e6 0%, #fb7185 34%, #e11d48 68%, #4c0519 100%);
+}
+
+.player-card-surface-infalible {
+  background-color: #1a0508;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(251, 113, 133, 0.5), transparent 58%),
+    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(190, 18, 60, 0.28), transparent 52%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 228, 230, 0.05) 11px,
+      rgba(255, 228, 230, 0.05) 12px
+    );
+}
+
 .stat-slider {
   accent-color: hsl(24 95% 53%);
 }

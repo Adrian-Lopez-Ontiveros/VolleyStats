@@ -218,6 +218,27 @@ export const CARD_SKINS: Record<string, CardSkin> = {
     nameText: "text-amber-950",
     accent: "text-amber-200",
   },
+  card_marcador: {
+    frame: "player-card-skin-marcador shadow-[0_18px_40px_-16px_rgba(190,18,60,0.55)]",
+    surface: "player-card-surface-marcador",
+    nameBar: "bg-gradient-to-r from-rose-700 to-red-950",
+    nameText: "text-rose-50",
+    accent: "text-rose-200",
+  },
+  card_pleno: {
+    frame: "player-card-skin-pleno shadow-[0_18px_40px_-16px_rgba(239,68,68,0.6)]",
+    surface: "player-card-surface-pleno",
+    nameBar: "bg-gradient-to-r from-red-500 to-rose-800",
+    nameText: "text-white",
+    accent: "text-red-200",
+  },
+  card_infalible: {
+    frame: "player-card-skin-infalible shadow-[0_18px_40px_-16px_rgba(251,113,133,0.7)]",
+    surface: "player-card-surface-infalible",
+    nameBar: "bg-gradient-to-r from-rose-200 to-red-500",
+    nameText: "text-red-950",
+    accent: "text-rose-200",
+  },
 };
 
 export function cardSkin(id?: string | null) {
