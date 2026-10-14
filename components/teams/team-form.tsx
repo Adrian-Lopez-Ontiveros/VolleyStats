@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createTeam, updateTeam } from "@/lib/actions/teams";
 import { TEAM_CATEGORIES, getCategoryMeta, type TeamCategory } from "@/lib/categories";
+import { resolveTeamLogoUrl } from "@/lib/federation/crests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +47,7 @@ export function TeamForm({
           teamId={team.id}
           name={team.name}
           shortName={team.short_name}
-          url={team.logo_url}
+          url={resolveTeamLogoUrl(team)}
         />
       ) : (
         <p className="rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">

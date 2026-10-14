@@ -41,15 +41,6 @@ const TIER_FRAME: Record<ReturnType<typeof cardTier>, string> = {
   bronze: "player-card-bronze shadow-[0_18px_40px_-16px_rgba(11,31,58,0.45)]",
 };
 
-const STREAK_LICKS = [
-  { delay: "0s", height: 28 },
-  { delay: "-0.48s", height: 18 },
-  { delay: "-0.96s", height: 34 },
-  { delay: "-1.44s", height: 22 },
-  { delay: "-1.92s", height: 30 },
-  { delay: "-2.4s", height: 16 },
-] as const;
-
 function StreakFire() {
   return (
     <div className="player-card-streak" aria-hidden>
@@ -57,13 +48,6 @@ function StreakFire() {
       <span className="player-card-streak-ring player-card-streak-red" />
       <span className="player-card-streak-ring" />
       <span className="player-card-streak-ring player-card-streak-hot" />
-      {STREAK_LICKS.map((lick) => (
-        <span
-          key={lick.delay}
-          className="player-card-streak-lick"
-          style={{ animationDelay: lick.delay, height: lick.height }}
-        />
-      ))}
     </div>
   );
 }

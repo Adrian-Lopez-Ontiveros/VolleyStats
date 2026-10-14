@@ -315,16 +315,6 @@
   to { --streak-hot-angle: -360deg; }
 }
 
-@keyframes player-card-streak-orbit {
-  to { offset-distance: 100%; }
-}
-
-@keyframes player-card-streak-flicker {
-  0%, 100% { transform: scaleY(0.72) scaleX(0.86); opacity: 0.7; }
-  40% { transform: scaleY(1.18) scaleX(1); opacity: 1; }
-  70% { transform: scaleY(0.84) scaleX(1.08); opacity: 0.82; }
-}
-
 .player-card-streak {
   position: absolute;
   inset: -16px;
@@ -425,30 +415,6 @@
   animation: player-card-streak-hot-spin 0.95s linear infinite;
 }
 
-.player-card-streak-lick {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 24px;
-  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
-  background: radial-gradient(
-    ellipse at 50% 78%,
-    #fff8d6 0%,
-    #fde047 22%,
-    #f97316 52%,
-    rgba(220, 38, 38, 0) 76%
-  );
-  filter: blur(0.7px);
-  transform-origin: 50% 100%;
-  offset-path: inset(4px round 1.7rem);
-  offset-rotate: auto 90deg;
-  offset-anchor: 50% 100%;
-  animation:
-    player-card-streak-orbit 2.8s linear infinite,
-    player-card-streak-flicker 0.38s linear infinite;
-}
-
 .player-card-skin-lider {
   background-image: linear-gradient(
     115deg,
@@ -482,8 +448,7 @@
 @media (prefers-reduced-motion: reduce) {
   .player-card-skin-lider,
   .player-card-streak-glow,
-  .player-card-streak-ring,
-  .player-card-streak-lick {
+  .player-card-streak-ring {
     animation: none;
   }
 }
