@@ -41,13 +41,13 @@ export default async function NewsDetailPage({
       </div>
 
       <article className="min-w-0 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
-        <figure className="-mx-4 w-[calc(100%+2rem)] lg:mx-0 lg:w-full">
+        <figure className="min-w-0 -mx-4 w-[calc(100%+2rem)] lg:mx-0 lg:w-full">
           {news.cover_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={news.cover_url}
               alt={news.title}
-              className="mx-auto block h-auto max-h-[85dvh] w-auto max-w-full lg:rounded-3xl lg:shadow-card lg:ring-1 lg:ring-black/[0.06]"
+              className="block h-auto w-full lg:rounded-3xl lg:shadow-card lg:ring-1 lg:ring-black/[0.06]"
             />
           ) : (
             <div className="aspect-[16/9] bg-gradient-to-br from-primary via-primary to-accent/70 lg:rounded-3xl" />

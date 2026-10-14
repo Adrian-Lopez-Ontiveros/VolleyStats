@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { NewsCover } from "@/components/news/news-cover";
-import { coverFrameFromNews, newsExcerpt } from "@/lib/news";
+import { newsExcerpt } from "@/lib/news";
 import { cn } from "@/lib/utils";
 import type { ClubNews } from "@/lib/types";
 
@@ -25,19 +24,18 @@ export function NewsCard({
           featured && "ring-1 ring-accent/30"
         )}
       >
-        <div className="relative min-w-0 overflow-hidden">
-          <NewsCover
-            url={news.cover_url}
-            frame={coverFrameFromNews(news)}
-            className={cn("aspect-[16/9] w-full", featured && "lg:aspect-[21/9]")}
-          />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary/80 to-transparent px-4 pb-3 pt-10">
-            <span className="inline-flex rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-foreground">
-              {dateLabel}
-            </span>
-          </div>
+        <div className="min-w-0 bg-primary">
+          {news.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={news.cover_url} alt="" className="block h-auto w-full" />
+          ) : (
+            <div className="aspect-[16/9] bg-gradient-to-br from-primary via-primary to-accent/70" />
+          )}
         </div>
         <div className={cn("space-y-2", featured ? "p-5" : "p-4")}>
+          <span className="inline-flex rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-foreground">
+            {dateLabel}
+          </span>
           <h2
             className={cn(
               "break-words font-bold leading-tight tracking-tight [overflow-wrap:anywhere]",

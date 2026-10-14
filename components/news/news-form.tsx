@@ -4,17 +4,9 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { NewsCover } from "@/components/news/news-cover";
 import { createNews, updateNews } from "@/lib/actions/news";
 import { MAX_NEWS_COVER_BYTES, NEWS_BUCKET } from "@/lib/constants";
-import {
-  DEFAULT_COVER_FRAME,
-  MAX_COVER_ZOOM,
-  MIN_COVER_ZOOM,
-  clampCoverZoom,
-  coverFrameFromNews,
-  type CoverFrame,
-} from "@/lib/news";
+import { DEFAULT_COVER_FRAME } from "@/lib/news";
 import { createClient } from "@/lib/supabase/client";
 import { toLocalDateTimeInput } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,7 +28,6 @@ export function NewsForm({
   const [uploading, setUploading] = useState(false);
   const [coverUrl, setCoverUrl] = useState(news?.cover_url ?? "");
   const [coverPath, setCoverPath] = useState(news?.cover_path ?? "");
-  const [coverFrame, setCoverFrame] = useState<CoverFrame>(coverFrameFromNews(news));
 
   async function onUpload(file?: File) {
     if (!file) return;
@@ -62,8 +53,7 @@ export function NewsForm({
       const { data } = supabase.storage.from(NEWS_BUCKET).getPublicUrl(path);
       setCoverUrl(data.publicUrl);
       setCoverPath(path);
-      setCoverFrame(DEFAULT_COVER_FRAME);
-      toast.success("Portada lista. Arrástrala para reencuadrar y guarda.");
+      toast.success("Portada lista. Guarda para publicarla.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo subir la portada");
     } finally {
@@ -82,19 +72,18 @@ export function NewsForm({
     <form action={onSubmit} className="space-y-5">
       <input type="hidden" name="coverUrl" value={coverUrl} />
       <input type="hidden" name="coverPath" value={coverPath} />
-      <input type="hidden" name="coverFocusX" value={coverFrame.x} />
-      <input type="hidden" name="coverFocusY" value={coverFrame.y} />
-      <input type="hidden" name="coverZoom" value={coverFrame.zoom} />
+      <input type="hidden" name="coverFocusX" value={DEFAULT_COVER_FRAME.x} />
+      <input type="hidden" name="coverFocusY" value={DEFAULT_COVER_FRAME.y} />
+      <input type="hidden" name="coverZoom" value={DEFAULT_COVER_FRAME.zoom} />
 
       <div className="space-y-2">
         <Label>Portada</Label>
         {coverUrl ? (
-          <NewsCover
-            url={coverUrl}
-            frame={coverFrame}
-            interactive
-            onFrameChange={setCoverFrame}
-            className="aspect-[16/9] w-full rounded-3xl border"
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={coverUrl}
+            alt=""
+            className="block h-auto w-full rounded-3xl border"
           />
         ) : (
           <button
@@ -130,49 +119,12 @@ export function NewsForm({
               onClick={() => {
                 setCoverUrl("");
                 setCoverPath("");
-                setCoverFrame(DEFAULT_COVER_FRAME);
               }}
             >
               Quitar portada
             </Button>
           ) : null}
         </div>
-        {coverUrl ? (
-          <div className="space-y-2 rounded-2xl border bg-card p-3">
-            <p className="text-xs text-muted-foreground">
-              Arrastra la imagen para moverla. Baja el tamaño para verla más pequeña; súbelo para recortar.
-            </p>
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="coverZoom">Tamaño</Label>
-              <span className="text-sm font-semibold tabular-nums">
-                {Math.round(coverFrame.zoom * 100)}%
-              </span>
-            </div>
-            <input
-              id="coverZoom"
-              type="range"
-              min={MIN_COVER_ZOOM}
-              max={MAX_COVER_ZOOM}
-              step={0.05}
-              value={coverFrame.zoom}
-              onChange={(event) =>
-                setCoverFrame((current) => ({
-                  ...current,
-                  zoom: clampCoverZoom(Number(event.target.value)),
-                }))
-              }
-              className="stat-slider w-full"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setCoverFrame(DEFAULT_COVER_FRAME)}
-            >
-              Centrar recorte
-            </Button>
-          </div>
-        ) : null}
         <input
           ref={inputRef}
           type="file"
