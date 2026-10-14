@@ -200,6 +200,7 @@ export type JornadaBoard = {
 
 export type GameLeaderRow = {
   userId: string;
+  playerId: string | null;
   name: string;
   avatarUrl: string | null;
   title: string | null;

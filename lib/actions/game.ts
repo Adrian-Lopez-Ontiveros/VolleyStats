@@ -333,12 +333,27 @@ export async function loadGamePageData() {
     }[]).map((row) => [row.user_id, row])
   );
 
+  const playerByUser = new Map<string, string>();
+  const rankedIds = [...scoreByUser.keys()];
+  if (rankedIds.length > 0) {
+    const { data: playerLinks } = await supabase
+      .from("players")
+      .select("id, user_id")
+      .in("user_id", rankedIds)
+      .order("created_at", { ascending: true });
+    for (const row of playerLinks ?? []) {
+      const link = row as { id: string; user_id: string | null };
+      if (link.user_id && !playerByUser.has(link.user_id)) playerByUser.set(link.user_id, link.id);
+    }
+  }
+
   const leaderboard: GameLeaderRow[] = [...scoreByUser.entries()]
     .map(([userId, score]) => {
       const profile = profileById.get(userId);
       const look = cosmetics.get(userId);
       return {
         userId,
+        playerId: playerByUser.get(userId) ?? null,
         name: profile?.full_name || "Jugador",
         avatarUrl: profile?.avatar_url ?? null,
         title: look?.equipped_title ?? null,
