@@ -315,11 +315,22 @@
   to { --streak-hot-angle: -360deg; }
 }
 
+.player-card-lider-slot {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 360px;
+  padding: 56px 40px;
+}
+
 .player-card-streak {
   position: absolute;
   inset: -16px;
   z-index: 0;
   border-radius: 2rem;
+  pointer-events: none;
+}
+
+.player-card-streak * {
   pointer-events: none;
 }
 

@@ -44,7 +44,7 @@ export function PlayerCardSection({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="relative z-10 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{title}</h2>
         {canEdit && editHref ? (
           <Button asChild size="sm" variant="outline">
@@ -56,11 +56,13 @@ export function PlayerCardSection({
         ) : null}
       </div>
       <PlayerCardVisual captureId={captureId} className="mx-auto" data={view} />
-      <SharePlayerCard
-        captureId={captureId}
-        fileName={fileSlug}
-        playerName={player.full_name}
-      />
+      <div className="relative z-10">
+        <SharePlayerCard
+          captureId={captureId}
+          fileName={fileSlug}
+          playerName={player.full_name}
+        />
+      </div>
       {!card && canEdit ? (
         <p className="text-center text-xs text-muted-foreground">
           Ajusta tus stats y la foto de la carta para completar el cromo.

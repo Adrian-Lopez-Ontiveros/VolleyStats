@@ -140,14 +140,14 @@ export function PlayerCardVisual({
       id={captureId}
       className={cn(
         "relative w-full overflow-visible",
-        isLider ? "max-w-[336px] px-7" : "max-w-[280px]",
+        isLider ? "player-card-lider-slot" : "max-w-[280px]",
         className
       )}
       aria-label={`Cromo de ${data.fullName}`}
     >
-      <div className="relative">
+      <div className="relative isolate">
       {isLider ? <StreakFire /> : null}
-      <div className={cn("relative z-[1] rounded-[1.35rem] p-[3px]", skin?.frame ?? TIER_FRAME[tier])}>
+      <div className={cn("relative z-10 rounded-[1.35rem] p-[3px]", skin?.frame ?? TIER_FRAME[tier])}>
         <div
           className={cn(
             "relative overflow-hidden rounded-[1.2rem] text-white",

@@ -175,16 +175,18 @@ export function PlayerCardForm({
               overrideValue != null && Number.isFinite(overrideValue) ? overrideValue : null,
           }}
         />
-        {previewPhoto ? (
-          <p className="text-center text-xs text-muted-foreground">
-            Arrastra la foto para moverla dentro de la carta
-          </p>
-        ) : null}
-        <SharePlayerCard
-          captureId="edit-player-card"
-          fileName={fileSlug}
-          playerName={player.full_name}
-        />
+        <div className="relative z-10 space-y-3">
+          {previewPhoto ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Arrastra la foto para moverla dentro de la carta
+            </p>
+          ) : null}
+          <SharePlayerCard
+            captureId="edit-player-card"
+            fileName={fileSlug}
+            playerName={player.full_name}
+          />
+        </div>
       </div>
 
       <form action={onSubmit} className="space-y-5">
