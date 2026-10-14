@@ -154,6 +154,13 @@ export const GAME_REWARDS: GameReward[] = [
     hint: "25 resultados exactos",
   },
   {
+    id: "card_lider",
+    kind: "card",
+    label: "Cromo líder",
+    description: "El borde arde. Solo puede llevarlo quien va primero. Si te superan, se te quita.",
+    hint: "Ve primero en la clasificación",
+  },
+  {
     id: "frame_naranja",
     kind: "frame",
     label: "Marco naranja",

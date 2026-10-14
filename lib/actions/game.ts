@@ -203,6 +203,7 @@ export async function loadGamePageData() {
   const supabase = await createClient();
 
   await supabase.rpc("game_resolve_pending");
+  await supabase.rpc("game_sync_leader_card");
 
   const [
     { data: progress, error: progressError },
@@ -297,7 +298,7 @@ export async function loadGamePageData() {
     ...lastClosed,
   ];
 
-  const scoreByUser = new Map<string, { points: number; played: number }>();
+  const scoreByUser = new Map<string, { points: number; played: number; exact: number }>();
   const fullScores = await supabase
     .from("match_predictions")
     .select("user_id, is_correct, points")
@@ -312,9 +313,10 @@ export async function loadGamePageData() {
   for (const row of scoreQuery.data ?? []) {
     const pred = row as { user_id: string; is_correct: boolean | null; points?: number | null };
     if (pred.is_correct == null) continue;
-    const current = scoreByUser.get(pred.user_id) ?? { points: 0, played: 0 };
+    const current = scoreByUser.get(pred.user_id) ?? { points: 0, played: 0, exact: 0 };
     current.played += 1;
     current.points += predictionTablePoints(pred);
+    if (pred.points === 2) current.exact += 1;
     scoreByUser.set(pred.user_id, current);
   }
 
@@ -348,6 +350,14 @@ export async function loadGamePageData() {
   }
 
   const leaderboard: GameLeaderRow[] = [...scoreByUser.entries()]
+    .sort(
+      ([userA, a], [userB, b]) =>
+        b.points - a.points ||
+        b.exact - a.exact ||
+        a.played - b.played ||
+        userA.localeCompare(userB)
+    )
+    .slice(0, 20)
     .map(([userId, score]) => {
       const profile = profileById.get(userId);
       const look = cosmetics.get(userId);
@@ -361,9 +371,7 @@ export async function loadGamePageData() {
         points: score.points,
         played: score.played,
       };
-    })
-    .sort((a, b) => b.points - a.points || b.played - a.played)
-    .slice(0, 20);
+    });
 
   const community = new Map<string, { home: number; away: number }>();
   const { data: communityRows } = await supabase

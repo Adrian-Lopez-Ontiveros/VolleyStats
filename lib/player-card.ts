@@ -239,6 +239,13 @@ export const CARD_SKINS: Record<string, CardSkin> = {
     nameText: "text-red-950",
     accent: "text-rose-200",
   },
+  card_lider: {
+    frame: "player-card-skin-lider shadow-[0_18px_40px_-16px_rgba(249,115,22,0.75)]",
+    surface: "player-card-surface-lider",
+    nameBar: "bg-gradient-to-r from-amber-400 via-orange-500 to-red-600",
+    nameText: "text-orange-950",
+    accent: "text-amber-200",
+  },
 };
 
 export function cardSkin(id?: string | null) {

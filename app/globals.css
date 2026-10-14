@@ -258,6 +258,47 @@
     );
 }
 
+@keyframes player-card-flames {
+  0% { background-position: 0% 40%; }
+  50% { background-position: 100% 60%; }
+  100% { background-position: 0% 40%; }
+}
+
+.player-card-skin-lider {
+  background-image: linear-gradient(
+    115deg,
+    #7f1d1d 0%,
+    #ea580c 18%,
+    #fde047 34%,
+    #ef4444 52%,
+    #fb923c 68%,
+    #facc15 82%,
+    #9a3412 100%
+  );
+  background-size: 280% 280%;
+  animation: player-card-flames 2.6s ease-in-out infinite;
+}
+
+.player-card-surface-lider {
+  background-color: #1c0a04;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(251, 146, 60, 0.45), transparent 58%),
+    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(239, 68, 68, 0.22), transparent 52%),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 11px,
+      rgba(255, 237, 213, 0.05) 11px,
+      rgba(255, 237, 213, 0.05) 12px
+    );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-card-skin-lider {
+    animation: none;
+  }
+}
+
 .stat-slider {
   accent-color: hsl(24 95% 53%);
 }

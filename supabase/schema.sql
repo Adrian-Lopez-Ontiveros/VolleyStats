@@ -1817,6 +1817,7 @@ begin
     set resolved_at = now(), is_correct = null, points = null, xp_awarded = 0
     where match_id = p_match_id
       and resolved_at is null;
+    perform public.game_sync_leader_card();
     return jsonb_build_object('ok', true, 'voided', true);
   end if;
 
@@ -1867,6 +1868,7 @@ begin
     perform public.game_maybe_jornada_bonus(pred.user_id, jornada);
   end loop;
 
+  perform public.game_sync_leader_card();
   return jsonb_build_object('ok', true, 'awarded', awarded);
 end;
 $$;
@@ -1895,6 +1897,68 @@ begin
 end;
 $$;
 
+create or replace function public.game_prediction_leader()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.user_id
+  from (
+    select
+      user_id,
+      coalesce(sum(
+        case
+          when points in (0, 1, 2) then points
+          when is_correct then 1
+          else 0
+        end
+      ), 0) as pts,
+      count(*) filter (where points = 2) as exacts,
+      count(*) as played
+    from public.match_predictions
+    where is_correct is not null
+    group by user_id
+  ) s
+  order by s.pts desc, s.exacts desc, s.played asc, s.user_id
+  limit 1;
+$$;
+
+create or replace function public.game_sync_leader_card()
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  leader uuid;
+begin
+  leader := public.game_prediction_leader();
+
+  delete from public.user_rewards
+  where reward_id = 'card_lider'
+    and (leader is null or user_id is distinct from leader);
+
+  update public.user_progress
+  set equipped_card = null
+  where equipped_card = 'card_lider'
+    and (leader is null or user_id is distinct from leader);
+
+  if leader is not null then
+    insert into public.user_progress (user_id)
+    values (leader)
+    on conflict (user_id) do nothing;
+
+    insert into public.user_rewards (user_id, reward_id)
+    values (leader, 'card_lider')
+    on conflict do nothing;
+  end if;
+
+  return leader;
+end;
+$$;
+
 create or replace function public.game_equip_reward(p_reward_id text)
 returns jsonb
 language plpgsql
@@ -1914,6 +1978,12 @@ begin
   if p_reward_id = 'frame_none' then
     update public.user_progress set equipped_frame = null where user_id = uid;
     return jsonb_build_object('ok', true, 'reward_id', p_reward_id);
+  end if;
+  if p_reward_id = 'card_lider' then
+    perform public.game_sync_leader_card();
+    if public.game_prediction_leader() is distinct from uid then
+      raise exception 'Solo puede llevarlo quien va primero en la clasificación';
+    end if;
   end if;
   if not exists (
     select 1 from public.user_rewards
@@ -1948,6 +2018,8 @@ grant execute on function public.game_save_prediction(uuid, uuid) to authenticat
 grant execute on function public.game_resolve_match_predictions(uuid) to authenticated;
 grant execute on function public.game_resolve_pending() to authenticated;
 grant execute on function public.game_equip_reward(text) to authenticated;
+grant execute on function public.game_prediction_leader() to authenticated;
+grant execute on function public.game_sync_leader_card() to authenticated;
 
 -- Solo jornada m�s pr�xima (migraci�n 023)
 
