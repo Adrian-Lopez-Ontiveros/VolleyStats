@@ -125,7 +125,7 @@ function TeamBlock({
 }) {
   const label = (
     <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
-      <p className="hyphens-none text-[clamp(0.6875rem,3.2vw,0.875rem)] font-bold leading-tight [overflow-wrap:normal] [word-break:normal] sm:text-base">
+      <p className="hyphens-none text-[clamp(0.625rem,3vw,0.875rem)] font-bold leading-tight [overflow-wrap:normal] [word-break:normal] sm:text-base">
         {team.name}
       </p>
     </div>

@@ -49,11 +49,11 @@ export const MatchCard = memo(function MatchCard({
           </Badge>
         </div>
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-2">
         <TeamSide team={match.home_team} align="right" caption="Local" />
         <div
           className={cn(
-            "min-w-[4.5rem] rounded-xl px-3 py-2 text-center",
+            "min-w-[4rem] rounded-xl px-2 py-2 text-center sm:px-3",
             isFriendlyMatch(match)
               ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-50"
               : "bg-primary text-primary-foreground"
@@ -129,7 +129,7 @@ function TeamSide({
   );
   const label = (
     <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
-      <p className="text-[13px] font-semibold leading-tight hyphens-none [overflow-wrap:normal] [word-break:normal] sm:text-sm">
+      <p className="text-[clamp(0.625rem,2.9vw,0.8125rem)] font-semibold leading-tight hyphens-none [overflow-wrap:normal] [word-break:normal] sm:text-sm">
         {team.name}
       </p>
       <p className="text-[11px] text-muted-foreground">{caption}</p>
@@ -138,7 +138,7 @@ function TeamSide({
 
   return (
     <div
-      className={`flex min-w-0 items-center gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}
+      className={`flex min-w-0 items-center gap-1 sm:gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}
     >
       {align === "right" ? (
         <>
