@@ -116,44 +116,26 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
 
 function TeamBlock({
   team,
-  align,
   inverted = true,
 }: {
   team: Pick<Team, "name" | "short_name" | "logo_url" | "federation_team_id">;
-  align: "left" | "right";
+  align?: "left" | "right";
   inverted?: boolean;
 }) {
-  const label = (
-    <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
-      <p className="hyphens-none text-[clamp(0.5625rem,2.8vw,0.875rem)] font-bold leading-tight [overflow-wrap:normal] [word-break:normal] sm:text-base">
+  // Escudo encima y nombre centrado debajo, igual en local y visitante.
+  return (
+    <div className="flex min-w-0 flex-col items-center justify-center gap-1.5 text-center">
+      <TeamLogo
+        name={team.name}
+        shortName={team.short_name}
+        logoUrl={team.logo_url}
+        federationTeamId={team.federation_team_id}
+        size="sm"
+        inverted={inverted}
+      />
+      <p className="w-full min-w-0 hyphens-none text-center text-[clamp(0.5625rem,2.8vw,0.875rem)] font-bold leading-tight [overflow-wrap:normal] [word-break:normal] sm:text-base">
         {team.name}
       </p>
-    </div>
-  );
-  const logo = (
-    <TeamLogo
-      name={team.name}
-      shortName={team.short_name}
-      logoUrl={team.logo_url}
-      federationTeamId={team.federation_team_id}
-      size="sm"
-      inverted={inverted}
-    />
-  );
-
-  return (
-    <div className={`flex min-w-0 items-center gap-1.5 ${align === "right" ? "justify-end" : "justify-start"}`}>
-      {align === "left" ? (
-        <>
-          {logo}
-          {label}
-        </>
-      ) : (
-        <>
-          {label}
-          {logo}
-        </>
-      )}
     </div>
   );
 }

@@ -110,11 +110,10 @@ export const MatchCard = memo(function MatchCard({
 
 function TeamSide({
   team,
-  align,
   caption,
 }: {
   team: Pick<Team, "name" | "short_name" | "logo_url" | "federation_team_id">;
-  align: "left" | "right";
+  align?: "left" | "right";
   caption: string;
 }) {
   const logo = (
@@ -127,7 +126,7 @@ function TeamSide({
     />
   );
   const label = (
-    <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
+    <div className="w-full min-w-0 text-center">
       <p className="text-[clamp(0.5625rem,2.7vw,0.8125rem)] font-semibold leading-tight hyphens-none [overflow-wrap:normal] [word-break:normal] sm:text-sm">
         {team.name}
       </p>
@@ -135,21 +134,11 @@ function TeamSide({
     </div>
   );
 
+  // Escudo encima y nombre centrado debajo, igual en local y visitante.
   return (
-    <div
-      className={`flex min-w-0 items-center gap-1 sm:gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}
-    >
-      {align === "right" ? (
-        <>
-          {label}
-          {logo}
-        </>
-      ) : (
-        <>
-          {logo}
-          {label}
-        </>
-      )}
+    <div className="flex min-w-0 flex-col items-center justify-center gap-1 text-center">
+      {logo}
+      {label}
     </div>
   );
 }
