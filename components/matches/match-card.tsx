@@ -9,6 +9,7 @@ import { MatchVenueLine } from "@/components/matches/match-place-link";
 import { SetScoreLine } from "@/components/matches/set-score-line";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { cn } from "@/lib/utils";
+import { isNotStarted, upcomingWhen } from "@/components/matches/match-upcoming";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
 export const MatchCard = memo(function MatchCard({
@@ -19,6 +20,8 @@ export const MatchCard = memo(function MatchCard({
   href?: string | null;
 }) {
   const status = matchStatusMeta(match.status);
+  const upcoming = isNotStarted(match);
+  const when = upcoming ? upcomingWhen(match) : null;
   const summary = (
     <>
       <div className="flex items-center justify-between gap-2">
@@ -46,7 +49,7 @@ export const MatchCard = memo(function MatchCard({
           </Badge>
         </div>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
         <TeamSide team={match.home_team} align="right" caption="Local" />
         <div
           className={cn(
@@ -56,7 +59,12 @@ export const MatchCard = memo(function MatchCard({
               : "bg-primary text-primary-foreground"
           )}
         >
-          {match.status === "finished" ? (
+          {upcoming && when ? (
+            <>
+              <p className="text-[10px] font-semibold capitalize leading-tight">{when.date}</p>
+              <p className="mt-0.5 text-base font-bold leading-none tabular-nums">{when.time}</p>
+            </>
+          ) : match.status === "finished" ? (
             <p className="text-xl font-bold tabular-nums leading-none">
               {match.home_sets} – {match.away_sets}
             </p>
@@ -121,7 +129,7 @@ function TeamSide({
   );
   const label = (
     <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
-      <p className="text-[13px] font-semibold leading-tight [overflow-wrap:anywhere] sm:text-sm">
+      <p className="text-[13px] font-semibold leading-tight hyphens-none [overflow-wrap:normal] [word-break:normal] sm:text-sm">
         {team.name}
       </p>
       <p className="text-[11px] text-muted-foreground">{caption}</p>

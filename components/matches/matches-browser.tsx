@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { CategoryNav } from "@/components/category-nav";
 import { FmvLeagueSearch } from "@/components/matches/fmv-league-search";
@@ -46,6 +47,7 @@ export function MatchesBrowser({
   initialListView: PartidosListView;
   loadError?: string;
 }) {
+  const router = useRouter();
   const [categoria, setCategoria] = useState(initialCategory);
   const [panel, setPanel] = useState<PartidosPanel>(initialPanel);
   const [jornada, setJornada] = useState<number | null>(initialJornada);
@@ -109,13 +111,10 @@ export function MatchesBrowser({
     rememberPartidosHref(href);
     const here = `${window.location.pathname}${window.location.search}`;
     if (here !== href) {
-      const state =
-        window.history.state && typeof window.history.state === "object"
-          ? window.history.state
-          : {};
-      window.history.replaceState({ ...state }, "", href);
+      // Next-aware update so router.back() from a match restores this exact URL.
+      router.replace(href, { scroll: false });
     }
-  }, [categoria, jornada, panel, listView]);
+  }, [categoria, jornada, panel, listView, router]);
 
   useEffect(() => {
     rememberPartidosScroll(window.scrollY);

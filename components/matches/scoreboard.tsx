@@ -4,12 +4,15 @@ import { isFriendlyMatch } from "@/components/matches/match-kind";
 import { Badge } from "@/components/ui/badge";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { cn } from "@/lib/utils";
+import { isNotStarted, upcomingWhen } from "@/components/matches/match-upcoming";
 import type { MatchWithTeams, Team } from "@/lib/types";
 
 export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWithTeams }) {
   const status = matchStatusMeta(match.status);
   const friendly = isFriendlyMatch(match);
   const setsToWin = setsToWinOf(match);
+  const upcoming = isNotStarted(match);
+  const when = upcoming ? upcomingWhen(match) : null;
   return (
     <section
       className={cn(
@@ -26,7 +29,11 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
             friendly ? "text-orange-700 dark:text-orange-200" : "text-orange-200"
           )}
         >
-          {match.status === "finished"
+          {upcoming
+            ? friendly
+              ? `Amistoso · Mejor de ${maxSetsOf(setsToWin)}`
+              : "Próximo partido"
+            : match.status === "finished"
             ? friendly
               ? `Amistoso · Mejor de ${maxSetsOf(setsToWin)}`
               : "Resultado"
@@ -36,18 +43,23 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
         </p>
         <Badge className={status.className}>{status.label}</Badge>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-5 sm:gap-3 sm:px-4">
         <TeamBlock team={match.home_team} align="right" inverted={!friendly} />
         <div className="text-center">
-          {match.status === "finished" ? (
-            <p className="text-4xl font-black tabular-nums tracking-tight">
+          {upcoming && when ? (
+            <div className="max-w-[7.5rem]">
+              <p className="text-xs font-semibold capitalize">{when.date}</p>
+              <p className="text-lg font-black leading-tight tabular-nums">{when.time}</p>
+            </div>
+          ) : match.status === "finished" ? (
+            <p className="text-3xl font-black tabular-nums tracking-tight sm:text-4xl">
               {match.home_sets}
               <span className={cn("mx-1", friendly ? "text-orange-500" : "text-orange-300")}>–</span>
               {match.away_sets}
             </p>
           ) : (
             <>
-              <p className="text-4xl font-black tabular-nums tracking-tight">
+              <p className="text-3xl font-black tabular-nums tracking-tight sm:text-4xl">
                 {match.home_points}
                 <span className={cn("mx-1", friendly ? "text-orange-500" : "text-orange-300")}>–</span>
                 {match.away_points}
@@ -68,6 +80,16 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
         </div>
         <TeamBlock team={match.away_team} align="left" inverted={!friendly} />
       </div>
+      {upcoming && match.location?.trim() ? (
+        <p
+          className={cn(
+            "border-t px-4 py-3 text-center text-sm font-semibold",
+            friendly ? "border-orange-200 dark:border-orange-400/25" : "border-white/10"
+          )}
+        >
+          📍 {match.location.trim()}
+        </p>
+      ) : null}
       {(match.set_scores ?? []).length > 0 ? (
         <div
           className={cn(
@@ -103,7 +125,7 @@ function TeamBlock({
 }) {
   const label = (
     <div className={align === "right" ? "min-w-0 text-right" : "min-w-0 text-left"}>
-      <p className="text-sm font-bold leading-tight [overflow-wrap:anywhere] sm:text-lg">
+      <p className="hyphens-none text-[clamp(0.6875rem,3.2vw,0.875rem)] font-bold leading-tight [overflow-wrap:normal] [word-break:normal] sm:text-base">
         {team.name}
       </p>
     </div>
@@ -114,13 +136,13 @@ function TeamBlock({
       shortName={team.short_name}
       logoUrl={team.logo_url}
       federationTeamId={team.federation_team_id}
-      size="md"
+      size="sm"
       inverted={inverted}
     />
   );
 
   return (
-    <div className={`flex min-w-0 items-center gap-2 ${align === "right" ? "justify-end" : "justify-start"}`}>
+    <div className={`flex min-w-0 items-center gap-1.5 ${align === "right" ? "justify-end" : "justify-start"}`}>
       {align === "left" ? (
         <>
           {logo}
