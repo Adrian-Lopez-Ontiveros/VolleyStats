@@ -163,7 +163,7 @@ export function madridCalendarKey(iso: string) {
  * Format Madrid wall-clock parts with date-fns.
  * Uses a local Date so `format()` prints 19:00 both on a UTC server and in a CEST browser.
  */
-function formatInMadrid(iso: string, pattern: string) {
+export function formatInMadrid(iso: string, pattern: string) {
   const parts = madridParts(iso);
   const asLocal = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
   return format(asLocal, pattern, { locale: es });
