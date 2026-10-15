@@ -125,26 +125,38 @@ function shouldShowWeekend(input: {
   notes?: string | null;
   isFederation?: boolean | null;
 }) {
-  return hasFmvWeekendSchedule(input.notes);
+  if (hasFmvWeekendSchedule(input.notes)) return true;
+  // Sin hora fija (00:00 en Madrid): se juega en algún momento del fin de semana.
+  const parts = madridParts(input.scheduledAt);
+  return parts.hour === 0 && parts.minute === 0;
 }
 
 function formatWeekendFromScheduledAt(iso: string) {
-  const saturday = madridParts(iso);
+  return formatWeekendDays(iso);
+}
+
+/**
+ * Fin de semana (sábado/domingo) del partido sin hora fija: "12/13 Octubre",
+ * o "31 Oct/1 Nov" si cambia de mes. Si la fecha cae en domingo, se toma el sábado anterior.
+ */
+export function formatWeekendDays(iso: string) {
+  const parts = madridParts(iso);
+  const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12)).getUTCDay();
+  const saturday = addDays(parts, weekday === 0 ? -1 : 0);
   const sunday = addDays(saturday, 1);
   return weekendLabel(saturday, sunday);
 }
 
 function weekendLabel(saturday: DayParts, sunday: DayParts) {
-  const satMonth = monthShort(saturday);
-  const sunMonth = monthShort(sunday);
   if (saturday.month === sunday.month) {
-    return `Fin de semana ${saturday.day}–${sunday.day} ${satMonth}`;
+    return `${saturday.day}/${sunday.day} ${monthName(saturday, "LLLL")}`;
   }
-  return `Fin de semana ${saturday.day} ${satMonth}–${sunday.day} ${sunMonth}`;
+  return `${saturday.day} ${monthName(saturday, "LLL")}/${sunday.day} ${monthName(sunday, "LLL")}`;
 }
 
-function monthShort(day: DayParts) {
-  return format(new Date(Date.UTC(day.year, day.month - 1, day.day, 12)), "MMM", { locale: es });
+function monthName(day: DayParts, pattern: string) {
+  const name = format(new Date(Date.UTC(day.year, day.month - 1, day.day, 12)), pattern, { locale: es }).replace(".", "");
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 /** Madrid wall-clock `yyyy-MM` for grouping, independent of the runtime timezone. */

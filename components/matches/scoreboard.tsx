@@ -48,8 +48,17 @@ export const Scoreboard = memo(function Scoreboard({ match }: { match: MatchWith
         <div className="text-center">
           {upcoming && when ? (
             <div className="max-w-[7.5rem]">
-              <p className="text-xs font-semibold capitalize">{when.date}</p>
-              <p className="text-lg font-black leading-tight tabular-nums">{when.time}</p>
+              {when.isWeekend ? (
+                <>
+                  <p className="text-xs font-semibold">Fin de semana</p>
+                  <p className="text-sm font-black leading-tight">{when.time}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-semibold capitalize">{when.date}</p>
+                  <p className="text-lg font-black leading-tight tabular-nums">{when.time}</p>
+                </>
+              )}
             </div>
           ) : match.status === "finished" ? (
             <p className="text-3xl font-black tabular-nums tracking-tight sm:text-4xl">

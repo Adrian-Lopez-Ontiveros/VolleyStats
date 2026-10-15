@@ -61,7 +61,11 @@ export const MatchCard = memo(function MatchCard({
         >
           {upcoming && when ? (
             <>
-              <p className="text-base font-bold leading-none tabular-nums">{when.time}</p>
+              {when.isWeekend ? (
+                <p className="max-w-[4.5rem] text-center text-[11px] font-bold leading-tight">{when.time}</p>
+              ) : (
+                <p className="text-base font-bold leading-none tabular-nums">{when.time}</p>
+              )}
             </>
           ) : match.status === "finished" ? (
             <p className="text-xl font-bold tabular-nums leading-none">
