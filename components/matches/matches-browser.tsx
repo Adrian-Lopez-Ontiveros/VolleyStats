@@ -54,6 +54,9 @@ export function MatchesBrowser({
   const [listView, setListView] = useState<PartidosListView>(initialListView);
   const placeSignature = `${initialCategory}|${initialJornada ?? ""}|${initialPanel}|${initialListView}`;
   const seenPlace = useRef(placeSignature);
+  // Firmas que hemos escrito nosotros en la URL. Si el servidor responde tarde con
+  // una de ellas (eco de un router.replace antiguo), no debe pisar la elección actual.
+  const localPlaces = useRef(new Set<string>([placeSignature]));
   const leagueCategory = categoria === "all" ? null : categoria;
   const categoryMatches = useMemo(
     () =>
@@ -87,6 +90,7 @@ export function MatchesBrowser({
   useEffect(() => {
     if (seenPlace.current === placeSignature) return;
     seenPlace.current = placeSignature;
+    if (localPlaces.current.delete(placeSignature)) return;
     setCategoria(initialCategory);
     setJornada(initialJornada);
     setPanel(initialPanel);
@@ -109,6 +113,7 @@ export function MatchesBrowser({
       listView,
     });
     rememberPartidosHref(href);
+    localPlaces.current.add(`${categoria}|${jornada ?? ""}|${panel}|${listView}`);
     const here = `${window.location.pathname}${window.location.search}`;
     if (here !== href) {
       // Next-aware update so router.back() from a match restores this exact URL.
