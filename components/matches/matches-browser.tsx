@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { CategoryNav } from "@/components/category-nav";
 import { FmvLeagueSearch } from "@/components/matches/fmv-league-search";
@@ -25,6 +24,7 @@ import {
   buildPartidosHref,
   type PartidosListView,
   type PartidosPanel,
+  resolvePartidosView,
 } from "@/lib/partidos-view";
 import type { MatchWithTeams } from "@/lib/types";
 
@@ -47,15 +47,34 @@ export function MatchesBrowser({
   initialListView: PartidosListView;
   loadError?: string;
 }) {
-  const router = useRouter();
-  const [categoria, setCategoria] = useState(initialCategory);
-  const [panel, setPanel] = useState<PartidosPanel>(initialPanel);
-  const [jornada, setJornada] = useState<number | null>(initialJornada);
-  const [listView, setListView] = useState<PartidosListView>(initialListView);
+  // La URL real manda sobre las props: al volver atrás, Next puede reutilizar el payload
+  // del servidor de la primera carga (p. ej. ?categoria=all) aunque la URL ya diga otra cosa,
+  // porque los cambios de categoría/jornada solo tocan la URL, sin ir al servidor.
+  const [fromUrl] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("categoria")) return null;
+    return resolvePartidosView(
+      {
+        categoria: params.get("categoria") ?? undefined,
+        jornada: params.get("jornada") ?? undefined,
+        panel: params.get("panel") ?? undefined,
+        vista: params.get("vista") ?? undefined,
+      },
+      null,
+      matches
+    );
+  });
+  const [categoria, setCategoria] = useState(fromUrl?.category ?? initialCategory);
+  const [panel, setPanel] = useState<PartidosPanel>(fromUrl?.panel ?? initialPanel);
+  const [jornada, setJornada] = useState<number | null>(
+    fromUrl ? fromUrl.jornada : initialJornada
+  );
+  const [listView, setListView] = useState<PartidosListView>(fromUrl?.listView ?? initialListView);
   const placeSignature = `${initialCategory}|${initialJornada ?? ""}|${initialPanel}|${initialListView}`;
   const seenPlace = useRef(placeSignature);
   // Firmas que hemos escrito nosotros en la URL. Si el servidor responde tarde con
-  // una de ellas (eco de un router.replace antiguo), no debe pisar la elección actual.
+  // una de ellas (eco de una navegación antigua), no debe pisar la elección actual.
   const localPlaces = useRef(new Set<string>([placeSignature]));
   const leagueCategory = categoria === "all" ? null : categoria;
   const categoryMatches = useMemo(
@@ -116,10 +135,13 @@ export function MatchesBrowser({
     localPlaces.current.add(`${categoria}|${jornada ?? ""}|${panel}|${listView}`);
     const here = `${window.location.pathname}${window.location.search}`;
     if (here !== href) {
-      // Next-aware update so router.back() from a match restores this exact URL.
-      router.replace(href, { scroll: false });
+      // Solo cambia la URL: los partidos ya están en el cliente, así que no hace falta
+      // navegar al servidor (eso re-suspendía partidos/loading.tsx y devolvía el scroll arriba).
+      // Next 15 integra history.replaceState con su router si el state no es suyo (null),
+      // así useSearchParams y router.back() desde un partido ven esta URL exacta.
+      window.history.replaceState(null, "", href);
     }
-  }, [categoria, jornada, panel, listView, router]);
+  }, [categoria, jornada, panel, listView]);
 
   useEffect(() => {
     rememberPartidosScroll(window.scrollY);
