@@ -174,9 +174,6 @@ export default async function ProfilePage() {
             label="Posición"
             value={player?.position ? POSITION_LABELS[player.position] : "—"}
           />
-          <p className="pt-2 text-xs text-muted-foreground">
-            Puedes cambiar tu foto, tu cromo y tu dorsal desde Equipos. El equipo que juegas y el que entrenas los asigna un administrador.
-          </p>
         </CardContent>
       </Card>
 
@@ -201,7 +198,7 @@ export default async function ProfilePage() {
       )}
 
       <Button asChild variant="outline" className="w-full">
-        <Link href="/perfil/password">
+        <Link href="/ajustes?contrasena=1">
           <KeyRound className="h-4 w-4" />
           Cambiar contraseña
         </Link>

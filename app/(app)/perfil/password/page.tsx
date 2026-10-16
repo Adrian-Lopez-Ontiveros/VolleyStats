@@ -1,17 +1,6 @@
-import type { Metadata } from "next";
-import { UpdatePasswordForm } from "@/components/auth/update-password-form";
-import { PageHeader } from "@/components/page-header";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Cambiar contraseña" };
-
+// Ruta antigua: cambiar la contraseña vive ahora en Ajustes (hoja inferior).
 export default function PasswordPage() {
-  return (
-    <>
-      <PageHeader
-        title="Cambiar contraseña"
-        description="La nueva contraseña se aplicará a tu sesión actual."
-      />
-      <UpdatePasswordForm />
-    </>
-  );
+  redirect("/ajustes?contrasena=1");
 }

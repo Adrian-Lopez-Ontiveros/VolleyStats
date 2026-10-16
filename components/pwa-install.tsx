@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Share, Smartphone, SquarePlus, X } from "lucide-react";
+import { Check, Compass, Share, Smartphone, SquarePlus, X } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 
@@ -191,6 +191,15 @@ export function PwaInstallGuide({
               <ol className="space-y-3 text-sm">
                 <li className="flex gap-3">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
+                    <Compass className="h-4 w-4" />
+                  </span>
+                  <span>
+                    Abre FuenlaStats en <strong>Safari</strong> (en otros navegadores de iPhone no
+                    aparece la opción).
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700">
                     <Share className="h-4 w-4" />
                   </span>
                   <span>
@@ -203,7 +212,16 @@ export function PwaInstallGuide({
                     <SquarePlus className="h-4 w-4" />
                   </span>
                   <span>
-                    Baja y elige <strong>Añadir a pantalla de inicio</strong>. Confirma con Añadir.
+                    Baja y elige <strong>Añadir a pantalla de inicio</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-orange-100 font-bold text-orange-700">
+                    <Check className="h-4 w-4" />
+                  </span>
+                  <span>
+                    Pulsa <strong>Añadir</strong> arriba a la derecha. El icono aparecerá en tu
+                    pantalla de inicio.
                   </span>
                 </li>
               </ol>
