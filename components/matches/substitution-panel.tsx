@@ -21,6 +21,7 @@ export function SubstitutionPanel({
   benchPlayers,
   substitutions,
   canEdit,
+  formOnly = false,
 }: {
   matchId: string;
   players: Player[];
@@ -28,9 +29,12 @@ export function SubstitutionPanel({
   benchPlayers?: Player[];
   substitutions: MatchSubstitution[];
   canEdit: boolean;
+  /** Solo el formulario «Registrar cambio» (sin cabecera ni lista de cambios). */
+  formOnly?: boolean;
 }) {
   const outOptions = onCourtPlayers ?? players;
-  const inOptions = benchPlayers && benchPlayers.length > 0 ? benchPlayers : players;
+  const inOptions =
+    benchPlayers && benchPlayers.length > 0 ? benchPlayers : players;
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, setPending] = useState(false);
@@ -58,14 +62,16 @@ export function SubstitutionPanel({
 
   return (
     <section className="space-y-3">
-      <div>
-        <h2 className="text-lg font-semibold">Sustituciones</h2>
-        <p className="text-xs text-muted-foreground">
-          Quién sale, quién entra y, si lo sabes, el set o el momento.
-        </p>
-      </div>
+      {formOnly ? null : (
+        <div>
+          <h2 className="text-lg font-semibold">Sustituciones</h2>
+          <p className="text-xs text-muted-foreground">
+            Quién sale, quién entra y, si lo sabes, el set o el momento.
+          </p>
+        </div>
+      )}
 
-      {substitutions.length === 0 ? null : (
+      {formOnly || substitutions.length === 0 ? null : (
         <ul className="space-y-2">
           {substitutions.map((item) => (
             <li
@@ -74,13 +80,18 @@ export function SubstitutionPanel({
             >
               <div className="min-w-0 text-sm">
                 <p className="font-semibold">
-                  Sale {item.player_out ? playerLabel(item.player_out) : "jugador"}
+                  Sale{" "}
+                  {item.player_out ? playerLabel(item.player_out) : "jugador"}
                 </p>
                 <p className="text-muted-foreground">
-                  Entra {item.player_in ? playerLabel(item.player_in) : "jugador"}
+                  Entra{" "}
+                  {item.player_in ? playerLabel(item.player_in) : "jugador"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {[item.set_number ? `Set ${item.set_number}` : null, item.occurred_at]
+                  {[
+                    item.set_number ? `Set ${item.set_number}` : null,
+                    item.occurred_at,
+                  ]
                     .filter(Boolean)
                     .join(" · ") || "Sin momento indicado"}
                 </p>
@@ -107,8 +118,15 @@ export function SubstitutionPanel({
         </p>
       ) : null}
 
-      {canEdit && outOptions.length > 0 && inOptions.length > 0 && !(benchPlayers && benchPlayers.length === 0) ? (
-        <form ref={formRef} action={onSubmit} className="space-y-3 rounded-2xl border bg-card p-3">
+      {canEdit &&
+      outOptions.length > 0 &&
+      inOptions.length > 0 &&
+      !(benchPlayers && benchPlayers.length === 0) ? (
+        <form
+          ref={formRef}
+          action={onSubmit}
+          className="space-y-3 rounded-2xl border bg-card p-3"
+        >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="playerOutId">Sale</Label>
@@ -168,7 +186,12 @@ export function SubstitutionPanel({
               />
             </div>
           </div>
-          <Button type="submit" variant="secondary" className="w-full" disabled={pending}>
+          <Button
+            type="submit"
+            variant="secondary"
+            className="w-full"
+            disabled={pending}
+          >
             {pending ? "Guardando..." : "Registrar cambio"}
           </Button>
         </form>

@@ -9,11 +9,11 @@ import { BoxScoreReveal } from "@/components/matches/box-score-reveal";
 import { ShareBoxScore } from "@/components/matches/share-box-score";
 import { LiveScoreFollow } from "@/components/matches/live-score-follow";
 import { MatchAwaiting } from "@/components/matches/match-awaiting";
+import { SubstitutionPanel } from "@/components/matches/substitution-panel";
 import { MatchLineup } from "@/components/matches/match-lineup";
 import { MatchStatsPanel } from "@/components/stats/match-stats-panel";
 import { PointHistory } from "@/components/matches/point-history";
 import { Scoreboard } from "@/components/matches/scoreboard";
-import { SubstitutionPanel } from "@/components/matches/substitution-panel";
 import { BackButton } from "@/components/back-button";
 import { PageHeader } from "@/components/page-header";
 import { ActivityLog } from "@/components/matches/activity-log";
@@ -91,9 +91,9 @@ export default async function MatchDetailPage({
         />
         <div className="space-y-4">
           <LiveScoreFollow match={typedMatch} events={publicEvents} />
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
+          <div className="text-sm text-muted-foreground sm:mx-auto sm:max-w-2xl">
             <MatchVenueLine
+              badge={<MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />}
               location={typedMatch.location}
               court={typedMatch.court}
               referees={typedMatch.referees}
@@ -195,9 +195,9 @@ export default async function MatchDetailPage({
       />
       <div className="space-y-4">
         <Scoreboard match={typedMatch} />
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />
+        <div className="text-sm text-muted-foreground sm:mx-auto sm:max-w-2xl">
           <MatchVenueLine
+            badge={<MatchKindBadge match={typedMatch} round={typedMatch.federation_round} />}
             location={typedMatch.location}
             court={typedMatch.court}
             referees={typedMatch.referees}
@@ -232,8 +232,20 @@ export default async function MatchDetailPage({
           <MatchLineup teamName={clubTeamName} entries={typedLineup} />
         ) : null}
 
+        {typedEvents.length > 0 ? (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Resumen estadístico</h2>
+            <MatchStatsPanel match={typedMatch} events={typedEvents} setterStarts={setterStarts} />
+          </section>
+        ) : (
+          <MatchAwaiting status={typedMatch.status} />
+        )}
+
+        {/* La lista de sustituciones ya no se muestra (las estadísticas van primero);
+            el formulario «Registrar cambio» se queda justo encima del historial. */}
         {canTrackLiveMatch(typedMatch) && clubTeamId && (typedLineup.length > 0 || typedSubs.length > 0) ? (
           <SubstitutionPanel
+            formOnly
             matchId={typedMatch.id}
             players={roster}
             onCourtPlayers={playersOnCourt(roster, onCourtIds)}
@@ -241,15 +253,6 @@ export default async function MatchDetailPage({
             substitutions={typedSubs}
             canEdit={typedMatch.status !== "cancelled"}
           />
-        ) : null}
-
-        {typedEvents.length > 0 ? (
-          <section>
-            <h2 className="mb-3 text-lg font-semibold">Resumen estadístico</h2>
-            <MatchStatsPanel match={typedMatch} events={typedEvents} setterStarts={setterStarts} />
-          </section>
-        ) : typedSubs.length === 0 ? (
-          <MatchAwaiting status={typedMatch.status} />
         ) : null}
 
         {typedEvents.length > 0 || typedSubs.length > 0 ? (

@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   CircleDot,
   ClipboardList,
-  KeyRound,
   LogOut,
   Menu,
   Newspaper,
@@ -65,12 +64,6 @@ export function UserMenu({ user }: { user: SessionUser }) {
           <Link href="/perfil">
             <UserRound className="h-4 w-4" />
             Mi perfil
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/perfil/password">
-            <KeyRound className="h-4 w-4" />
-            Cambiar contraseña
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

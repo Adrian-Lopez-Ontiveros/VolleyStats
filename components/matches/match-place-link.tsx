@@ -30,17 +30,22 @@ export function MatchVenueLine({
   referees,
   className,
   align = "center",
+  badge,
 }: {
   location?: string | null;
   court?: string | null;
   referees?: string | null;
   className?: string;
   align?: "center" | "start";
+  /** Insignia (p. ej. «Liga FMV · Jornada 2»): en sm+ va en la línea del separador, centrada con ella. */
+  badge?: React.ReactNode;
 }) {
   const place = location?.trim() ?? "";
   const courtText = courtLabel(court);
   const names = refereeList(referees);
-  if (!place && !courtText && names.length === 0) return null;
+  if (!place && !courtText && names.length === 0) {
+    return badge ? <div className="flex justify-center">{badge}</div> : null;
+  }
 
   const refereeWord = names.length === 1 ? "Árbitro" : "Árbitros";
   const dividerText =
@@ -58,6 +63,9 @@ export function MatchVenueLine({
         align === "center" ? "items-center text-center" : "items-start text-left"
       )}
     >
+      {badge ? (
+        <div className={cn("mb-1 flex justify-center", dividerText && "sm:hidden")}>{badge}</div>
+      ) : null}
       {place ? <MatchPlaceLink location={place} className={cn("text-xs", className)} /> : null}
       {dividerText ? (
         <div
@@ -65,6 +73,7 @@ export function MatchVenueLine({
           aria-label={names.length > 0 ? `${dividerText}: ${names.join(", ")}` : dividerText}
         >
           <div className="mb-2.5 mt-3 flex items-center gap-2">
+            {badge ? <div className="hidden shrink-0 sm:flex">{badge}</div> : null}
             <span className="h-px flex-1 bg-border" />
             <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#F97316] dark:text-[#FB8A3C]">
               {dividerText}
