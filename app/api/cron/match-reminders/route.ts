@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendDueMatchReminders } from "@/lib/actions/notifications";
+import { sendDueMatchReminders } from "@/lib/push-events";
 
 export const dynamic = "force-dynamic";
 
