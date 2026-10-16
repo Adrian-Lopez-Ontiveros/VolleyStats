@@ -4,6 +4,7 @@ import { getCategoryMeta } from "@/lib/categories";
 import { federationRoundNumber } from "@/lib/federation/rounds";
 import { formatMatchWhenShort } from "@/lib/federation/schedule";
 import { courtLabel } from "@/lib/match-venue";
+import { newsPlainExcerpt } from "@/lib/news";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { unwrapOne } from "@/lib/utils";
@@ -203,10 +204,9 @@ export async function notifyNewsPublished(
   supabase: SupabaseClient,
   news: { id: string; title: string; body: string }
 ) {
-  const excerpt = news.body.replace(/\s+/g, " ").trim();
   return sendPushToPref(supabase, "notify_news", {
-    title: `Nueva noticia: ${news.title}`,
-    body: excerpt.length > 140 ? `${excerpt.slice(0, 137).trimEnd()}…` : excerpt,
+    title: news.title.trim(),
+    body: newsPlainExcerpt(news.body),
     url: `/noticias/${news.id}`,
   });
 }
