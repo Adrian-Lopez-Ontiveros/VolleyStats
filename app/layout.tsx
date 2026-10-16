@@ -5,6 +5,7 @@ import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants";
 import { OFFLINE_FALLBACK_SCRIPT } from "@/lib/offline-fallback";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
+import "./themes.css";
 
 const font = Plus_Jakarta_Sans({
   subsets: ["latin"],

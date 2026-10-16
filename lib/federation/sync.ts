@@ -12,6 +12,7 @@ import {
 import { isClubTeamName } from "@/lib/federation/leagues";
 import { federationNotesForSchedule } from "@/lib/federation/schedule";
 import { matchScoreFromSets } from "@/lib/match-result";
+import { notifyLeagueResult } from "@/lib/push";
 import type { Team } from "@/lib/types";
 
 export type FederationSyncReport = {
@@ -436,6 +437,8 @@ async function updateExistingFederationMatch(
   });
   if ((scores as { status?: string }).status === "finished") {
     await supabase.rpc("game_resolve_match_predictions", { p_match_id: existing.id });
+    // «Resultados de mi liga»: idempotente gracias a result_notified_at.
+    await notifyLeagueResult(supabase, existing.id).catch(() => null);
   }
   return "matchesUpdated";
 }
@@ -634,6 +637,8 @@ async function upsertFederationMatch(
     });
     if ((scores as { status?: string }).status === "finished") {
       await supabase.rpc("game_resolve_match_predictions", { p_match_id: existing.id });
+      // «Resultados de mi liga»: idempotente gracias a result_notified_at.
+      await notifyLeagueResult(supabase, existing.id).catch(() => null);
     }
     return "matchesUpdated";
   }
@@ -650,8 +655,24 @@ async function upsertFederationMatch(
     ...venueColumns(match),
     ...scores,
   };
-  const { error } = await supabase.from("matches").insert(row);
-  if (error && /court|referees/i.test(error.message)) {
+  // Un partido que ya llega terminado al importarlo no se notifica (histórico).
+  const finishedOnInsert = (scores as { status?: string }).status === "finished";
+  const { error } = await supabase
+    .from("matches")
+    .insert(
+      finishedOnInsert
+        ? ({ ...row, result_notified_at: new Date().toISOString() } as Record<string, unknown>)
+        : row
+    );
+  if (error && /result_notified_at/i.test(error.message)) {
+    const retry = await supabase.from("matches").insert(row);
+    if (retry.error && /court|referees/i.test(retry.error.message)) {
+      const again = await supabase.from("matches").insert(withoutVenueColumns(row));
+      if (again.error) throw new Error(again.error.message);
+    } else if (retry.error) {
+      throw new Error(retry.error.message);
+    }
+  } else if (error && /court|referees/i.test(error.message)) {
     const retry = await supabase.from("matches").insert(withoutVenueColumns(row));
     if (retry.error) throw new Error(retry.error.message);
   } else if (error) {

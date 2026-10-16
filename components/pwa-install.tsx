@@ -142,6 +142,30 @@ export function PwaInstallPrompt() {
       </div>
 
       {guide ? (
+        <PwaInstallGuide
+          ios={ios}
+          canPrompt={canPrompt}
+          onInstall={() => void install()}
+          onClose={() => setGuide(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** Hoja con los pasos para instalar (compartida con Ajustes > Instalar FuenlaStats). */
+export function PwaInstallGuide({
+  ios,
+  canPrompt,
+  onInstall,
+  onClose,
+}: {
+  ios: boolean;
+  canPrompt: boolean;
+  onInstall: () => void;
+  onClose: () => void;
+}) {
+  return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center">
           <div className="w-full max-w-md rounded-3xl bg-background p-5 shadow-lg">
             <div className="mb-3 flex items-start justify-between gap-3">
@@ -155,7 +179,7 @@ export function PwaInstallPrompt() {
               </div>
               <button
                 type="button"
-                onClick={() => setGuide(false)}
+                onClick={onClose}
                 className="rounded-lg p-1 text-muted-foreground hover:bg-secondary"
                 aria-label="Cerrar"
               >
@@ -213,17 +237,56 @@ export function PwaInstallPrompt() {
 
             <div className="mt-4 flex gap-2">
               {canPrompt ? (
-                <Button type="button" variant="accent" className="flex-1" onClick={() => void install()}>
+                <Button type="button" variant="accent" className="flex-1" onClick={onInstall}>
                   Instalar ahora
                 </Button>
               ) : null}
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setGuide(false)}>
+              <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
                 Entendido
               </Button>
             </div>
           </div>
         </div>
-      ) : null}
-    </>
   );
+}
+
+// Guarda el evento beforeinstallprompt aunque el banner esté oculto, para Ajustes.
+let deferredInstall: BeforeInstallPromptEvent | null = null;
+const installListeners = new Set<() => void>();
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstall = event as BeforeInstallPromptEvent;
+    installListeners.forEach((listener) => listener());
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstall = null;
+    installListeners.forEach((listener) => listener());
+  });
+}
+
+/** Estado de instalación de la PWA para la fila de Ajustes. */
+export function useInstallApp() {
+  const [state, setState] = useState({ installed: false, canPrompt: false, ios: false });
+
+  useEffect(() => {
+    const sync = () =>
+      setState({ installed: isStandalone(), canPrompt: Boolean(deferredInstall), ios: isIos() });
+    sync();
+    installListeners.add(sync);
+    return () => {
+      installListeners.delete(sync);
+    };
+  }, []);
+
+  async function promptInstall() {
+    const event = deferredInstall;
+    if (!event) return false;
+    await event.prompt();
+    const choice = await event.userChoice;
+    if (choice.outcome === "accepted") deferredInstall = null;
+    return true;
+  }
+
+  return { ...state, promptInstall };
 }

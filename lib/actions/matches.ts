@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
 import { resolvePredictionsForMatch } from "@/lib/actions/game";
-import { sendDueMatchReminders } from "@/lib/actions/notifications";
+import { sendDueMatchReminders } from "@/lib/push-events";
 import { requireCoach } from "@/lib/auth";
 import { parseCategory, type TeamCategory } from "@/lib/categories";
 import {

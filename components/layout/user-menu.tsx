@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   Newspaper,
+  Settings,
   Shield,
   UserRound,
 } from "lucide-react";
@@ -70,6 +71,12 @@ export function UserMenu({ user }: { user: SessionUser }) {
           <Link href="/perfil/password">
             <KeyRound className="h-4 w-4" />
             Cambiar contraseña
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/ajustes">
+            <Settings className="h-4 w-4" />
+            Ajustes
           </Link>
         </DropdownMenuItem>
         {SHOW_TACTICS_NAV && hasCoachAccess(user.profile.role) ? (

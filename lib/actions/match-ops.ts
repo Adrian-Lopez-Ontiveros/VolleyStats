@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
 import { resolvePredictionsForMatch } from "@/lib/actions/game";
-import { notifyMatchFinished } from "@/lib/actions/notifications";
+import { notifyMatchFinished } from "@/lib/push-events";
 import { requireCoach } from "@/lib/auth";
 import { applySlotSubstitutions, designatedLiberos, startingCourtByPosition } from "@/lib/court";
 import { currentOnCourtIds } from "@/lib/lineup";
