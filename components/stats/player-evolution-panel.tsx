@@ -29,7 +29,6 @@ import {
   attackStatsFromEvents,
   blockStatsFromEvents,
   defenseStatsFromEvents,
-  formatAttackEfficiency,
   receptionStatsFromEvents,
   serveStatsFromEvents,
   type AttackStats,
@@ -328,10 +327,6 @@ export function PlayerEvolutionPanel({
             label: "Errores",
             value: totals.errors,
             onClick: totals.errors > 0 ? () => setErrorsOpen(true) : undefined,
-          },
-          {
-            label: "Eff. ataque",
-            value: formatAttackEfficiency(attackStatsFromEvents(personalEvents).efficiency),
           },
         ]}
       />
