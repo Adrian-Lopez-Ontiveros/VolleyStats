@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireCoach } from "@/lib/auth";
 import { NEWS_BUCKET } from "@/lib/constants";
 import { clampCoverFocus, clampCoverZoom, MAX_COVER_ZOOM, MIN_COVER_ZOOM } from "@/lib/news";
+import { notifyNewsPublished, pushDb } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
 
 const newsSchema = z.object({
@@ -78,6 +79,15 @@ export async function createNews(formData: FormData) {
       };
     }
     return { error: error?.message ?? "No se pudo publicar la noticia" };
+  }
+
+  // «Nuevas noticias»: solo al crearla (no al editar) y si ya está publicada.
+  if (published.getTime() <= Date.now()) {
+    await notifyNewsPublished(await pushDb(), {
+      id: data.id,
+      title: parsed.data.title,
+      body: parsed.data.body,
+    }).catch(() => null);
   }
 
   revalidateNews(data.id);
