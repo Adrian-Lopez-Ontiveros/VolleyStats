@@ -54,3 +54,11 @@ export function refereeLabel(referees: string | null | undefined) {
   if (names.length === 0) return "";
   return `Árbitro${names.length === 1 ? "" : "s"}: ${names.join(", ")}`;
 }
+
+/** Iniciales para el avatar del árbitro: nombre + primer apellido («Rubén Martínez Calderón» → «RM»). */
+export function refereeInitials(name: string) {
+  const parts = displayPersonName(name).split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const surname = parts[1]?.[0] ?? "";
+  return (first + surname).toLocaleUpperCase("es");
+}

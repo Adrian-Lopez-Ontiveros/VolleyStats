@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { courtLabel, refereeLabel } from "@/lib/match-venue";
+import { courtLabel, refereeInitials, refereeList } from "@/lib/match-venue";
 import { cn } from "@/lib/utils";
 
 function placeLinks(location: string) {
@@ -39,8 +39,17 @@ export function MatchVenueLine({
 }) {
   const place = location?.trim() ?? "";
   const courtText = courtLabel(court);
-  const officials = refereeLabel(referees);
-  if (!place && !courtText && !officials) return null;
+  const names = refereeList(referees);
+  if (!place && !courtText && names.length === 0) return null;
+
+  const refereeWord = names.length === 1 ? "Árbitro" : "Árbitros";
+  const dividerText =
+    names.length > 0
+      ? courtText
+        ? `${refereeWord} · ${courtText}`
+        : refereeWord
+      : courtText;
+  const single = names.length === 1;
 
   return (
     <div
@@ -50,13 +59,61 @@ export function MatchVenueLine({
       )}
     >
       {place ? <MatchPlaceLink location={place} className={cn("text-xs", className)} /> : null}
-      {courtText || officials ? (
-        <p className="text-[11px] leading-snug text-muted-foreground [overflow-wrap:anywhere]">
-          {[courtText, officials].filter(Boolean).join(" · ")}
-        </p>
+      {dividerText ? (
+        <div
+          className="w-full"
+          aria-label={names.length > 0 ? `${dividerText}: ${names.join(", ")}` : dividerText}
+        >
+          <div className="mb-2.5 mt-3 flex items-center gap-2">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#F97316] dark:text-[#FB8A3C]">
+              {dividerText}
+            </span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          {names.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2 text-left">
+              {names.map((name, index) => (
+                <div
+                  key={`${index}-${name}`}
+                  className={cn(
+                    "flex min-w-0 items-center gap-[9px] rounded-[14px] border border-border bg-secondary/60 px-2.5 py-[9px]",
+                    single && align === "center" && "col-span-2 w-[calc(50%-4px)] justify-self-center"
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full text-[10px] font-extrabold",
+                      index % 2 === 0
+                        ? "bg-[#FFE4D1] text-[#C2410C] dark:bg-[#4A2A14] dark:text-[#FDBA74]"
+                        : "bg-[#DBEAFE] text-[#1D4ED8] dark:bg-[#17305A] dark:text-[#93C5FD]"
+                    )}
+                  >
+                    {refereeInitials(name)}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[11px] leading-tight text-muted-foreground">
+                      {refereeRole(index)}
+                    </div>
+                    <div className="text-xs font-bold leading-[1.2] text-foreground [overflow-wrap:anywhere]">
+                      {name}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
+}
+
+function refereeRole(index: number) {
+  if (index === 0) return "1.er árbitro";
+  if (index === 1) return "2.º árbitro";
+  return "Árbitro";
 }
 
 export function MatchPlaceLink({
