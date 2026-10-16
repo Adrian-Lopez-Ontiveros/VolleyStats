@@ -7,6 +7,7 @@ import {
   Bell,
   CalendarClock,
   Check,
+  ChevronDown,
   ChevronRight,
   Download,
   Info,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ContactSheet } from "@/components/settings/contact-sheet";
+import { PasswordSheet } from "@/components/settings/password-sheet";
 import { AboutDialog } from "@/components/settings/about-dialog";
 import { usePushSubscription } from "@/components/profile/use-push-subscription";
 import { PwaInstallGuide, useInstallApp } from "@/components/pwa-install";
@@ -55,10 +57,6 @@ const THEME_META: Record<ColorTheme, ThemeMeta> = {
   original: {
     name: "Original",
     swatches: ["hsl(214 68% 16%)", "hsl(24 95% 53%)", "hsl(210 40% 98%)", "hsl(214 48% 8%)", "hsl(24 95% 56%)"],
-  },
-  "c-terracota-mate": {
-    name: "Terracota mate",
-    swatches: ["hsl(20 10% 16%)", "hsl(14 62% 46%)", "hsl(36 38% 90%)", "hsl(20 10% 9%)", "hsl(16 70% 58%)"],
   },
   "c-hielo-acero": {
     name: "Hielo acero",
@@ -132,6 +130,8 @@ export function SettingsScreen({
   const [colorTheme, setColorTheme] = useState<ColorTheme>("original");
   const [fontSize, setFontSize] = useState<FontSize>("md");
   const [prefs, setPrefs] = useState(initialPrefs);
+  const [themesOpen, setThemesOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [installGuide, setInstallGuide] = useState(false);
@@ -141,6 +141,13 @@ export function SettingsScreen({
   useEffect(() => {
     setColorTheme(readColorTheme());
     setFontSize(readFontSize());
+    // Enlaces antiguos (/perfil/password) llegan como /ajustes?contrasena=1.
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("contrasena") === "1") {
+      setPasswordOpen(true);
+      url.searchParams.delete("contrasena");
+      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
   }, []);
 
   function chooseTheme(theme: ColorTheme) {
@@ -199,21 +206,50 @@ export function SettingsScreen({
 
       {/* Apariencia */}
       <Section title="Apariencia">
-        <div className="p-4">
-          <RowHead
-            icon={<Star className="h-4 w-4" />}
-            title="Tema de color"
-            description="Se aplica en toda la app. Claro u oscuro, desde el botón de arriba."
-          />
-          <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Tema de color">
-            {COLOR_THEMES.map((theme) => (
-              <ThemeCard
-                key={theme}
-                theme={theme}
-                selected={colorTheme === theme}
-                onSelect={() => chooseTheme(theme)}
+        <div>
+          <button
+            type="button"
+            aria-expanded={themesOpen}
+            aria-controls="theme-picker"
+            onClick={() => setThemesOpen((open) => !open)}
+            className="flex w-full items-center gap-3 p-4 text-left hover:bg-secondary/60"
+          >
+            <div className="min-w-0 flex-1">
+              <RowHead
+                icon={<Star className="h-4 w-4" />}
+                title="Tema de color"
+                description="Se aplica en toda la app. Claro u oscuro, desde el botón de arriba."
               />
-            ))}
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-accent">
+              {THEME_META[colorTheme].name}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300",
+                themesOpen && "rotate-180"
+              )}
+            />
+          </button>
+          <div
+            id="theme-picker"
+            className={cn(
+              "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
+              themesOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            )}
+          >
+            <div className="overflow-hidden" inert={!themesOpen}>
+              <div className="grid grid-cols-2 gap-3 px-4 pb-4" role="radiogroup" aria-label="Tema de color">
+                {COLOR_THEMES.map((theme) => (
+                  <ThemeCard
+                    key={theme}
+                    theme={theme}
+                    selected={colorTheme === theme}
+                    onSelect={() => chooseTheme(theme)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
         <div className="border-t p-4">
@@ -276,7 +312,7 @@ export function SettingsScreen({
 
       {/* Cuenta */}
       <Section title="Cuenta">
-        <LinkRow href="/perfil/password" icon={<KeyRound className="h-4 w-4" />} title="Cambiar contraseña" />
+        <ButtonRow icon={<KeyRound className="h-4 w-4" />} title="Cambiar contraseña" onClick={() => setPasswordOpen(true)} />
         <form action={logoutAction}>
           <ButtonRow type="submit" icon={<LogOut className="h-4 w-4" />} title="Cerrar sesión" />
         </form>
@@ -318,6 +354,7 @@ export function SettingsScreen({
 
       <p className="pt-1 text-center text-xs text-muted-foreground">FuenlaStats · CV Fuenlabrada</p>
 
+      <PasswordSheet open={passwordOpen} onOpenChange={setPasswordOpen} />
       <ContactSheet open={contactOpen} onOpenChange={setContactOpen} userId={userId} defaultEmail={email} />
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} version={version} />
       {installGuide ? (
@@ -363,7 +400,7 @@ function IconTile({ children }: { children: ReactNode }) {
 
 function RowHead({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
   return (
-    <div className="flex min-w-0 items-start gap-3">
+    <div className="flex min-w-0 items-center gap-3">
       <IconTile>{icon}</IconTile>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold leading-tight">{title}</p>
@@ -374,17 +411,6 @@ function RowHead({ icon, title, description }: { icon: ReactNode; title: string;
 }
 
 const ROW_CLASS = "flex w-full items-center gap-3 px-4 py-3.5 text-left";
-
-function LinkRow({ href, icon, title, description }: { href: string; icon: ReactNode; title: string; description?: string }) {
-  return (
-    <Link href={href} className={cn(ROW_CLASS, "hover:bg-secondary/60")}>
-      <div className="min-w-0 flex-1">
-        <RowHead icon={icon} title={title} description={description} />
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-    </Link>
-  );
-}
 
 function ButtonRow({
   icon,

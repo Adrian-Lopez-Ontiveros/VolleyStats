@@ -4,7 +4,6 @@ export const FONT_SIZE_STORAGE_KEY = "fuenla-font-size";
 
 export const COLOR_THEMES = [
   "original",
-  "c-terracota-mate",
   "c-hielo-acero",
   "a-cobalto-sol",
   "b-grafito-rojo",
