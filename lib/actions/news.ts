@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireCoach } from "@/lib/auth";
 import { NEWS_BUCKET } from "@/lib/constants";
 import { clampCoverFocus, clampCoverZoom, MAX_COVER_ZOOM, MIN_COVER_ZOOM } from "@/lib/news";
+import { datetimeLocalMadridToIso } from "@/lib/federation/schedule";
 import { notifyNewsPublished, pushDb } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,9 +29,18 @@ function revalidateNews(id?: string) {
   }
 }
 
+/** Margen para que «ahora» (minutos truncados, reloj del cliente) cuente como publicada. */
+const PUBLISH_NOW_TOLERANCE_MS = 2 * 60 * 1000;
+
 function parsePublishedAt(value?: string) {
   if (!value) return new Date();
-  const date = new Date(value);
+  // El input datetime-local no lleva zona: se interpreta como hora de Madrid (el servidor va en UTC).
+  let date: Date;
+  try {
+    date = new Date(datetimeLocalMadridToIso(value));
+  } catch {
+    return null;
+  }
   if (Number.isNaN(date.getTime())) return null;
   return date;
 }
@@ -82,7 +92,7 @@ export async function createNews(formData: FormData) {
   }
 
   // «Nuevas noticias»: solo al crearla (no al editar) y si ya está publicada.
-  if (published.getTime() <= Date.now()) {
+  if (published.getTime() <= Date.now() + PUBLISH_NOW_TOLERANCE_MS) {
     await notifyNewsPublished(await pushDb(), {
       id: data.id,
       title: parsed.data.title,
