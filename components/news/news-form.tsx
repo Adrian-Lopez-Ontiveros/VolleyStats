@@ -8,7 +8,7 @@ import { createNews, updateNews } from "@/lib/actions/news";
 import { MAX_NEWS_COVER_BYTES, NEWS_BUCKET } from "@/lib/constants";
 import { DEFAULT_COVER_FRAME } from "@/lib/news";
 import { createClient } from "@/lib/supabase/client";
-import { toLocalDateTimeInput } from "@/lib/utils";
+import { isoToDatetimeLocalMadrid } from "@/lib/federation/schedule";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,7 +165,7 @@ export function NewsForm({
           id="publishedAt"
           name="publishedAt"
           type="datetime-local"
-          defaultValue={toLocalDateTimeInput(news?.published_at ?? new Date())}
+          defaultValue={isoToDatetimeLocalMadrid(news?.published_at ?? new Date().toISOString())}
         />
       </div>
 
