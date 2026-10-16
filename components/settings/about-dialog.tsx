@@ -23,7 +23,7 @@ export function AboutDialog({
             Versión {version} · CV Fuenlabrada
           </Dialog.Description>
           <p className="mt-4 text-sm">
-            Estadísticas, partidos y liga del CV Fuenlabrada, hechas por y para el club.
+            Estadísticas, partidos y liga del CV Fuenlabrada, hechas por y para mí.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             Resultados y calendario de la Federación de Voleibol de Madrid (FMV).
