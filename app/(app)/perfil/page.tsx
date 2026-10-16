@@ -3,7 +3,6 @@ import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { PlayerCardSection } from "@/components/players/player-card-section";
 import { ProfileLook } from "@/components/profile/profile-look";
-import { NotificationToggle } from "@/components/profile/notification-toggle";
 import { PlayerEvolutionPanel, type PlayerStatEvent } from "@/components/stats/player-evolution-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,9 +39,8 @@ export default async function ProfilePage() {
     skillEvents = (events ?? []) as PlayerStatEvent[];
   }
 
-  const [{ data: notifyPrefs }, cardResult, progressResult, predsResult, rewardsResult] =
+  const [cardResult, progressResult, predsResult, rewardsResult] =
     await Promise.all([
-    supabase.from("profiles").select("notify_match_end").eq("id", user.id).maybeSingle(),
     player?.id
       ? supabase
           .from("player_cards")
@@ -70,9 +68,6 @@ export default async function ProfilePage() {
     })(),
     supabase.from("user_rewards").select("reward_id").eq("user_id", user.id),
   ]);
-  const notifyEnabled = Boolean(
-    notifyPrefs && "notify_match_end" in notifyPrefs && notifyPrefs.notify_match_end
-  );
   const playerCard = (cardResult.data as PlayerCard | null) ?? null;
   const progress = progressResult.data;
   const resolvedPreds = (predsResult.data ?? []) as {
@@ -184,8 +179,6 @@ export default async function ProfilePage() {
           </p>
         </CardContent>
       </Card>
-
-      <NotificationToggle enabled={notifyEnabled} />
 
       {player ? (
         <>
