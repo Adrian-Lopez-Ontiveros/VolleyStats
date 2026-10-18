@@ -10,6 +10,7 @@ import {
   type FmvTeam,
 } from "@/lib/federation/client";
 import { isClubTeamName } from "@/lib/federation/leagues";
+import { esvoleyLeagueFor, federationSourceOf } from "@/lib/federation/sources";
 import { federationNotesForSchedule } from "@/lib/federation/schedule";
 import { matchScoreFromSets } from "@/lib/match-result";
 import { notifyLeagueResult } from "@/lib/push";
@@ -109,13 +110,31 @@ export async function listStoredClubLeagueTargets(
       TEAM_CATEGORIES.some((item) => item.id === team.category) && Boolean(team.federation_team_id)
   );
 
-  const located = await locateFmvGroupsByTeamIds(clubs.map((club) => club.federation_team_id));
+  // Solo los equipos de FMV se buscan en su catálogo; los de esvoley tienen grupo fijo.
+  const fmvClubs = clubs.filter(
+    (club) =>
+      !esvoleyLeagueFor(club.category) && federationSourceOf(club.federation_team_id) === "fmv"
+  );
+  const located = fmvClubs.length
+    ? await locateFmvGroupsByTeamIds(fmvClubs.map((club) => club.federation_team_id))
+    : [];
   const byTeamId = new Map(located.map((group) => [group.teamId, group]));
   const targets: StoredLeagueTarget[] = [];
   const errors: string[] = [];
 
   for (const category of TEAM_CATEGORIES) {
     const club = clubs.find((item) => item.category === category.id);
+    const esvoley = esvoleyLeagueFor(category.id);
+    if (esvoley) {
+      if (!club) {
+        errors.push(`${category.label}: el equipo del club no está enlazado con esvoley.`);
+      } else if (club.federation_team_id !== esvoley.teamId) {
+        errors.push(`${category.label}: el equipo del club no es el de esvoley (${esvoley.teamId}).`);
+      } else {
+        targets.push({ category: category.id, groupId: esvoley.groupId, path: esvoley.path });
+      }
+      continue;
+    }
     if (!club) {
       errors.push(`${category.label}: el equipo del club no está enlazado con FMVoley.`);
       continue;
@@ -131,7 +150,11 @@ export async function listStoredClubLeagueTargets(
   return { targets, errors };
 }
 
-/** Updates matches that already exist. Drops rivals that are not in the club team's group. */
+/**
+ * Updates matches that already exist. Drops rivals that are not in the club team's group.
+ * esvoley groups are fixed in config (no admin import screen), so for them it also
+ * creates the rivals and matches that are missing.
+ */
 export async function refreshStoredLeague(
   supabase: SupabaseClient,
   category: TeamCategory,
@@ -167,11 +190,27 @@ export async function refreshStoredLeague(
   const report = emptyReport(groupInfo.path);
   report.groups = 1;
 
+  const createMissing = federationSourceOf(groupId) === "esvoley";
+  if (createMissing) {
+    for (const team of groupTeams) {
+      const result = await upsertFederationTeam(supabase, team, category);
+      if (result === "created") report.teamsCreated += 1;
+      if (result === "linked") report.teamsLinked += 1;
+    }
+  }
+
   const matches = await fetchFmvMatches(groupId, { scores: options?.scores !== false });
   const existingByFedId = await loadMatchesByFederationId(
     supabase,
     matches.map((match) => match.id)
   );
+  if (createMissing) {
+    for (const match of matches) {
+      if (existingByFedId.has(match.id)) continue;
+      const result = await upsertFederationMatch(supabase, match, category);
+      report[result] += 1;
+    }
+  }
   const pending = matches.flatMap((match) => {
     const existing = existingByFedId.get(match.id);
     return existing ? [{ match, existing }] : [];
