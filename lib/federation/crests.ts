@@ -1,14 +1,17 @@
-const FMV_CREST = "https://intranet.fmvoley.com/api/escudos/fotoEscudoEquipoTemporada";
+import { FEDERATION_SOURCES, splitFederationId } from "@/lib/federation/sources";
 
 const CLUB_CREST_URL =
   "https://xeejstlubpcknzwzdcdc.supabase.co/storage/v1/object/public/avatars/teams/3914dfca-e72d-4f83-95ea-cc39997a85ef/logo-1786706726921.png";
 
 const CLUB_CREST_FEDERATION_IDS = new Set(["51848", "51851"]);
 
+/** Escudo del equipo en su federación: FMV (id tal cual) o esvoley (id «esv:…»). */
 export function fmvCrestUrl(federationTeamId?: string | null) {
   const id = federationTeamId?.trim();
   if (!id) return null;
-  return `${FMV_CREST}?Id=${encodeURIComponent(id)}`;
+  const { source, rawId } = splitFederationId(id);
+  if (!rawId) return null;
+  return `${FEDERATION_SOURCES[source].crest}?Id=${encodeURIComponent(rawId)}`;
 }
 
 function usesEmptyFederationCrest(logoUrl?: string | null, federationTeamId?: string | null) {

@@ -22,6 +22,12 @@ export function useCategoryFilter(initial: TeamCategory | "all") {
   return [value, setCategory] as const;
 }
 
+const GRID_COLS: Record<number, string> = {
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  5: "grid-cols-5",
+};
+
 export function CategoryNav({
   basePath,
   value,
@@ -43,14 +49,16 @@ export function CategoryNav({
     <div
       className={cn(
         "mb-5 grid gap-1 rounded-xl bg-secondary p-1",
-        allowAll ? "grid-cols-4" : "grid-cols-3"
+        GRID_COLS[items.length] ?? "grid-cols-4"
       )}
     >
       {items.map((item) => {
         const href = item.id === "all" ? basePath : `${basePath}?categoria=${item.id}`;
         const active = !suspended && value === item.id;
         const className = cn(
-          "rounded-lg px-1.5 py-2 text-center leading-tight transition-colors",
+          "min-w-0 rounded-lg py-2",
+          items.length >= 5 ? "px-0.5" : "px-1.5",
+          "text-center leading-tight transition-colors",
           active
             ? "bg-card text-foreground shadow-sm"
             : "bg-transparent text-muted-foreground hover:text-foreground"

@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { TEAM_CATEGORIES, type TeamCategory } from "@/lib/categories";
+import { esvoleyLeagueFor } from "@/lib/federation/sources";
+
+// Las ligas de esvoley se sincronizan solas; aquí solo se importan grupos de FMV.
+const FMV_CATEGORIES = TEAM_CATEGORIES.filter((item) => !esvoleyLeagueFor(item.id));
 import {
   getFmvTestLeague,
   listFmvCompetitionTypes,
@@ -309,7 +313,7 @@ export function FederationSync() {
               onChange={(event) => setCategory(event.target.value as TeamCategory)}
               className={SELECT_CLASS}
             >
-              {TEAM_CATEGORIES.map((item) => (
+              {FMV_CATEGORIES.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.label}
                 </option>

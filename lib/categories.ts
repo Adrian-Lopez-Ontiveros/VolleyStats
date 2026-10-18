@@ -23,6 +23,15 @@ export const TEAM_CATEGORIES = [
     clubName: "CV Fuenlabrada Senior Femenino",
     clubShort: "CVF SF",
   },
+  {
+    // Primera División Masculina (RFEVB) · Grupo D. Datos de esvoley, no de FMV.
+    id: "nacional_masculino",
+    label: "Nacional Masculino",
+    line1: "Nacional",
+    line2: "Masculino",
+    clubName: "CV Fuenlabrada Nacional Masculino",
+    clubShort: "CVF NM",
+  },
 ] as const;
 
 export type TeamCategory = (typeof TEAM_CATEGORIES)[number]["id"];

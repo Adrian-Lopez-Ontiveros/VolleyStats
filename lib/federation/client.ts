@@ -2,8 +2,12 @@ import { fmvCrestUrl } from "@/lib/federation/crests";
 import { isClubTeamName } from "@/lib/federation/leagues";
 import { cleanCourt, joinReferees } from "@/lib/match-venue";
 import { madridCalendarKey, parseFmvSchedule, type FmvSchedulePrecision } from "@/lib/federation/schedule";
-
-const FMV_API = "https://intranet.fmvoley.com/api";
+import {
+  FEDERATION_SOURCES,
+  prefixFederationId,
+  splitFederationId,
+  type FederationSource,
+} from "@/lib/federation/sources";
 
 type Json = Record<string, unknown>;
 
@@ -94,8 +98,15 @@ export type ClubFmvGroup = {
   path: string;
 };
 
-async function fmvGet<T>(path: string, params?: Record<string, string | number>): Promise<T> {
-  const url = new URL(`${FMV_API}/${path.replace(/^\//, "")}`);
+// esvoley (RFEVB) usa la misma plataforma que FMV: mismas rutas, parámetros y JSON.
+// Solo cambia la URL base; FMV sigue siendo la fuente por defecto.
+async function fmvGet<T>(
+  path: string,
+  params?: Record<string, string | number>,
+  source: FederationSource = "fmv"
+): Promise<T> {
+  const { api, label } = FEDERATION_SOURCES[source];
+  const url = new URL(`${api}/${path.replace(/^\//, "")}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === null || value === "") continue;
@@ -115,19 +126,19 @@ async function fmvGet<T>(path: string, params?: Record<string, string | number>)
     });
   } catch (error) {
     if (error instanceof Error && error.name === "TimeoutError") {
-      throw new Error(`FMV ${path} tardó demasiado`);
+      throw new Error(`${label} ${path} tardó demasiado`);
     }
     throw error;
   }
   if (!response.ok) {
-    throw new Error(`FMV ${path} → ${response.status}`);
+    throw new Error(`${label} ${path} → ${response.status}`);
   }
 
   const payload = (await response.json()) as Json;
   const err = asRecord(payload.Error ?? payload.error);
   if (err.HasError === true || err.hasError === true) {
     throw new Error(
-      pickString(err, ["Message", "message"]) || `FMV ${path} devolvió un error`
+      pickString(err, ["Message", "message"]) || `${label} ${path} devolvió un error`
     );
   }
 
@@ -257,14 +268,17 @@ export async function fetchFmvGroupOptions(phaseId: string): Promise<FmvOption[]
 }
 
 export async function fetchFmvGroupInfo(groupId: string): Promise<FmvGroup> {
-  const row = asRecord(await fmvGet("competiciones/getDatosGrupoCompeticion", { grupoId: groupId }));
+  const { source, rawId } = splitFederationId(groupId);
+  const row = asRecord(
+    await fmvGet("competiciones/getDatosGrupoCompeticion", { grupoId: rawId }, source)
+  );
   const name = pickString(row, ["nombre", "name"]) || "Grupo";
   const competition = pickString(row, ["competicion"]);
   const division = pickString(row, ["division"]);
   const phase = pickString(row, ["fase"]);
   const typeName = pickString(row, ["tipoCompeticion"]);
   return {
-    id: pickString(row, ["id"]) || groupId,
+    id: prefixFederationId(source, pickString(row, ["id"]) || rawId),
     name,
     competition,
     division,
@@ -277,8 +291,9 @@ export async function fetchFmvGroupInfo(groupId: string): Promise<FmvGroup> {
 }
 
 export async function fetchFmvTeams(groupId: string): Promise<FmvTeam[]> {
+  const { source, rawId } = splitFederationId(groupId);
   const fromStandings = asArray(
-    await fmvGet("competiciones/getClasificacionGrupo", { grupoId: groupId })
+    await fmvGet("competiciones/getClasificacionGrupo", { grupoId: rawId }, source)
   )
     .map((item) => {
       const row = asRecord(item);
@@ -286,7 +301,7 @@ export async function fetchFmvTeams(groupId: string): Promise<FmvTeam[]> {
       const id =
         pickString(row, ["equipoId", "idEquipo", "equipo_id"]) ||
         teamIdFromCrest(pickString(row, ["imagen", "img"]));
-      return toFmvTeam(id, name);
+      return toFmvTeam(prefixFederationId(source, id), name);
     })
     .filter((item): item is FmvTeam => Boolean(item));
 
@@ -302,14 +317,17 @@ export async function fetchFmvTeams(groupId: string): Promise<FmvTeam[]> {
 }
 
 async function fetchCalendarMatches(groupId: string): Promise<FmvMatch[]> {
-  const calendar = asArray(await fmvGet("competiciones/getJornadasCalendario", { grupoId: groupId }));
+  const { source, rawId } = splitFederationId(groupId);
+  const calendar = asArray(
+    await fmvGet("competiciones/getJornadasCalendario", { grupoId: rawId }, source)
+  );
   return calendar
     .flatMap((roundItem) => {
       const round = asRecord(roundItem);
       const roundName = formatRoundName(round);
       const roundFecha = pickString(round, ["fecha"]);
       return asArray(round.partidos).map((item) =>
-        normalizeMatch(asRecord(item), roundName, roundFecha)
+        normalizeMatch(asRecord(item), roundName, roundFecha, source)
       );
     })
     .filter((item) => item.id && item.homeName && item.awayName);
@@ -317,7 +335,10 @@ async function fetchCalendarMatches(groupId: string): Promise<FmvMatch[]> {
 
 // The calendar call is one request but omits sets. Scores come from each jornada.
 async function fetchMatchesByRound(groupId: string): Promise<FmvMatch[]> {
-  const rounds = asArray(await fmvGet("competiciones/getJornadasGrupo", { grupoId: groupId }));
+  const { source, rawId } = splitFederationId(groupId);
+  const rounds = asArray(
+    await fmvGet("competiciones/getJornadasGrupo", { grupoId: rawId }, source)
+  );
   const fromRounds = (
     await mapPool(rounds, 8, async (roundItem) => {
       const round = asRecord(roundItem);
@@ -326,8 +347,14 @@ async function fetchMatchesByRound(groupId: string): Promise<FmvMatch[]> {
       const roundFecha = pickString(round, ["fecha"]);
       if (!roundId) return [] as FmvMatch[];
 
-      const payload = await fmvGet("competiciones/getPartidosByJornada", { jornadaId: roundId });
-      return asArray(payload).map((item) => normalizeMatch(asRecord(item), roundName, roundFecha));
+      const payload = await fmvGet(
+        "competiciones/getPartidosByJornada",
+        { jornadaId: roundId },
+        source
+      );
+      return asArray(payload).map((item) =>
+        normalizeMatch(asRecord(item), roundName, roundFecha, source)
+      );
     })
   ).flat();
 
@@ -358,7 +385,10 @@ async function enrichUpcomingVenues(groupId: string, matches: FmvMatch[]): Promi
   try {
     const today = madridCalendarKey(new Date().toISOString());
     const fromDay = shiftIsoDay(today, -1);
-    const rounds = asArray(await fmvGet("competiciones/getJornadasGrupo", { grupoId: groupId }))
+    const { source, rawId } = splitFederationId(groupId);
+    const rounds = asArray(
+      await fmvGet("competiciones/getJornadasGrupo", { grupoId: rawId }, source)
+    )
       .map((item) => {
         const round = asRecord(item);
         return {
@@ -373,8 +403,12 @@ async function enrichUpcomingVenues(groupId: string, matches: FmvMatch[]): Promi
 
     const detailed = (
       await mapPool(rounds, 4, async (round) => {
-        const payload = await fmvGet("competiciones/getPartidosByJornada", { jornadaId: round.id });
-        return asArray(payload).map((item) => normalizeMatch(asRecord(item), ""));
+        const payload = await fmvGet(
+          "competiciones/getPartidosByJornada",
+          { jornadaId: round.id },
+          source
+        );
+        return asArray(payload).map((item) => normalizeMatch(asRecord(item), "", "", source));
       })
     ).flat();
     const byId = new Map(detailed.filter((match) => match.id).map((match) => [match.id, match]));
@@ -608,7 +642,12 @@ function formatRoundName(round: Json) {
   return pickString(round, ["nombre", "name", "fecha"]) || "Jornada";
 }
 
-function normalizeMatch(row: Json, roundName: string, roundFecha = ""): FmvMatch {
+function normalizeMatch(
+  row: Json,
+  roundName: string,
+  roundFecha = "",
+  source: FederationSource = "fmv"
+): FmvMatch {
   const homeName =
     pickString(row, ["equipo_local", "localNombre", "equipoLocal", "local"]) ||
     pickString(asRecord(row.local ?? row.equipoLocal), ["nombre", "name", "equipo"]);
@@ -643,11 +682,11 @@ function normalizeMatch(row: Json, roundName: string, roundFecha = ""): FmvMatch
   const officials = parseReferees(row);
 
   return {
-    id: pickString(row, ["id", "idPartido", "partidoId"]),
+    id: prefixFederationId(source, pickString(row, ["id", "idPartido", "partidoId"])),
     homeName: isByeName(homeName) ? "" : homeName,
     awayName: isByeName(awayName) ? "" : awayName,
-    homeId,
-    awayId,
+    homeId: prefixFederationId(source, homeId),
+    awayId: prefixFederationId(source, awayId),
     scheduledAt: schedule.scheduledAt,
     schedulePrecision: schedule.precision,
     location: sanitizeLocation(pickString(row, ["pabellon", "ubicacion", "lugar", "instalacion", "direccion"])),

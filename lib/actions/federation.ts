@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "@/lib/auth";
 import { TEAM_CATEGORIES, type TeamCategory } from "@/lib/categories";
+import { esvoleyLeagueFor } from "@/lib/federation/sources";
 import { createClient } from "@/lib/supabase/server";
 import {
   FMV_TEST_LEAGUE,
@@ -146,6 +147,9 @@ export async function syncFederationGroup(
   if (!groupId) return { error: "Selecciona un grupo de la federación." };
   if (!TEAM_CATEGORIES.some((item) => item.id === category)) {
     return { error: "La liga de destino no es válida." };
+  }
+  if (esvoleyLeagueFor(category)) {
+    return { error: "Esta liga viene de esvoley y se sincroniza sola; no se importa desde FMV." };
   }
 
   try {
