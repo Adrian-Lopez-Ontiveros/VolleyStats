@@ -347,10 +347,10 @@ export function jornadaRangeLabel(scheduledAts: string[]) {
 
 export const FRAME_NONE = "frame_none";
 
+// Colores fijos en app/globals.css (.reward-frame-*): ningún tema de color de Ajustes los toca.
 export const FRAME_CLASS: Record<string, string> = {
-  frame_naranja: "bg-gradient-to-br from-orange-400 to-orange-600 p-[3px] shadow-[0_0_0_1px_rgba(234,88,12,0.35)]",
-  frame_violeta: "bg-gradient-to-br from-violet-400 to-fuchsia-600 p-[3px] shadow-[0_0_0_1px_rgba(124,58,237,0.35)]",
-  frame_oro: "bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 p-[3px] shadow-[0_0_12px_rgba(251,191,36,0.55)]",
-  frame_escarlata:
-    "bg-gradient-to-br from-rose-300 via-red-500 to-rose-900 p-[3px] shadow-[0_0_12px_rgba(225,29,72,0.5)]",
+  frame_naranja: "reward-frame reward-frame-naranja",
+  frame_violeta: "reward-frame reward-frame-violeta",
+  frame_oro: "reward-frame reward-frame-oro",
+  frame_escarlata: "reward-frame reward-frame-escarlata",
 };
