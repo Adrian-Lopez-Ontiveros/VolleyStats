@@ -70,6 +70,10 @@ const THEME_META: Record<ColorTheme, ThemeMeta> = {
     name: "Grafito y rojo señal",
     swatches: ["hsl(225 8% 9.8%)", "hsl(352 84% 44.9%)", "hsl(240 5% 95.9%)", "hsl(240 5% 4.1%)", "hsl(353 77% 49.8%)"],
   },
+  "a-pervinca-melocoton": {
+    name: "Pervinca y melocotón",
+    swatches: ["hsl(241 49% 34.9%)", "hsl(14 100% 70.6%)", "hsl(240 47% 97.1%)", "hsl(240 41% 8.0%)", "hsl(14 100% 74.5%)"],
+  },
 };
 
 const FONT_OPTIONS: { value: FontSize; label: string; className: string }[] = [
