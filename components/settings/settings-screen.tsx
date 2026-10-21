@@ -74,6 +74,10 @@ const THEME_META: Record<ColorTheme, ThemeMeta> = {
     name: "Pervinca y melocotón",
     swatches: ["hsl(241 49% 34.9%)", "hsl(14 100% 70.6%)", "hsl(240 47% 97.1%)", "hsl(240 41% 8.0%)", "hsl(14 100% 74.5%)"],
   },
+  "a-uva-limon": {
+    name: "Uva y limón",
+    swatches: ["hsl(264 61% 26.1%)", "hsl(55 82% 61.2%)", "hsl(260 43% 97.3%)", "hsl(260 35% 6.7%)", "hsl(55 88% 63.7%)"],
+  },
 };
 
 const FONT_OPTIONS: { value: FontSize; label: string; className: string }[] = [
