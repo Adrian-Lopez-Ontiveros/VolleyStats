@@ -8,6 +8,7 @@ export const COLOR_THEMES = [
   "a-cobalto-sol",
   "b-grafito-rojo",
   "a-pervinca-melocoton",
+  "a-uva-limon",
 ] as const;
 export type ColorTheme = (typeof COLOR_THEMES)[number];
 
