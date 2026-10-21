@@ -255,6 +255,77 @@ export const GAME_REWARDS: GameReward[] = [
 
 export const REWARD_BY_ID = new Map(GAME_REWARDS.map((reward) => [reward.id, reward]));
 
+export type RewardMetric = "checkin" | "level" | "streak" | "picks" | "hits" | "exact";
+
+export type RewardStats = Record<RewardMetric, number>;
+
+/**
+ * Condición numérica de cada recompensa, espejo de game_unlock_rewards (038).
+ * Sin entrada: no se puede calcular con los datos que ya carga la app
+ * (jornada perfecta usa xp_events; líder depende de la clasificación).
+ */
+export const REWARD_GOALS: Record<string, { metric: RewardMetric; target: number }> = {
+  title_novato: { metric: "checkin", target: 1 },
+  badge_checkin: { metric: "checkin", target: 1 },
+  title_aficionado: { metric: "level", target: 2 },
+  title_socio: { metric: "level", target: 3 },
+  frame_naranja: { metric: "level", target: 4 },
+  title_hincha: { metric: "level", target: 5 },
+  badge_level5: { metric: "level", target: 5 },
+  frame_violeta: { metric: "level", target: 7 },
+  title_veterano: { metric: "level", target: 8 },
+  title_leyenda: { metric: "level", target: 10 },
+  badge_level10: { metric: "level", target: 10 },
+  frame_oro: { metric: "level", target: 12 },
+  title_corazon: { metric: "level", target: 15 },
+  title_racha: { metric: "streak", target: 7 },
+  badge_week: { metric: "streak", target: 7 },
+  title_imparable: { metric: "streak", target: 30 },
+  badge_month: { metric: "streak", target: 30 },
+  badge_first_pick: { metric: "picks", target: 1 },
+  card_quiniela: { metric: "hits", target: 5 },
+  title_profeta: { metric: "hits", target: 10 },
+  card_profeta: { metric: "hits", target: 10 },
+  badge_oracle: { metric: "hits", target: 25 },
+  card_vidente: { metric: "hits", target: 25 },
+  card_leyenda: { metric: "hits", target: 50 },
+  badge_marcador: { metric: "exact", target: 1 },
+  title_exacto: { metric: "exact", target: 3 },
+  card_marcador: { metric: "exact", target: 5 },
+  card_pleno: { metric: "exact", target: 10 },
+  frame_escarlata: { metric: "exact", target: 15 },
+  card_infalible: { metric: "exact", target: 25 },
+};
+
+export function rewardStats(
+  progress: {
+    xp: number;
+    level: number;
+    current_streak: number;
+    longest_streak: number;
+    last_checkin_on: string | null;
+  },
+  predictions: { is_correct: boolean | null; points?: number | null }[]
+): RewardStats {
+  return {
+    checkin: progress.last_checkin_on || progress.current_streak > 0 || progress.xp > 0 ? 1 : 0,
+    level: progress.level,
+    streak: Math.max(progress.current_streak, progress.longest_streak),
+    picks: predictions.length,
+    hits: predictions.filter((row) => row.is_correct === true).length,
+    exact: predictions.filter((row) => row.points === 2).length,
+  };
+}
+
+/** Progreso de una recompensa, limitado al objetivo. null si no es medible. */
+export function rewardProgress(id: string, stats: RewardStats, unlocked: boolean) {
+  const goal = REWARD_GOALS[id];
+  if (!goal) return null;
+  const raw = Math.max(0, Math.floor(stats[goal.metric] ?? 0));
+  const current = unlocked ? goal.target : Math.min(raw, goal.target);
+  return { current, target: goal.target, done: unlocked || raw >= goal.target };
+}
+
 export function rewardLabel(id: string | null | undefined) {
   if (!id) return null;
   return REWARD_BY_ID.get(id)?.label ?? null;
