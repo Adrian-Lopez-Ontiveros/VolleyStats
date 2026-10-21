@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { loadGamePageData } from "@/lib/actions/game";
 import { predictionTablePoints } from "@/lib/prediction-score";
+import { rewardStats } from "@/lib/game";
 import type { MatchPrediction } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Predicciones" };
@@ -75,7 +76,11 @@ export default async function PredictionsPage() {
           <GameLeaderboard rows={data.leaderboard} userId={data.userId} />
         </section>
 
-        <RewardsDisclosure unlockedIds={unlocked} progress={data.progress} />
+        <RewardsDisclosure
+          unlockedIds={unlocked}
+          progress={data.progress}
+          stats={rewardStats(data.progress, [...data.predictions.values()])}
+        />
       </div>
     </>
   );

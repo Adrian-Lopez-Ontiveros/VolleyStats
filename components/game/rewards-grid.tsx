@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { IdCard, Lock, Medal, Sparkles, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { equipReward } from "@/lib/actions/game";
-import { FRAME_NONE, GAME_REWARDS, type GameReward } from "@/lib/game";
+import {
+  FRAME_NONE,
+  GAME_REWARDS,
+  rewardProgress,
+  type GameReward,
+  type RewardStats,
+} from "@/lib/game";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { UserProgress } from "@/lib/types";
@@ -13,9 +19,11 @@ import type { UserProgress } from "@/lib/types";
 export function RewardsDisclosure({
   unlockedIds,
   progress,
+  stats,
 }: {
   unlockedIds: string[];
   progress: UserProgress;
+  stats: RewardStats;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -29,7 +37,7 @@ export function RewardsDisclosure({
       >
         {open ? "Ocultar recompensas" : "Ver recompensas"}
       </Button>
-      {open ? <RewardsGrid unlockedIds={unlockedIds} progress={progress} /> : null}
+      {open ? <RewardsGrid unlockedIds={unlockedIds} progress={progress} stats={stats} /> : null}
     </section>
   );
 }
@@ -37,9 +45,11 @@ export function RewardsDisclosure({
 export function RewardsGrid({
   unlockedIds,
   progress,
+  stats,
 }: {
   unlockedIds: string[];
   progress: UserProgress;
+  stats: RewardStats;
 }) {
   const unlocked = new Set(unlockedIds);
   const groups: { kind: GameReward["kind"]; title: string }[] = [
@@ -60,6 +70,7 @@ export function RewardsGrid({
                 key={reward.id}
                 reward={reward}
                 unlocked={unlocked.has(reward.id)}
+                goal={rewardProgress(reward.id, stats, unlocked.has(reward.id))}
                 equipped={
                   progress.equipped_title === reward.id ||
                   progress.equipped_frame === reward.id ||
@@ -78,10 +89,12 @@ function RewardCard({
   reward,
   unlocked,
   equipped,
+  goal,
 }: {
   reward: GameReward;
   unlocked: boolean;
   equipped: boolean;
+  goal: ReturnType<typeof rewardProgress>;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -126,6 +139,26 @@ function RewardCard({
       <div className="min-w-0 flex-1">
         <p className="font-semibold leading-tight">{reward.label}</p>
         <p className="text-xs text-muted-foreground">{unlocked ? reward.description : reward.hint}</p>
+        {goal ? (
+          <div className="mt-1.5 flex items-center gap-2">
+            <div
+              className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={goal.target}
+              aria-valuenow={goal.current}
+              aria-label={`Progreso: ${goal.current} de ${goal.target}`}
+            >
+              <div
+                className={cn("h-full rounded-full", goal.done ? "bg-orange-500" : "bg-orange-400/70")}
+                style={{ width: `${Math.round((goal.current / goal.target) * 100)}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
+              {goal.current}/{goal.target}
+            </span>
+          </div>
+        ) : null}
         {canEquip ? (
           <Button
             type="button"
