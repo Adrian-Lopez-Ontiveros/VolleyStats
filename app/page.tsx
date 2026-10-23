@@ -9,7 +9,7 @@ import { APP_NAME } from "@/lib/constants";
 
 export default async function HomePage() {
   const session = await getSessionUser();
-  if (session) redirect("/noticias");
+  if (session) redirect("/hoy");
   if (await isSpectatorGuest()) redirect("/noticias");
 
   return (
