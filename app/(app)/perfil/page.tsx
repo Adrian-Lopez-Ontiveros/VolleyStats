@@ -3,6 +3,8 @@ import Link from "next/link";
 import { KeyRound } from "lucide-react";
 import { PlayerCardSection } from "@/components/players/player-card-section";
 import { ProfileLook } from "@/components/profile/profile-look";
+import { StatAchievements } from "@/components/profile/stat-achievements";
+import { statAchievements } from "@/lib/achievements";
 import { PlayerEvolutionPanel, type PlayerStatEvent } from "@/components/stats/player-evolution-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -179,6 +181,7 @@ export default async function ProfilePage() {
 
       {player ? (
         <>
+          <StatAchievements items={statAchievements(skillEvents)} />
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Evolución de rendimiento</h2>
