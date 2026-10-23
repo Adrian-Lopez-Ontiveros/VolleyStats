@@ -5,6 +5,8 @@ import { Pencil } from "lucide-react";
 import { DeletePlayerButton } from "@/components/players/delete-player-button";
 import { PlayerCardSection } from "@/components/players/player-card-section";
 import { PageHeader } from "@/components/page-header";
+import { StatAchievements } from "@/components/profile/stat-achievements";
+import { statAchievements } from "@/lib/achievements";
 import { PlayerEvolutionPanel, type PlayerStatEvent } from "@/components/stats/player-evolution-panel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -156,6 +158,9 @@ export default async function PlayerDetailPage({
 
       {canViewStats ? (
         <>
+          <div className="mb-6">
+            <StatAchievements items={statAchievements(typedEvents)} />
+          </div>
           <h2 className="mb-3 text-lg font-semibold">Evolución de rendimiento</h2>
           <PlayerEvolutionPanel playerId={typed.id} events={typedEvents} teamId={typed.team_id} />
         </>
