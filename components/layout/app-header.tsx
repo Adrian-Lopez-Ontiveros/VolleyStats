@@ -38,7 +38,9 @@ export function AppHeader({
           {user ? (
             <Link
               href="/predicciones"
-              className="mr-1 hidden items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-800 dark:bg-orange-500/15 dark:text-orange-200 sm:flex"
+              aria-label={`Racha de ${streak} ${streak === 1 ? "día" : "días"}`}
+              title="Racha de días"
+              className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-1 text-xs font-bold tabular-nums text-orange-800 dark:bg-orange-500/15 dark:text-orange-200 sm:mr-1 sm:px-2.5"
             >
               <Flame className="h-3.5 w-3.5" />
               {streak}
