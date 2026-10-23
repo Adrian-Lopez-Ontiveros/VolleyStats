@@ -1,4 +1,5 @@
 import type { DailyChallengeStatus } from "@/lib/game";
+import type { NewsSocialData } from "@/lib/news-social";
 
 export type HoyTeamSide = {
   name: string;
@@ -55,5 +56,13 @@ export type HoyData = {
     categoryLabel: string;
   } | null;
   clubResults: HoyMatch[];
-  news: { id: string; title: string; excerpt: string; coverUrl: string | null; publishedAt: string } | null;
+  news: {
+    id: string;
+    title: string;
+    excerpt: string;
+    coverUrl: string | null;
+    publishedAt: string;
+    /** Reacciones y comentarios; null si falta la migración 045. */
+    social?: NewsSocialData | null;
+  } | null;
 };

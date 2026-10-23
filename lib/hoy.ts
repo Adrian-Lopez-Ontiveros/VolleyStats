@@ -16,6 +16,7 @@ import { isPredictionLocked, jornadaKeyFromIso, jornadaRangeLabel, nearestJornad
 import type { HoyData, HoyMatch, HoyStatLine } from "@/lib/hoy-types";
 import { courtLabel } from "@/lib/match-venue";
 import { newsPlainExcerpt } from "@/lib/news";
+import { loadNewsSocialMany } from "@/lib/news-social";
 import { buildPlayerMatchSeries, type PlayerMatchSample } from "@/lib/stats";
 import { readUserProgress } from "@/lib/user-progress";
 import type { ClubNews, MatchWithTeams, PointType, SessionUser } from "@/lib/types";
@@ -195,6 +196,16 @@ export async function loadHoyData(user: SessionUser, supabase: SupabaseClient): 
 
   const progress = progressResult.data;
   const news = newsResult.data as ClubNews | null;
+  // Reacciones y comentarios de la última noticia (migración 045); sin tabla, no se muestran.
+  const newsSocial = news
+    ? (
+        await loadNewsSocialMany(
+          supabase,
+          [{ id: news.id, isNewsAuthor: news.created_by === user.id }],
+          { userId: user.id, isAdmin: user.profile.role === "admin" }
+        )
+      ).get(news.id) ?? null
+    : null;
 
   return {
     firstName: (user.profile.full_name || "").trim().split(/\s+/)[0] || "jugador",
@@ -219,6 +230,7 @@ export async function loadHoyData(user: SessionUser, supabase: SupabaseClient): 
           excerpt: newsPlainExcerpt(news.body, 110),
           coverUrl: news.cover_url ?? null,
           publishedAt: news.published_at,
+          social: newsSocial?.available ? newsSocial : null,
         }
       : null,
   };
