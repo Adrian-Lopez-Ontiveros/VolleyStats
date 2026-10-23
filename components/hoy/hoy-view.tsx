@@ -304,6 +304,28 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
         ) : null}
       </Block>
 
+      {/* Última noticia */}
+      {data.news ? (
+        <article className="overflow-hidden rounded-3xl border bg-card shadow-card">
+          <Link href={`/noticias/${data.news.id}`} className="block">
+            {data.news.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={data.news.coverUrl} alt="" className="block h-auto w-full bg-primary" />
+            ) : (
+              <div className="aspect-[16/7] bg-gradient-to-br from-primary via-primary to-accent/70" />
+            )}
+            <div className="p-4">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                <Newspaper className="h-3.5 w-3.5" /> Última noticia
+              </p>
+              <p className="mt-1 line-clamp-2 text-base font-black leading-tight text-foreground">{data.news.title}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{data.news.excerpt}</p>
+            </div>
+          </Link>
+          {data.news.social ? (
+            <NewsCardSocial newsId={data.news.id} social={data.news.social} loggedIn />
+          ) : null}
+
       {/* Último partido */}
       {data.lastMatch ? (
         <Block
@@ -400,27 +422,6 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
         </Block>
       ) : null}
 
-      {/* Última noticia */}
-      {data.news ? (
-        <article className="overflow-hidden rounded-3xl border bg-card shadow-card">
-          <Link href={`/noticias/${data.news.id}`} className="block">
-            {data.news.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.news.coverUrl} alt="" className="block h-auto w-full bg-primary" />
-            ) : (
-              <div className="aspect-[16/7] bg-gradient-to-br from-primary via-primary to-accent/70" />
-            )}
-            <div className="p-4">
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                <Newspaper className="h-3.5 w-3.5" /> Última noticia
-              </p>
-              <p className="mt-1 line-clamp-2 text-base font-black leading-tight text-foreground">{data.news.title}</p>
-              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{data.news.excerpt}</p>
-            </div>
-          </Link>
-          {data.news.social ? (
-            <NewsCardSocial newsId={data.news.id} social={data.news.social} loggedIn />
-          ) : null}
         </article>
       ) : null}
     </div>
