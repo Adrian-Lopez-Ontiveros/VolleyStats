@@ -26,21 +26,16 @@ export function Countdown({ target, live }: { target: string; live?: boolean }) 
   const diff = new Date(target).getTime() - now;
   if (diff <= 0) return <span className="font-bold">¡Empieza ya!</span>;
   const { days, hours, minutes, seconds } = parts(diff);
-  const units = days > 0
-    ? [
-        [days, "d"],
-        [hours, "h"],
-        [minutes, "min"],
-      ]
-    : [
-        [hours, "h"],
-        [minutes, "min"],
-        [seconds, "s"],
-      ];
+  const units = [
+    ...(days > 0 ? [[days, "d"] as const] : []),
+    [hours, "h"] as const,
+    [minutes, "min"] as const,
+    [seconds, "s"] as const,
+  ];
   return (
     <span className="inline-flex gap-1.5 tabular-nums" aria-label="Tiempo hasta el partido">
       {units.map(([value, unit]) => (
-        <span key={unit as string} className="rounded-lg bg-black/10 px-1.5 py-0.5 font-black dark:bg-white/10">
+        <span key={unit} className="rounded-lg bg-black/10 px-1.5 py-0.5 font-black dark:bg-white/10">
           {String(value).padStart(2, "0")}
           <span className="ml-0.5 text-[10px] font-semibold opacity-70">{unit}</span>
         </span>

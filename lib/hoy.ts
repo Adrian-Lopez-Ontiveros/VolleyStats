@@ -146,6 +146,7 @@ export async function loadHoyData(user: SessionUser, supabase: SupabaseClient): 
           open: openMatches.length,
           missing: openMatches.filter((m) => !predicted.has(m.id)).length,
           label: jornadaRangeLabel(jornadaMatches.map((m) => m.scheduled_at)),
+          firstMissingId: openMatches.find((m) => !predicted.has(m.id))?.id ?? null,
         }
       : null;
 

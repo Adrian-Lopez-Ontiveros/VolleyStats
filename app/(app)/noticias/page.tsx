@@ -4,18 +4,20 @@ import { Newspaper, Plus } from "lucide-react";
 import { AppLogo } from "@/components/app-logo";
 import { EmptyState } from "@/components/empty-state";
 import { NewsCard } from "@/components/news/news-card";
+import { NewsCardSocial } from "@/components/news/news-social";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { QueryError } from "@/components/query-error";
 import { requireViewer } from "@/lib/auth";
 import { NEWS_SELECT } from "@/lib/constants";
+import { loadNewsSocialMany } from "@/lib/news-social";
 import { createClient } from "@/lib/supabase/server";
 import type { ClubNews } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Noticias" };
 
 export default async function NewsPage() {
-  const { canManage, isGuest } = await requireViewer();
+  const { canManage, isGuest, isAdmin, user } = await requireViewer();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("news")
@@ -33,6 +35,15 @@ export default async function NewsPage() {
 
   const items = (data ?? []) as ClubNews[];
   const [featured, ...rest] = items;
+  const social = await loadNewsSocialMany(
+    supabase,
+    items.map((item) => ({ id: item.id, isNewsAuthor: Boolean(user && item.created_by === user.id) })),
+    { userId: user?.id ?? null, isAdmin }
+  );
+  const footerFor = (id: string) => {
+    const data = social.get(id);
+    return data?.available ? <NewsCardSocial newsId={id} social={data} loggedIn={Boolean(user)} /> : null;
+  };
 
   return (
     <>
@@ -95,10 +106,11 @@ export default async function NewsPage() {
             <NewsCard
               news={featured}
               featured
+              footer={footerFor(featured.id)}
               className={rest.length > 0 ? "lg:col-span-2" : undefined}
             />
             {rest.map((item) => (
-              <NewsCard key={item.id} news={item} />
+              <NewsCard key={item.id} news={item} footer={footerFor(item.id)} />
             ))}
           </div>
         </div>

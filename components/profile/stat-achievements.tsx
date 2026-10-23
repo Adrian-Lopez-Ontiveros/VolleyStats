@@ -1,18 +1,24 @@
+import { ChevronDown, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StatAchievementProgress } from "@/lib/achievements";
 
-/** Insignias por estadísticas reales de la temporada, con progreso n/objetivo. */
+/** Insignias por estadísticas reales de la temporada, con progreso n/objetivo. Plegado por defecto. */
 export function StatAchievements({ items }: { items: StatAchievementProgress[] }) {
   const done = items.filter((item) => item.done).length;
   return (
-    <section className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold">Logros de la temporada</h2>
-        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-          {done}/{items.length}
+    <details className="group rounded-3xl border bg-card shadow-card">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <Medal className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+        <h2 className="min-w-0 flex-1 text-base font-semibold">Logros de la temporada</h2>
+        <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-orange-800 dark:bg-orange-500/20 dark:text-orange-200">
+          {done}/{items.length} conseguidos
         </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="grid grid-cols-2 gap-2 px-3 pb-3 sm:grid-cols-4">
         {items.map((item) => {
           const current = Math.min(item.value, item.target);
           return (
@@ -58,6 +64,6 @@ export function StatAchievements({ items }: { items: StatAchievementProgress[] }
           );
         })}
       </div>
-    </section>
+    </details>
   );
 }

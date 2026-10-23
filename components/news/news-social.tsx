@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { FramedAvatar } from "@/components/game/framed-avatar";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,12 @@ export function NewsReactionsBar({
   newsId,
   reactions,
   canReact,
+  compact = false,
 }: {
   newsId: string;
   reactions: NewsSocialData["reactions"];
   canReact: boolean;
+  compact?: boolean;
 }) {
   const [items, setItems] = useState(reactions);
   const [, startTransition] = useTransition();
@@ -54,7 +56,7 @@ export function NewsReactionsBar({
   }
 
   return (
-    <div className="flex flex-wrap gap-2" aria-label="Reacciones">
+    <div className={cn("flex flex-wrap", compact ? "gap-1" : "gap-2")} aria-label="Reacciones">
       {items.map((item) => (
         <button
           key={item.emoji}
@@ -62,13 +64,14 @@ export function NewsReactionsBar({
           onClick={() => toggle(item.emoji)}
           aria-pressed={item.mine}
           className={cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-full border bg-card px-3 text-sm font-semibold tabular-nums shadow-card transition-colors",
+            "inline-flex items-center rounded-full border bg-card font-semibold tabular-nums shadow-card transition-colors",
+            compact ? "h-8 gap-1 px-2 text-xs" : "h-9 gap-1.5 px-3 text-sm",
             item.mine
               ? "border-primary/60 bg-primary/10 text-primary"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <span className="text-base leading-none">{item.emoji}</span>
+          <span className={cn("leading-none", compact ? "text-sm" : "text-base")}>{item.emoji}</span>
           {item.count > 0 ? <span>{item.count}</span> : null}
         </button>
       ))}
@@ -214,6 +217,41 @@ export function NewsComments({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Reacciones + comentarios desplegables en las tarjetas del listado de /noticias. */
+export function NewsCardSocial({
+  newsId,
+  social,
+  loggedIn,
+}: {
+  newsId: string;
+  social: NewsSocialData;
+  loggedIn: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = social.comments.length;
+  return (
+    <div className="space-y-3 border-t px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <NewsReactionsBar newsId={newsId} reactions={social.reactions} canReact={loggedIn} compact />
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold transition-colors",
+            open ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <MessageCircle className="h-4 w-4" />
+          {loggedIn ? (count > 0 ? `${count} ${count === 1 ? "comentario" : "comentarios"}` : "Comentar") : "Comentarios"}
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+        </button>
+      </div>
+      {open ? <NewsComments newsId={newsId} comments={social.comments} loggedIn={loggedIn} /> : null}
     </div>
   );
 }

@@ -36,7 +36,13 @@ export type HoyData = {
   xp: number;
   teamName: string | null;
   nextMatch: HoyMatch | null;
-  predictions: { missing: number; open: number; label: string } | null;
+  predictions: {
+    missing: number;
+    open: number;
+    label: string;
+    /** Primer partido sin pronosticar (ancla #pred-<id> en /predicciones). */
+    firstMissingId: string | null;
+  } | null;
   challenges: DailyChallengeStatus[] | null;
   challengesXpToday: number;
   lastMatch: (HoyMatch & { stats: HoyStatLine[] | null }) | null;
