@@ -17,6 +17,9 @@ export async function updateNotificationPref(key: string, value: boolean) {
     .update({ [key as NotifyPrefKey]: value })
     .eq("id", session.id);
   if (error) {
+    if (key === "notify_streak_reminder" && /notify_streak_reminder/i.test(error.message)) {
+      return { error: "Falta aplicar la migración 047_streak_reminder.sql." };
+    }
     if (/notify_/i.test(error.message)) {
       return { error: "Falta aplicar la migración 042_notification_preferences.sql." };
     }

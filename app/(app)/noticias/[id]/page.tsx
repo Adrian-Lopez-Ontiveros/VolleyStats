@@ -6,9 +6,11 @@ import { es } from "date-fns/locale";
 import { CalendarDays, Pencil } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 import { DeleteNewsButton } from "@/components/news/delete-news-button";
+import { NewsComments, NewsReactionsBar } from "@/components/news/news-social";
 import { Button } from "@/components/ui/button";
 import { requireViewer } from "@/lib/auth";
 import { NEWS_SELECT } from "@/lib/constants";
+import { loadNewsSocial } from "@/lib/news-social";
 import { createClient } from "@/lib/supabase/server";
 import type { ClubNews } from "@/lib/types";
 
@@ -20,7 +22,7 @@ export default async function NewsDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { canManage } = await requireViewer();
+  const { canManage, user, isAdmin } = await requireViewer();
   const supabase = await createClient();
   const { data } = await supabase
     .from("news")
@@ -30,6 +32,11 @@ export default async function NewsDetailPage({
 
   if (!data) notFound();
   const news = data as ClubNews;
+  const social = await loadNewsSocial(supabase, id, {
+    userId: user?.id ?? null,
+    isAdmin,
+    isNewsAuthor: Boolean(user && news.created_by === user.id),
+  });
   const publishedLabel = format(new Date(news.published_at), "EEEE, d 'de' MMMM 'de' yyyy", {
     locale: es,
   });
@@ -75,6 +82,18 @@ export default async function NewsDetailPage({
           </div>
         </div>
       </article>
+
+      {social.available ? (
+        <section className="mt-6 space-y-4 lg:max-w-2xl">
+          <NewsReactionsBar newsId={id} reactions={social.reactions} canReact={Boolean(user)} />
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold">
+              Comentarios{social.comments.length > 0 ? ` (${social.comments.length})` : ""}
+            </h2>
+            <NewsComments newsId={id} comments={social.comments} loggedIn={Boolean(user)} />
+          </div>
+        </section>
+      ) : null}
 
       {canManage ? (
         <div className="mt-8 space-y-2 sm:mt-10 lg:flex lg:max-w-lg lg:gap-2 lg:space-y-0">

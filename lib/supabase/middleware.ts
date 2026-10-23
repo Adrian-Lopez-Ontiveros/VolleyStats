@@ -123,7 +123,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && (pathname === "/login" || pathname === "/registro")) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/noticias";
+    redirectUrl.pathname = "/hoy";
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }

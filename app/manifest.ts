@@ -6,7 +6,10 @@ export default function manifest(): MetadataRoute.Manifest {
     name: APP_NAME,
     short_name: APP_NAME,
     description: APP_DESCRIPTION,
-    start_url: "/noticias",
+    // «/» manda a los jugadores a Hoy y a los espectadores a Noticias.
+    // id fijo con el start_url anterior para que la app instalada siga siendo la misma.
+    id: "/noticias",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "any",

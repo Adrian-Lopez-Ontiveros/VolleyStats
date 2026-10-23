@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GameLeaderboard } from "@/components/game/leaderboard";
+import { LeaderboardTabs } from "@/components/game/leaderboard-tabs";
 import { PredictionsBoard, QuinielaStrip } from "@/components/game/predictions-board";
 import { RewardsDisclosure } from "@/components/game/rewards-grid";
 import { AppLogo } from "@/components/app-logo";
@@ -73,7 +73,12 @@ export default async function PredictionsPage() {
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Clasificación</h2>
-          <GameLeaderboard rows={data.leaderboard} userId={data.userId} />
+          <LeaderboardTabs
+            general={data.leaderboard}
+            monthly={data.monthlyLeaderboard}
+            monthLabel={data.monthLabel}
+            userId={data.userId}
+          />
         </section>
 
         <RewardsDisclosure

@@ -14,6 +14,7 @@ export const NOTIFY_PREF_KEYS = [
   "notify_news",
   "notify_match_reminder",
   "notify_team_stats",
+  "notify_streak_reminder",
 ] as const;
 export type NotifyPrefKey = (typeof NOTIFY_PREF_KEYS)[number];
 

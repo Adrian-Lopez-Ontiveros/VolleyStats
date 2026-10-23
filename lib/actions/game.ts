@@ -13,13 +13,17 @@ import {
 import { readUserProgress } from "@/lib/user-progress";
 import { involvesClubTeam } from "@/lib/federation/leagues";
 import {
+  DAILY_CHALLENGES,
   FRAME_NONE,
   isPredictionLocked,
   jornadaKeyFromIso,
   jornadaRangeLabel,
+  madridMonthKey,
+  madridMonthLabel,
   nearestJornadaKey,
 } from "@/lib/game";
 import { createClient } from "@/lib/supabase/server";
+import type { DailyChallengeStatus } from "@/lib/game";
 import type {
   CheckinResult,
   GameLeaderRow,
@@ -298,26 +302,44 @@ export async function loadGamePageData() {
     ...lastClosed,
   ];
 
-  const scoreByUser = new Map<string, { points: number; played: number; exact: number }>();
+  type Score = { points: number; played: number; exact: number };
+  const scoreByUser = new Map<string, Score>();
+  const monthScoreByUser = new Map<string, Score>();
+  const monthKey = madridMonthKey(new Date().toISOString());
   const fullScores = await supabase
     .from("match_predictions")
-    .select("user_id, is_correct, points")
+    .select("user_id, is_correct, points, resolved_at")
     .not("is_correct", "is", null);
   const scoreQuery =
     fullScores.error && missingPredictionScoreColumn(fullScores.error.message)
       ? await supabase
           .from("match_predictions")
-          .select("user_id, is_correct")
+          .select("user_id, is_correct, resolved_at")
           .not("is_correct", "is", null)
       : fullScores;
-  for (const row of scoreQuery.data ?? []) {
-    const pred = row as { user_id: string; is_correct: boolean | null; points?: number | null };
-    if (pred.is_correct == null) continue;
-    const current = scoreByUser.get(pred.user_id) ?? { points: 0, played: 0, exact: 0 };
+  const addScore = (
+    target: Map<string, Score>,
+    pred: { user_id: string; points?: number | null; is_correct: boolean | null }
+  ) => {
+    const current = target.get(pred.user_id) ?? { points: 0, played: 0, exact: 0 };
     current.played += 1;
     current.points += predictionTablePoints(pred);
     if (pred.points === 2) current.exact += 1;
-    scoreByUser.set(pred.user_id, current);
+    target.set(pred.user_id, current);
+  };
+  for (const row of scoreQuery.data ?? []) {
+    const pred = row as {
+      user_id: string;
+      is_correct: boolean | null;
+      points?: number | null;
+      resolved_at?: string | null;
+    };
+    if (pred.is_correct == null) continue;
+    addScore(scoreByUser, pred);
+    // Clasificación mensual: puntos de pronósticos resueltos en el mes natural actual (hora de Madrid).
+    if (pred.resolved_at && madridMonthKey(pred.resolved_at) === monthKey) {
+      addScore(monthScoreByUser, pred);
+    }
   }
 
   const profileById = new Map(
@@ -336,7 +358,7 @@ export async function loadGamePageData() {
   );
 
   const playerByUser = new Map<string, string>();
-  const rankedIds = [...scoreByUser.keys()];
+  const rankedIds = [...new Set([...scoreByUser.keys(), ...monthScoreByUser.keys()])];
   if (rankedIds.length > 0) {
     const { data: playerLinks } = await supabase
       .from("players")
@@ -349,29 +371,32 @@ export async function loadGamePageData() {
     }
   }
 
-  const leaderboard: GameLeaderRow[] = [...scoreByUser.entries()]
-    .sort(
-      ([userA, a], [userB, b]) =>
-        b.points - a.points ||
-        b.exact - a.exact ||
-        a.played - b.played ||
-        userA.localeCompare(userB)
-    )
-    .slice(0, 20)
-    .map(([userId, score]) => {
-      const profile = profileById.get(userId);
-      const look = cosmetics.get(userId);
-      return {
-        userId,
-        playerId: playerByUser.get(userId) ?? null,
-        name: profile?.full_name || "Jugador",
-        avatarUrl: profile?.avatar_url ?? null,
-        title: look?.equipped_title ?? null,
-        frame: look?.equipped_frame ?? null,
-        points: score.points,
-        played: score.played,
-      };
-    });
+  const rankRows = (scores: Map<string, Score>): GameLeaderRow[] =>
+    [...scores.entries()]
+      .sort(
+        ([userA, a], [userB, b]) =>
+          b.points - a.points ||
+          b.exact - a.exact ||
+          a.played - b.played ||
+          userA.localeCompare(userB)
+      )
+      .slice(0, 20)
+      .map(([userId, score]) => {
+        const profile = profileById.get(userId);
+        const look = cosmetics.get(userId);
+        return {
+          userId,
+          playerId: playerByUser.get(userId) ?? null,
+          name: profile?.full_name || "Jugador",
+          avatarUrl: profile?.avatar_url ?? null,
+          title: look?.equipped_title ?? null,
+          frame: look?.equipped_frame ?? null,
+          points: score.points,
+          played: score.played,
+        };
+      });
+  const leaderboard = rankRows(scoreByUser);
+  const monthlyLeaderboard = rankRows(monthScoreByUser);
 
   const community = new Map<string, { home: number; away: number }>();
   const { data: communityRows } = await supabase
@@ -406,7 +431,41 @@ export async function loadGamePageData() {
     jornadas: ordered,
     predictions: byMatch,
     leaderboard,
+    monthlyLeaderboard,
+    monthLabel: madridMonthLabel(new Date()),
     community,
     userId: session.id,
   };
+}
+
+/**
+ * Retos diarios (migración 046): evalúa, cobra la XP pendiente una vez al día y devuelve
+ * el estado. Sin la migración devuelve null y la UI muestra los retos como «próximamente».
+ */
+export async function loadDailyChallenges(): Promise<{
+  challenges: DailyChallengeStatus[];
+  xpGained: number;
+} | null> {
+  const session = await getSessionUser();
+  if (!session) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("game_daily_challenges");
+  if (error || !data) return null;
+  const raw = data as {
+    xp_gained?: number;
+    challenges?: { id: string; done: boolean; claimed: boolean; xp: number }[];
+  };
+  const byId = new Map((raw.challenges ?? []).map((row) => [row.id, row]));
+  const challenges = DAILY_CHALLENGES.map((def) => {
+    const row = byId.get(def.id);
+    return {
+      id: def.id,
+      label: def.label,
+      hint: def.hint,
+      xp: row?.xp ?? def.xp,
+      done: row?.done === true,
+      claimed: row?.claimed === true,
+    };
+  });
+  return { challenges, xpGained: raw.xp_gained ?? 0 };
 }

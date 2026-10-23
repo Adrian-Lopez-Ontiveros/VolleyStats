@@ -425,3 +425,63 @@ export const FRAME_CLASS: Record<string, string> = {
   frame_oro: "reward-frame reward-frame-oro",
   frame_escarlata: "reward-frame reward-frame-escarlata",
 };
+
+/** «2026-10» del mes natural en hora de Madrid. */
+export function madridMonthKey(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date(iso));
+  const year = parts.find((p) => p.type === "year")?.value ?? "0000";
+  const month = parts.find((p) => p.type === "month")?.value ?? "01";
+  return `${year}-${month}`;
+}
+
+/** «octubre de 2026» en hora de Madrid. */
+export function madridMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+/** Retos diarios (migración 046). La XP la concede game_daily_challenges() una vez al día. */
+export const DAILY_CHALLENGES = [
+  {
+    id: "entrar",
+    label: "Entra hoy en la app",
+    hint: "Se completa solo al abrir la app.",
+    xp: 10,
+  },
+  {
+    id: "predecir",
+    label: "Haz tus predicciones",
+    hint: "Pronostica todos los partidos abiertos de la jornada.",
+    xp: 20,
+  },
+  {
+    id: "comentar",
+    label: "Comenta una noticia",
+    hint: "Deja un comentario en cualquier noticia.",
+    xp: 10,
+  },
+  {
+    id: "exacto",
+    label: "Acierta un resultado exacto",
+    hint: "Cuenta si hoy se resuelve un pronóstico con el marcador exacto.",
+    xp: 30,
+  },
+] as const;
+
+export type DailyChallengeId = (typeof DAILY_CHALLENGES)[number]["id"];
+
+export type DailyChallengeStatus = {
+  id: DailyChallengeId;
+  label: string;
+  hint: string;
+  xp: number;
+  done: boolean;
+  claimed: boolean;
+};
