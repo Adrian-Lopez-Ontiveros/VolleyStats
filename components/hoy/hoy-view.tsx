@@ -103,6 +103,22 @@ function Teams({ match, size = "md" }: { match: HoyMatch; size?: "sm" | "md" }) 
   );
 }
 
+/** Dónde se completa cada reto. «Entrar» ya se cumple al abrir la app: sin enlace. */
+function challengeHref(id: string, data: HoyData): string | null {
+  switch (id) {
+    case "predecir":
+      return data.predictions?.firstMissingId
+        ? `/predicciones#pred-${data.predictions.firstMissingId}`
+        : "/predicciones";
+    case "comentar":
+      return data.news ? `/noticias/${data.news.id}#comentarios` : "/noticias";
+    case "exacto":
+      return "/predicciones";
+    default:
+      return null;
+  }
+}
+
 function ResultPill({ won }: { won: boolean | null }) {
   if (won == null) return null;
   return (
@@ -199,7 +215,11 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
           {data.predictions ? (
             <li>
               <Link
-                href="/predicciones"
+                href={
+                  data.predictions.firstMissingId
+                    ? `/predicciones#pred-${data.predictions.firstMissingId}`
+                    : "/predicciones"
+                }
                 className={cn(
                   "flex items-center gap-3 rounded-2xl border px-3 py-2.5",
                   data.predictions.missing > 0
@@ -218,24 +238,21 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
                     {data.predictions.open}
                   </span>
                 </span>
-                {data.predictions.missing > 0 ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Check className="h-4 w-4 text-emerald-600" />
-                )}
+                {data.predictions.missing > 0 ? null : <Check className="h-4 w-4 text-emerald-600" />}
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </Link>
             </li>
           ) : null}
           {challenges.map((challenge) => {
             const complete = challenge.claimed || challenge.done;
-            return (
-              <li
-                key={challenge.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-2xl border px-3 py-2.5",
-                  complete ? "bg-secondary/50" : "bg-card"
-                )}
-              >
+            const href = challengeHref(challenge.id, data);
+            const rowClass = cn(
+              "flex items-center gap-3 rounded-2xl border px-3 py-2.5",
+              complete ? "bg-secondary/50" : "bg-card",
+              href && "transition-colors hover:bg-secondary/70 active:scale-[0.99]"
+            );
+            const content = (
+              <>
                 <span
                   className={cn(
                     "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
@@ -261,6 +278,18 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
                 >
                   +{challenge.xp} XP
                 </span>
+                {href ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
+              </>
+            );
+            return (
+              <li key={challenge.id}>
+                {href ? (
+                  <Link href={href} className={rowClass}>
+                    {content}
+                  </Link>
+                ) : (
+                  <div className={rowClass}>{content}</div>
+                )}
               </li>
             );
           })}
@@ -378,7 +407,7 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
         >
           {data.news.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.news.coverUrl} alt="" className="aspect-[16/7] w-full object-cover" />
+            <img src={data.news.coverUrl} alt="" className="block h-auto w-full bg-primary" />
           ) : (
             <div className="aspect-[16/7] bg-gradient-to-br from-primary via-primary to-accent/70" />
           )}
