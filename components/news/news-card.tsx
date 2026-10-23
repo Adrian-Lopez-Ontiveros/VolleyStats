@@ -9,21 +9,25 @@ export function NewsCard({
   news,
   featured = false,
   className,
+  footer,
 }: {
   news: ClubNews;
   featured?: boolean;
   className?: string;
+  /** Reacciones y comentarios: van fuera del enlace para poder tocarse sin abrir la noticia. */
+  footer?: React.ReactNode;
 }) {
   const dateLabel = format(new Date(news.published_at), "d MMM yyyy", { locale: es });
 
   return (
-    <Link href={`/noticias/${news.id}`} className={cn("block h-full min-w-0 w-full max-w-full", className)}>
-      <article
-        className={cn(
-          "h-full min-w-0 overflow-hidden rounded-3xl border bg-card shadow-card transition-transform active:scale-[0.99]",
-          featured && "ring-1 ring-accent/30"
-        )}
-      >
+    <article
+      className={cn(
+        "flex h-full min-w-0 w-full max-w-full flex-col overflow-hidden rounded-3xl border bg-card shadow-card",
+        featured && "ring-1 ring-accent/30",
+        className
+      )}
+    >
+      <Link href={`/noticias/${news.id}`} className="block min-w-0 flex-1 transition-transform active:scale-[0.99]">
         <div className="min-w-0 bg-primary">
           {news.cover_url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -48,7 +52,8 @@ export function NewsCard({
             {newsExcerpt(news.body, featured ? 180 : 130)}
           </p>
         </div>
-      </article>
-    </Link>
+      </Link>
+      {footer}
+    </article>
   );
 }

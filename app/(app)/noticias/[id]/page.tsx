@@ -86,7 +86,7 @@ export default async function NewsDetailPage({
       {social.available ? (
         <section className="mt-6 space-y-4 lg:max-w-2xl">
           <NewsReactionsBar newsId={id} reactions={social.reactions} canReact={Boolean(user)} />
-          <div className="space-y-3">
+          <div id="comentarios" className="scroll-mt-24 space-y-3">
             <h2 className="text-lg font-semibold">
               Comentarios{social.comments.length > 0 ? ` (${social.comments.length})` : ""}
             </h2>
