@@ -15,9 +15,11 @@ import type { MatchWithTeams, Team } from "@/lib/types";
 export const MatchCard = memo(function MatchCard({
   match,
   href,
+  note,
 }: {
   match: MatchWithTeams;
   href?: string | null;
+  note?: string;
 }) {
   const status = matchStatusMeta(match.status);
   const upcoming = isNotStarted(match);
@@ -34,6 +36,9 @@ export const MatchCard = memo(function MatchCard({
         </p>
         <div className="flex flex-wrap justify-end gap-1">
           <MatchKindBadge match={match} round={match.federation_round} />
+          {note ? (
+            <Badge className="border-amber-700 bg-amber-400 text-amber-950">{note}</Badge>
+          ) : null}
           <Badge
             className={
               match.status === "live"

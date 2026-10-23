@@ -13,8 +13,11 @@ export function MatchViews({
   empty = "Todavía no hay partidos.",
   view: controlledView,
   onViewChange,
+  notes,
 }: {
   matches: MatchWithTeams[];
+  /** Etiqueta extra por id de partido (p. ej. «J18 adelantado»). */
+  notes?: Record<string, string>;
   linked?: boolean;
   empty?: string;
   view?: "list" | "calendar";
@@ -60,7 +63,12 @@ export function MatchViews({
       ) : (
         <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {matches.map((match) => (
-            <MatchCard key={match.id} match={match} href={linked ? undefined : null} />
+            <MatchCard
+              key={match.id}
+              match={match}
+              href={linked ? undefined : null}
+              note={notes?.[match.id]}
+            />
           ))}
         </div>
       )}

@@ -19,7 +19,13 @@ import {
   rememberPartidosScroll,
 } from "@/components/matches/partidos-return";
 import { getCategoryMeta, type TeamCategory } from "@/lib/categories";
-import { currentJornadaNumber, federationRoundNumber, standingsThroughJornada } from "@/lib/federation/rounds";
+import {
+  currentJornadaNumber,
+  federationRoundNumber,
+  isCategoryMatch,
+  jornadaViewMatches,
+  standingsThroughJornada,
+} from "@/lib/federation/rounds";
 import {
   buildPartidosHref,
   type PartidosListView,
@@ -76,6 +82,9 @@ export function MatchesBrowser({
   // Firmas que hemos escrito nosotros en la URL. Si el servidor responde tarde con
   // una de ellas (eco de una navegación antigua), no debe pisar la elección actual.
   const localPlaces = useRef(new Set<string>([placeSignature]));
+  // Jornada elegida a mano en esta visita (compartida entre ligas). undefined = no eligió.
+  // Solo vive en el componente: al salir de Partidos se pierde.
+  const manualJornada = useRef<number | null | undefined>(undefined);
   const leagueCategory = categoria === "all" ? null : categoria;
   const categoryMatches = useMemo(
     () =>
@@ -92,10 +101,13 @@ export function MatchesBrowser({
     () => matches.filter((match) => match.status === "live"),
     [matches]
   );
-  const visibleMatches = useMemo(() => {
-    if (jornada == null) return categoryMatches;
-    return categoryMatches.filter(
-      (match) => federationRoundNumber(match.federation_round) === jornada
+  // Al elegir jornada se ven también los partidos adelantados/atrasados que se juegan
+  // esa semana (marcados). La clasificación sigue contando por número de jornada.
+  const { matches: visibleMatches, notes: matchNotes } = useMemo(() => {
+    if (jornada == null) return { matches: categoryMatches, notes: {} as Record<string, string> };
+    return jornadaViewMatches(
+      categoryMatches.filter((match) => Boolean(match.is_federation)),
+      jornada
     );
   }, [categoryMatches, jornada]);
   const standings = useMemo(
@@ -154,7 +166,23 @@ export function MatchesBrowser({
     setPanel("catalog");
     if (next === categoria) return;
     setCategoria(next);
-    setJornada(next === "all" ? null : currentJornadaNumber(matches, next));
+    if (next === "all") {
+      setJornada(null);
+      return;
+    }
+    // Si ya eligió jornada a mano en esta visita, la otra liga abre en ese mismo número
+    // (ajustado a sus jornadas). Si no, la de esta semana. Al salir de Partidos se olvida.
+    const manual = manualJornada.current;
+    setJornada(
+      manual === undefined
+        ? currentJornadaNumber(matches, next)
+        : clampJornada(manual, leagueRounds(matches, next))
+    );
+  }
+
+  function chooseJornada(next: number | null) {
+    manualJornada.current = next;
+    setJornada(next);
   }
 
   const description =
@@ -231,9 +259,10 @@ export function MatchesBrowser({
         />
       ) : leagueCategory ? (
         <>
-          <JornadaBar value={jornada} onChange={setJornada} />
+          <JornadaBar value={jornada} onChange={chooseJornada} />
           <MatchViews
             matches={visibleMatches}
+            notes={matchNotes}
             view={listView}
             onViewChange={setListView}
             empty={
@@ -254,5 +283,25 @@ export function MatchesBrowser({
         <FmvLeagueSearch />
       )}
     </>
+  );
+}
+
+
+function leagueRounds(matches: readonly MatchWithTeams[], category: TeamCategory): number[] {
+  const rounds = new Set<number>();
+  for (const match of matches) {
+    if (!match.is_federation || !isCategoryMatch(match, category)) continue;
+    const round = federationRoundNumber(match.federation_round);
+    if (round != null) rounds.add(round);
+  }
+  return [...rounds].sort((a, b) => a - b);
+}
+
+/** Mismo número de jornada en otra liga; si no existe, la más cercana de esa liga. */
+function clampJornada(jornada: number | null, rounds: number[]): number | null {
+  if (jornada == null || rounds.length === 0) return jornada;
+  if (rounds.includes(jornada)) return jornada;
+  return rounds.reduce((best, round) =>
+    Math.abs(round - jornada) < Math.abs(best - jornada) ? round : best
   );
 }
