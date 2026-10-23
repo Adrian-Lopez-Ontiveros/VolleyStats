@@ -9,7 +9,7 @@ import { FRAME_CLASS } from "@/lib/game";
 import { cn, initials } from "@/lib/utils";
 
 const NAV_LOGOS: Record<string, { src: string; className: string }> = {
-  "/partidos": { src: "/partidos-logo.png", className: "h-8 w-9" },
+  "/partidos": { src: "/partidos-logo.png", className: "h-7 w-8" },
   "/liga": { src: "/liga-logo.png", className: "h-7 w-7" },
   "/predicciones": { src: "/predictions-logo.png", className: "h-7 w-7" },
 };
@@ -59,19 +59,22 @@ export function BottomNav({
                 href={item.href}
                 prefetch
                 className={cn(
-                  "flex flex-col items-center gap-0.5 py-2 font-medium",
+                  "flex flex-col items-center gap-1 py-2 font-medium leading-none",
                   columns >= 6 ? "text-[9px]" : "text-[11px]",
                   active ? "text-accent" : "text-muted-foreground"
                 )}
               >
-                {showProfile ? (
-                  <ProfilePhoto profile={profile} active={active} />
-                ) : logo ? (
-                  <AppLogo src={logo.src} className={logo.className} />
-                ) : (
-                  <Icon className={cn("h-5 w-5", active && "stroke-[2.4]")} />
-                )}
-                {item.label}
+                {/* Mismo hueco de 28 px para iconos, logos y foto: todo alineado a la misma altura. */}
+                <span className="flex h-7 w-8 items-center justify-center" aria-hidden>
+                  {showProfile ? (
+                    <ProfilePhoto profile={profile} active={active} />
+                  ) : logo ? (
+                    <AppLogo src={logo.src} className={logo.className} />
+                  ) : (
+                    <Icon className={cn("h-7 w-7", active ? "stroke-[2.2]" : "stroke-[1.8]")} />
+                  )}
+                </span>
+                <span className="truncate">{item.label}</span>
               </Link>
             </li>
           );
@@ -91,7 +94,7 @@ function ProfilePhoto({
   const frame = profile.frameId ? FRAME_CLASS[profile.frameId] : null;
   if (frame) {
     return (
-      <span className={cn("block h-6 w-6 shrink-0 rounded-full", frame)}>
+      <span className={cn("block h-7 w-7 shrink-0 rounded-full", frame)}>
         <Avatar className="h-full w-full">
           <AvatarImage src={profile.avatarUrl ?? undefined} alt="" />
           <AvatarFallback className="text-[9px]">{initials(profile.name)}</AvatarFallback>
@@ -103,7 +106,7 @@ function ProfilePhoto({
   return (
     <Avatar
       className={cn(
-        "h-6 w-6 ring-2 ring-offset-1 ring-offset-background",
+        "h-7 w-7 ring-2 ring-offset-1 ring-offset-background",
         active ? "ring-accent" : "ring-transparent"
       )}
     >

@@ -25,6 +25,7 @@ export async function addNewsComment(newsId: string, body: string) {
     .insert({ news_id: newsId, user_id: session.id, body: parsed.data });
   if (error) return { error: isMissingTable(error.message) ? MISSING_MIGRATION : error.message };
   revalidatePath(`/noticias/${newsId}`);
+  revalidatePath("/noticias");
   return { success: true };
 }
 
@@ -41,6 +42,7 @@ export async function updateNewsComment(newsId: string, commentId: string, body:
     .eq("user_id", session.id);
   if (error) return { error: error.message };
   revalidatePath(`/noticias/${newsId}`);
+  revalidatePath("/noticias");
   return { success: true };
 }
 
@@ -56,6 +58,7 @@ export async function deleteNewsComment(newsId: string, commentId: string) {
   if (error) return { error: error.message };
   if (!data || data.length === 0) return { error: "No puedes borrar este comentario" };
   revalidatePath(`/noticias/${newsId}`);
+  revalidatePath("/noticias");
   return { success: true };
 }
 
@@ -80,5 +83,6 @@ export async function toggleNewsReaction(newsId: string, emoji: string, on: bool
         .eq("emoji", emoji);
   if (error) return { error: isMissingTable(error.message) ? MISSING_MIGRATION : error.message };
   revalidatePath(`/noticias/${newsId}`);
+  revalidatePath("/noticias");
   return { success: true };
 }
