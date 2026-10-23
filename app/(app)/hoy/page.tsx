@@ -5,7 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { loadHoyData } from "@/lib/hoy";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Hoy" };
+export const metadata: Metadata = { title: "Inicio" };
 export const dynamic = "force-dynamic";
 
 export default async function HoyPage() {

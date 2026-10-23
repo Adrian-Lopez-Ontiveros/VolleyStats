@@ -25,7 +25,7 @@ const spectatorItems: AppNavItem[] = [
 ];
 
 const memberItems: AppNavItem[] = [
-  { href: "/hoy", label: "Hoy", icon: House },
+  { href: "/hoy", label: "Inicio", icon: House },
   { href: "/partidos", label: "Partidos", icon: Trophy },
   { href: "/liga", label: "Liga", icon: Medal },
   { href: "/predicciones", label: "Predicciones", icon: Target },
@@ -57,7 +57,7 @@ export function getDesktopNavItems({
   if (isGuest) return spectatorItems;
 
   return [
-    { href: "/hoy", label: "Hoy", icon: House },
+    { href: "/hoy", label: "Inicio", icon: House },
     { href: "/noticias", label: "Noticias", icon: Newspaper },
     { href: "/partidos", label: "Partidos", icon: Trophy },
     { href: "/predicciones", label: "Predicciones", icon: Target },
