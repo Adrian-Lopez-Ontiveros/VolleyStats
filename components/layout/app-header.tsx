@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Flame } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { DesktopNav } from "@/components/layout/desktop-nav";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -13,13 +12,11 @@ export function AppHeader({
   isAdmin,
   isCoach = false,
   isGuest = false,
-  streak = 0,
 }: {
   user: SessionUser | null;
   isAdmin: boolean;
   isCoach?: boolean;
   isGuest?: boolean;
-  streak?: number;
 }) {
   return (
     <header className="sticky top-0 z-30 border-b bg-background/90 pt-safe backdrop-blur">
@@ -35,17 +32,6 @@ export function AppHeader({
         </Link>
         <DesktopNav isAdmin={isAdmin} isCoach={isCoach} isGuest={isGuest} />
         <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
-          {user ? (
-            <Link
-              href="/predicciones"
-              aria-label={`Racha de ${streak} ${streak === 1 ? "día" : "días"}`}
-              title="Racha de días"
-              className="flex items-center gap-1 rounded-full bg-orange-50 px-2 py-1 text-xs font-bold tabular-nums text-orange-800 dark:bg-orange-500/15 dark:text-orange-200 sm:mr-1 sm:px-2.5"
-            >
-              <Flame className="h-3.5 w-3.5" />
-              {streak}
-            </Link>
-          ) : null}
           <ThemeToggle />
           {user ? (
             <UserMenu user={user} />

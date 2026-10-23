@@ -44,7 +44,6 @@ export default async function AppLayout({
         isAdmin={isAdmin}
         isCoach={isCoach}
         isGuest={isGuest}
-        streak={checkin?.streak ?? 0}
       />
       <main className="app-shell pb-28 pt-5 lg:pb-10 lg:pt-8">{children}</main>
       <BottomNav
