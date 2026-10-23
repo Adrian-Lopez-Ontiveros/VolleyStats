@@ -24,7 +24,7 @@ export function AppHeader({
   return (
     <header className="sticky top-0 z-30 border-b bg-background/90 pt-safe backdrop-blur">
       <div className="app-shell flex h-16 items-center gap-4 lg:h-[4.25rem]">
-        <Link href="/noticias" className="flex min-w-0 shrink-0 items-center gap-2.5">
+        <Link href={user ? "/hoy" : "/noticias"} className="flex min-w-0 shrink-0 items-center gap-2.5">
           <BrandMark className="h-12 w-12 md:h-14 md:w-14" />
           <div className="min-w-0 leading-tight">
             <p className="truncate text-sm font-bold tracking-tight md:text-base">{APP_NAME}</p>
