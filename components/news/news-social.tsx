@@ -67,7 +67,7 @@ export function NewsReactionsBar({
             "inline-flex items-center rounded-full border bg-card font-semibold tabular-nums shadow-card transition-colors",
             compact ? "h-8 gap-1 px-2 text-xs" : "h-9 gap-1.5 px-3 text-sm",
             item.mine
-              ? "border-primary/60 bg-primary/10 text-primary"
+              ? "border-primary/60 bg-primary/10 text-primary dark:border-accent/60 dark:bg-accent/15 dark:text-accent"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -243,7 +243,7 @@ export function NewsCardSocial({
           aria-expanded={open}
           className={cn(
             "inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold transition-colors",
-            open ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+            open ? "bg-primary/10 text-primary dark:bg-accent/15 dark:text-accent" : "text-muted-foreground hover:text-foreground"
           )}
         >
           <MessageCircle className="h-4 w-4" />

@@ -26,6 +26,7 @@ export async function addNewsComment(newsId: string, body: string) {
   if (error) return { error: isMissingTable(error.message) ? MISSING_MIGRATION : error.message };
   revalidatePath(`/noticias/${newsId}`);
   revalidatePath("/noticias");
+  revalidatePath("/hoy");
   return { success: true };
 }
 
@@ -43,6 +44,7 @@ export async function updateNewsComment(newsId: string, commentId: string, body:
   if (error) return { error: error.message };
   revalidatePath(`/noticias/${newsId}`);
   revalidatePath("/noticias");
+  revalidatePath("/hoy");
   return { success: true };
 }
 
@@ -59,6 +61,7 @@ export async function deleteNewsComment(newsId: string, commentId: string) {
   if (!data || data.length === 0) return { error: "No puedes borrar este comentario" };
   revalidatePath(`/noticias/${newsId}`);
   revalidatePath("/noticias");
+  revalidatePath("/hoy");
   return { success: true };
 }
 
@@ -84,5 +87,6 @@ export async function toggleNewsReaction(newsId: string, emoji: string, on: bool
   if (error) return { error: isMissingTable(error.message) ? MISSING_MIGRATION : error.message };
   revalidatePath(`/noticias/${newsId}`);
   revalidatePath("/noticias");
+  revalidatePath("/hoy");
   return { success: true };
 }
