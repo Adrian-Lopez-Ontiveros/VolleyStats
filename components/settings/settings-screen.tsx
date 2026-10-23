@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  Flame,
   Info,
   KeyRound,
   LogOut,
@@ -45,6 +46,7 @@ export type NotifyPrefs = {
   notify_news: boolean;
   notify_match_reminder: boolean;
   notify_team_stats: boolean;
+  notify_streak_reminder: boolean;
 };
 
 type ThemeMeta = {
@@ -115,6 +117,12 @@ const PREF_ROWS: {
     title: "Estadísticas de mi equipo",
     description: "Te avisamos cuando se suban las estadísticas de un partido de tu equipo",
     icon: <BarChart3 className="h-4 w-4" />,
+  },
+  {
+    key: "notify_streak_reminder",
+    title: "Aviso de racha",
+    description: "Hacia las 21:00, si aún no has entrado y vas a perder tu racha",
+    icon: <Flame className="h-4 w-4" />,
   },
 ];
 

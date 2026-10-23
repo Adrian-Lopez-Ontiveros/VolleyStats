@@ -187,7 +187,8 @@ export async function loginAction(
   store.delete(SPECTATOR_COOKIE);
 
   revalidatePath("/", "layout");
-  redirect("/noticias");
+  // Los jugadores entran por «Hoy»; los espectadores, por Noticias.
+  redirect("/hoy");
 }
 
 export async function enterAsSpectator() {
