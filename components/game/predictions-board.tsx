@@ -77,14 +77,15 @@ export function PredictionsBoard({
             ) : null}
             <div className="space-y-3">
               {jornada.matches.map((match) => (
-                <PredictionMatch
-                  key={match.id}
-                  match={match}
-                  prediction={predictions[match.id] ?? null}
-                  split={community[match.id] ?? { home: 0, away: 0 }}
-                  canPredict={jornada.canPredict}
-                  now={now}
-                />
+                <div key={match.id} id={`pred-${match.id}`} className="scroll-mt-24">
+                  <PredictionMatch
+                    match={match}
+                    prediction={predictions[match.id] ?? null}
+                    split={community[match.id] ?? { home: 0, away: 0 }}
+                    canPredict={jornada.canPredict}
+                    now={now}
+                  />
+                </div>
               ))}
             </div>
           </section>
