@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/noticias";
+  const raw = searchParams.get("next");
+  // Solo rutas internas; por defecto, «Inicio».
+  const next = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/hoy";
 
   if (code) {
     const supabase = await createClient();
