@@ -18,6 +18,7 @@ export type AppNavItem = {
 };
 
 const spectatorItems: AppNavItem[] = [
+  { href: "/hoy", label: "Inicio", icon: House },
   { href: "/noticias", label: "Noticias", icon: Newspaper },
   { href: "/partidos", label: "Partidos", icon: Trophy },
   { href: "/liga", label: "Liga", icon: Medal },

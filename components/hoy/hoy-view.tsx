@@ -153,9 +153,10 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
         <div className="min-w-0">
           <p className="text-[13px] font-medium text-muted-foreground first-letter:uppercase">{today}</p>
           <h1 className="text-2xl font-black leading-tight tracking-tight text-foreground">
-            {greeting(now)}, {data.firstName}
+            {greeting(now)}{data.isGuest ? "" : `, ${data.firstName}`}
           </h1>
         </div>
+        {data.isGuest ? null : (
         <div className="flex shrink-0 flex-col items-center rounded-2xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-orange-700 dark:border-orange-400/30 dark:bg-orange-500/15 dark:text-orange-200">
           <span className="flex items-center gap-1 text-xl font-black tabular-nums">
             <Flame className="h-5 w-5" aria-hidden />
@@ -165,6 +166,7 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
             {data.streak === 1 ? "día seguido" : "días seguidos"}
           </span>
         </div>
+        )}
       </header>
 
       {/* Próximo partido */}
@@ -207,7 +209,22 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
         )}
       </Block>
 
-      {/* Pendiente hoy */}
+      {/* Pendiente hoy (solo con cuenta) */}
+      {data.isGuest ? (
+        <Link
+          href="/login"
+          className="flex items-center gap-3 rounded-3xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-950 dark:border-orange-400/40 dark:bg-orange-500/15 dark:text-orange-50"
+        >
+          <Target className="h-5 w-5 shrink-0 text-orange-700 dark:text-orange-200" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">¿Eres del club?</span>
+            <span className="block text-xs text-orange-900/80 dark:text-orange-100/80">
+              Entra con tu cuenta para predicciones, retos diarios y tu racha.
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+        </Link>
+      ) : (
       <Block
         title={pendingCount > 0 ? `Pendiente hoy · ${pendingCount}` : "Pendiente hoy"}
         icon={<Target className="h-4 w-4" />}
@@ -303,10 +320,13 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
           </p>
         ) : null}
       </Block>
+      )}
 
       {/* Última noticia */}
       {data.news ? (
-        <article className="overflow-hidden rounded-3xl border bg-card shadow-card">
+        // En escritorio, mismo tamaño que una tarjeta de la rejilla de /noticias (max-w-5xl, 2 columnas).
+        <div className="grid min-w-0 grid-cols-1 gap-5 lg:mx-auto lg:max-w-5xl lg:grid-cols-2">
+        <article className="min-w-0 overflow-hidden rounded-3xl border bg-card shadow-card">
           <Link href={`/noticias/${data.news.id}`} className="block">
             {data.news.coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -323,7 +343,7 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
             </div>
           </Link>
           {data.news.social ? (
-            <NewsCardSocial newsId={data.news.id} social={data.news.social} loggedIn />
+            <NewsCardSocial newsId={data.news.id} social={data.news.social} loggedIn={!data.isGuest} />
           ) : null}
 
       {/* Último partido */}
@@ -393,7 +413,9 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
           ) : null}
           {data.clubResults.length > 0 ? (
             <div className={cn(data.standing && "mt-3")}>
-              <p className="mb-1.5 text-xs font-semibold text-muted-foreground">El resto del club ese fin de semana</p>
+              <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
+                {data.isGuest ? "Resultados del club el último fin de semana" : "El resto del club ese fin de semana"}
+              </p>
               <ul className="divide-y rounded-2xl border">
                 {data.clubResults.map((match) => {
                   const clubHome = match.home.isClub;
@@ -423,6 +445,7 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
       ) : null}
 
         </article>
+        </div>
       ) : null}
     </div>
   );
