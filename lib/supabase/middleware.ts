@@ -22,7 +22,7 @@ const STAFF_PREFIXES = [
   "/comparar",
 ];
 
-const SPECTATOR_PREFIXES = ["/partidos", "/liga", "/equipos", "/jugadores", "/noticias"];
+const SPECTATOR_PREFIXES = ["/hoy", "/partidos", "/liga", "/equipos", "/jugadores", "/noticias"];
 const SPECTATOR_COOKIE = "fuenla_spectator";
 
 function isPublicPath(pathname: string) {
@@ -111,7 +111,26 @@ export async function updateSession(request: NextRequest) {
 
   const isGuest = request.cookies.get(SPECTATOR_COOKIE)?.value === "1";
 
-  if (!user && !isPublicPath(pathname) && pathname !== "/") {
+  // Entrada por la raíz (PWA, enlace a la web): sin sesión se entra como espectador
+  // y todo el mundo aterriza en «Inicio». Los enlaces profundos no se tocan.
+  if (pathname === "/" || (pathname === "/hoy" && !user && !isGuest)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/hoy";
+    const response = NextResponse.redirect(redirectUrl);
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+    if (!user && !isGuest) {
+      response.cookies.set(SPECTATOR_COOKIE, "1", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 180,
+      });
+    }
+    return response;
+  }
+
+  if (!user && !isPublicPath(pathname)) {
     if (isGuest && isSpectatorPath(pathname) && !isStaffPath(pathname) && !isAdminOnlyPath(pathname)) {
       return supabaseResponse;
     }
@@ -142,7 +161,7 @@ export async function updateSession(request: NextRequest) {
 
     if (!allowed) {
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/noticias";
+      redirectUrl.pathname = "/hoy";
       redirectUrl.search = "";
       return NextResponse.redirect(redirectUrl);
     }

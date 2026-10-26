@@ -242,3 +242,73 @@ function startOfMadridDay(now: Date) {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d) - 2 * 3600_000);
 }
+
+/**
+ * «Inicio» para espectadores (sin sesión): solo datos públicos del club. Nada de racha,
+ * retos, predicciones ni estadísticas personales.
+ */
+export async function loadSpectatorHoyData(supabase: SupabaseClient): Promise<HoyData> {
+  const now = new Date();
+  const [matchesResult, newsResult] = await Promise.all([
+    getMatchesList(),
+    supabase
+      .from("news")
+      .select(NEWS_SELECT as "*")
+      .lte("published_at", now.toISOString())
+      .order("published_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const clubMatches = ((matchesResult.data ?? []) as MatchWithTeams[])
+    .filter((match) => match.status !== "cancelled")
+    .filter(involvesClubTeam);
+
+  const nextRaw =
+    clubMatches.find(
+      (m) => m.status === "live" || (m.status === "scheduled" && new Date(m.scheduled_at) >= startOfMadridDay(now))
+    ) ?? null;
+  const lastClubFinished = [...clubMatches].reverse().find((m) => m.status === "finished");
+  const week = lastClubFinished ? madridWeekKey(lastClubFinished.scheduled_at) : null;
+  const clubResults = week
+    ? clubMatches
+        .filter((m) => m.status === "finished" && madridWeekKey(m.scheduled_at) === week)
+        .map((m) => toHoyMatch(m, null, now))
+    : [];
+
+  const news = newsResult.data as ClubNews | null;
+  const newsSocial = news
+    ? (
+        await loadNewsSocialMany(supabase, [{ id: news.id, isNewsAuthor: false }], {
+          userId: null,
+          isAdmin: false,
+        })
+      ).get(news.id) ?? null
+    : null;
+
+  return {
+    isGuest: true,
+    firstName: "",
+    streak: 0,
+    longestStreak: 0,
+    level: 1,
+    xp: 0,
+    teamName: null,
+    nextMatch: nextRaw ? toHoyMatch(nextRaw, null, now) : null,
+    predictions: null,
+    challenges: null,
+    challengesXpToday: 0,
+    lastMatch: null,
+    standing: null,
+    clubResults,
+    news: news
+      ? {
+          id: news.id,
+          title: news.title,
+          excerpt: newsPlainExcerpt(news.body, 110),
+          coverUrl: news.cover_url ?? null,
+          publishedAt: news.published_at,
+          social: newsSocial?.available ? newsSocial : null,
+        }
+      : null,
+  };
+}

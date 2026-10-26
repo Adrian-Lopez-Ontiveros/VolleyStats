@@ -187,7 +187,7 @@ export async function loginAction(
   store.delete(SPECTATOR_COOKIE);
 
   revalidatePath("/", "layout");
-  // Los jugadores entran por «Hoy»; los espectadores, por Noticias.
+  // Todo el mundo entra por «Inicio» (/hoy).
   redirect("/hoy");
 }
 
@@ -201,7 +201,7 @@ export async function enterAsSpectator() {
     maxAge: 60 * 60 * 24 * 180,
   });
   revalidatePath("/", "layout");
-  redirect("/noticias");
+  redirect("/hoy");
 }
 
 export async function logoutAction() {
@@ -210,7 +210,8 @@ export async function logoutAction() {
   const store = await cookies();
   store.delete(SPECTATOR_COOKIE);
   revalidatePath("/", "layout");
-  redirect("/login");
+  // Tras cerrar sesión se vuelve a «Inicio» como espectador (lo hace el middleware en «/»).
+  redirect("/");
 }
 
 export async function requestPasswordResetAction(
