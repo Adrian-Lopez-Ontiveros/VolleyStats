@@ -237,6 +237,6 @@ export async function requireMember() {
     if (session.profile.player) return session;
     return tryLinkPlayer(session);
   }
-  if (await isSpectatorGuest()) redirect("/noticias");
+  if (await isSpectatorGuest()) redirect("/hoy");
   redirect("/login");
 }

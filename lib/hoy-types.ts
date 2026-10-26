@@ -30,6 +30,8 @@ export type HoyMatch = {
 export type HoyStatLine = { label: string; value: number; average: number };
 
 export type HoyData = {
+  /** Espectador sin sesión: solo bloques públicos del club. */
+  isGuest?: boolean;
   firstName: string;
   streak: number;
   longestStreak: number;
