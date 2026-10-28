@@ -1,5 +1,6 @@
 import type { DailyChallengeStatus } from "@/lib/game";
 import type { NewsSocialData } from "@/lib/news-social";
+import type { ClubNews } from "@/lib/types";
 
 export type HoyTeamSide = {
   name: string;
@@ -64,6 +65,8 @@ export type HoyData = {
     excerpt: string;
     coverUrl: string | null;
     publishedAt: string;
+    /** Noticia completa, para pintar la misma NewsCard que /noticias. */
+    item?: ClubNews;
     /** Reacciones y comentarios; null si falta la migración 045. */
     social?: NewsSocialData | null;
   } | null;

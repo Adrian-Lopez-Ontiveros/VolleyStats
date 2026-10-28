@@ -230,6 +230,7 @@ export async function loadHoyData(user: SessionUser, supabase: SupabaseClient): 
           excerpt: newsPlainExcerpt(news.body, 110),
           coverUrl: news.cover_url ?? null,
           publishedAt: news.published_at,
+          item: news,
           social: newsSocial?.available ? newsSocial : null,
         }
       : null,
@@ -307,6 +308,7 @@ export async function loadSpectatorHoyData(supabase: SupabaseClient): Promise<Ho
           excerpt: newsPlainExcerpt(news.body, 110),
           coverUrl: news.cover_url ?? null,
           publishedAt: news.published_at,
+          item: news,
           social: newsSocial?.available ? newsSocial : null,
         }
       : null,

@@ -13,6 +13,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { Countdown } from "@/components/hoy/countdown";
+import { NewsCard } from "@/components/news/news-card";
 import { NewsCardSocial } from "@/components/news/news-social";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { DAILY_CHALLENGES } from "@/lib/game";
@@ -322,29 +323,43 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
       </Block>
       )}
 
-      {/* Última noticia */}
+      {/* Última noticia: misma tarjeta, ancho y proporción de imagen que la destacada de /noticias */}
       {data.news ? (
-        // En escritorio, mismo tamaño que una tarjeta de la rejilla de /noticias (max-w-5xl, 2 columnas).
-        <div className="grid min-w-0 grid-cols-1 gap-5 lg:mx-auto lg:max-w-5xl lg:grid-cols-2">
-        <article className="min-w-0 overflow-hidden rounded-3xl border bg-card shadow-card">
-          <Link href={`/noticias/${data.news.id}`} className="block">
-            {data.news.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.news.coverUrl} alt="" className="block h-auto w-full bg-primary" />
-            ) : (
-              <div className="aspect-[16/7] bg-gradient-to-br from-primary via-primary to-accent/70" />
-            )}
-            <div className="p-4">
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                <Newspaper className="h-3.5 w-3.5" /> Última noticia
-              </p>
-              <p className="mt-1 line-clamp-2 text-base font-black leading-tight text-foreground">{data.news.title}</p>
-              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{data.news.excerpt}</p>
-            </div>
-          </Link>
-          {data.news.social ? (
-            <NewsCardSocial newsId={data.news.id} social={data.news.social} loggedIn={!data.isGuest} />
-          ) : null}
+        <div className="mx-auto w-full min-w-0 max-w-5xl">
+          {data.news.item ? (
+            <NewsCard
+              news={data.news.item}
+              featured
+              footer={
+                data.news.social ? (
+                  <NewsCardSocial newsId={data.news.id} social={data.news.social} loggedIn={!data.isGuest} />
+                ) : null
+              }
+            />
+          ) : (
+            <article className="min-w-0 overflow-hidden rounded-3xl border bg-card shadow-card">
+              <Link href={`/noticias/${data.news.id}`} className="block">
+                {data.news.coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={data.news.coverUrl} alt="" className="block h-auto w-full bg-primary" />
+                ) : (
+                  <div className="aspect-[16/9] bg-gradient-to-br from-primary via-primary to-accent/70" />
+                )}
+                <div className="p-5">
+                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    <Newspaper className="h-3.5 w-3.5" /> Última noticia
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-2xl font-bold leading-tight text-foreground">{data.news.title}</p>
+                  <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{data.news.excerpt}</p>
+                </div>
+              </Link>
+              {data.news.social ? (
+                <NewsCardSocial newsId={data.news.id} social={data.news.social} loggedIn={!data.isGuest} />
+              ) : null}
+            </article>
+          )}
+        </div>
+      ) : null}
 
       {/* Último partido */}
       {data.lastMatch ? (
@@ -442,10 +457,6 @@ export function HoyView({ data, now = new Date() }: { data: HoyData; now?: Date 
             </div>
           ) : null}
         </Block>
-      ) : null}
-
-        </article>
-        </div>
       ) : null}
     </div>
   );
