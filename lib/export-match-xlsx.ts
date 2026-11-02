@@ -59,47 +59,60 @@ const COL = {
   atkCont: 9,
   atkErr: 10,
   atkAtt: 11,
-  atkEff: 12,
-  srvAce: 13,
-  srvIn: 14,
-  srvErr: 15,
-  srvAtt: 16,
-  srvPct: 17,
-  blkPt: 18,
-  blkCont: 19,
-  blkTouch: 20,
-  blkErr: 21,
-  blkAtt: 22,
-  blkEff: 23,
-  recG: 24,
-  recM: 25,
-  recB: 26,
-  recE: 27,
-  recT: 28,
-  recAvg: 29,
-  recGoodPct: 30,
-  recBadPct: 31,
-  defG: 32,
-  defM: 33,
-  defB: 34,
-  defE: 35,
-  defT: 36,
-  defAvg: 37,
-  defGoodPct: 38,
-  defBadPct: 39,
-  blkOut: 40,
+  atkKill: 12,
+  atkEff: 13,
+  atkEfi: 14,
+  srvAce: 15,
+  srvIn: 16,
+  srvErr: 17,
+  srvAtt: 18,
+  srvAcePct: 19,
+  srvPct: 20,
+  srvErrPct: 21,
+  blkPt: 22,
+  blkCont: 23,
+  blkTouch: 24,
+  blkErr: 25,
+  blkAtt: 26,
+  blkEff: 27,
+  recG: 28,
+  recM: 29,
+  recB: 30,
+  recE: 31,
+  recT: 32,
+  recAvg: 33,
+  recPerf: 34,
+  recGoodPct: 35,
+  recBadPct: 36,
+  defG: 37,
+  defM: 38,
+  defB: 39,
+  defE: 40,
+  defT: 41,
+  defAvg: 42,
+  defPerf: 43,
+  defGoodPct: 44,
+  defBadPct: 45,
+  errSrv: 46,
+  errAtk: 47,
+  errRec: 48,
+  errDef: 49,
+  errBlk: 50,
+  errOther: 51,
+  blkOut: 52,
 } as const;
 
 const LAST_COL = COL.blkOut;
 
 const GROUPS: { title: string; fill: string; font: string; start: number; end: number }[] = [
   { title: "JUGADOR", fill: NAVY, font: WHITE, start: 1, end: 7 },
-  { title: "ATAQUE", fill: ORANGE, font: NAVY, start: 8, end: 12 },
-  { title: "SAQUE", fill: VIOLET, font: WHITE, start: 13, end: 17 },
-  { title: "BLOQUEO", fill: CYAN, font: NAVY, start: 18, end: 23 },
-  { title: "RECEPCIÓN", fill: SKY, font: WHITE, start: 24, end: 31 },
-  { title: "DEFENSA", fill: SLATE_700, font: WHITE, start: 32, end: 39 },
-  { title: "BLOCK-OUT", fill: ROSE, font: WHITE, start: 40, end: 40 },
+  { title: "ATAQUE", fill: ORANGE, font: NAVY, start: 8, end: 14 },
+  { title: "SAQUE", fill: VIOLET, font: WHITE, start: 15, end: 21 },
+  { title: "BLOQUEO", fill: CYAN, font: NAVY, start: 22, end: 27 },
+  { title: "RECEPCIÓN", fill: SKY, font: WHITE, start: 28, end: 36 },
+  { title: "DEFENSA", fill: SLATE_700, font: WHITE, start: 37, end: 45 },
+  { title: "ERRORES POR TIPO", fill: ROSE_SOFT, font: NAVY, start: 46, end: 51 },
+  { title: "BLOCK-OUT", fill: ROSE, font: WHITE, start: 52, end: 52 },
 ];
 
 const SUBHEADERS = [
@@ -114,34 +127,46 @@ const SUBHEADERS = [
   "Cont",
   "Err",
   "Int",
-  "Eff %",
+  "% Pto",
+  "% Sin err",
+  "Eficiencia",
   "Ace",
   "Dentro",
   "Err",
   "Int",
-  "%",
+  "% Ace",
+  "% En juego",
+  "% Err",
   "Punto",
   "Cont",
   "Toque",
   "Err",
   "Int",
-  "Eff %",
-  "Buena",
-  "Media",
-  "Mala",
+  "% Útil",
+  "B",
+  "M",
+  "Ma",
   "Err",
   "Total",
-  "Media",
-  "% buenas",
-  "% malas",
-  "Buena",
-  "Media",
-  "Mala",
+  "Media 0-3",
+  "% Perfecta",
+  "% Positiva",
+  "% Negativa",
+  "B",
+  "M",
+  "Ma",
   "Err",
   "Total",
-  "Media",
-  "% buenas",
-  "% malas",
+  "Media 0-3",
+  "% Perfecta",
+  "% Positiva",
+  "% Negativa",
+  "Saque",
+  "Ataque",
+  "Recep.",
+  "Def.",
+  "Bloq.",
+  "Otros",
   "Veces",
 ];
 
@@ -217,6 +242,15 @@ function rateFill(rate: number | null) {
   if (rate >= 0.8) return EMERALD_SOFT;
   if (rate >= 0.65) return LIME_SOFT;
   if (rate >= 0.5) return AMBER_SOFT;
+  return ROSE_SOFT;
+}
+
+/** Eficiencia (P−E)/I: ≥40 % muy buena, ≥25 % buena, ≥10 % justa. */
+function efiFill(rate: number | null) {
+  if (rate === null) return WHITE;
+  if (rate >= 0.4) return EMERALD_SOFT;
+  if (rate >= 0.25) return LIME_SOFT;
+  if (rate >= 0.1) return AMBER_SOFT;
   return ROSE_SOFT;
 }
 
@@ -460,78 +494,102 @@ function writePlayerRow(
   const nameFill =
     !isTotal && player.position === "libero" ? SKY_SOFT : baseFill;
 
-  const values: ExcelJS.CellValue[] = [
-    index === "total" || index === "pct" ? "" : player.jersey ?? "",
-    index === "pct" ? "% por tipo" : player.name,
-    index === "pct" ? "" : player.positionLabel,
-    index === "pct" ? "" : player.setsPlayed || "",
-    index === "pct" ? "" : player.points,
-    index === "pct" ? "" : player.errors,
-    index === "pct" ? "" : player.contribution,
-    index === "pct" ? rateValue(player.attack.attempts ? player.attack.kills / player.attack.attempts : null) : player.attack.kills,
-    index === "pct" ? rateValue(player.attack.attempts ? player.attack.continuations / player.attack.attempts : null) : player.attack.continuations,
-    index === "pct" ? rateValue(player.attack.attempts ? player.attack.errors / player.attack.attempts : null) : player.attack.errors,
-    index === "pct" ? "" : player.attack.attempts,
-    rateValue(player.attack.efficiency),
-    index === "pct" ? rateValue(player.serve.attempts ? player.serve.aces / player.serve.attempts : null) : player.serve.aces,
-    index === "pct" ? rateValue(player.serve.attempts ? player.serve.inPlay / player.serve.attempts : null) : player.serve.inPlay,
-    index === "pct" ? rateValue(player.serve.attempts ? player.serve.errors / player.serve.attempts : null) : player.serve.errors,
-    index === "pct" ? "" : player.serve.attempts,
-    rateValue(player.serve.successRate),
-    index === "pct" ? rateValue(player.block.attempts ? player.block.points / player.block.attempts : null) : player.block.points,
-    index === "pct" ? rateValue(player.block.attempts ? player.block.continuations / player.block.attempts : null) : player.block.continuations,
-    index === "pct" ? rateValue(player.block.attempts ? player.block.touches / player.block.attempts : null) : player.block.touches,
-    index === "pct" ? rateValue(player.block.attempts ? player.block.errors / player.block.attempts : null) : player.block.errors,
-    index === "pct" ? "" : player.block.attempts,
-    rateValue(player.block.efficiency),
-    index === "pct" ? rateValue(player.reception.total ? player.reception.good / player.reception.total : null) : player.reception.good,
-    index === "pct" ? rateValue(player.reception.total ? player.reception.medium / player.reception.total : null) : player.reception.medium,
-    index === "pct" ? rateValue(player.reception.total ? player.reception.bad / player.reception.total : null) : player.reception.bad,
-    index === "pct" ? rateValue(player.reception.total ? player.reception.errors / player.reception.total : null) : player.reception.errors,
-    index === "pct" ? "" : player.reception.total,
-    index === "pct" ? "" : player.receptionAverage ?? "",
-    rateValue(player.reception.positiveRate),
-    rateValue(player.reception.negativeRate),
-    index === "pct" ? rateValue(player.defense.total ? player.defense.good / player.defense.total : null) : player.defense.good,
-    index === "pct" ? rateValue(player.defense.total ? player.defense.medium / player.defense.total : null) : player.defense.medium,
-    index === "pct" ? rateValue(player.defense.total ? player.defense.bad / player.defense.total : null) : player.defense.bad,
-    index === "pct" ? rateValue(player.defense.total ? player.defense.errors / player.defense.total : null) : player.defense.errors,
-    index === "pct" ? "" : player.defense.total,
-    index === "pct" ? "" : player.defenseAverage ?? "",
-    rateValue(player.defense.positiveRate),
-    rateValue(player.defense.negativeRate),
-    index === "pct" ? "" : player.blockouts,
-  ];
+  const pct = index === "pct";
+  const share = (part: number, total: number) => rateValue(total ? part / total : null);
+  const otherErrors = Math.max(
+    0,
+    player.errors -
+      player.serve.errors -
+      player.attack.errors -
+      player.reception.errors -
+      player.defense.errors -
+      player.block.errors
+  );
+  const atkEfi = player.attack.attempts
+    ? (player.attack.kills - player.attack.errors) / player.attack.attempts
+    : null;
+  const byCol: Partial<Record<keyof typeof COL, ExcelJS.CellValue>> = {
+    num: isTotal ? "" : player.jersey ?? "",
+    name: pct ? "% por tipo" : player.name,
+    pos: pct ? "" : player.positionLabel,
+    sets: pct ? "" : player.setsPlayed || "",
+    pts: pct ? "" : player.points,
+    err: pct ? "" : player.errors,
+    bal: pct ? "" : player.contribution,
+    atkPts: pct ? share(player.attack.kills, player.attack.attempts) : player.attack.kills,
+    atkCont: pct ? share(player.attack.continuations, player.attack.attempts) : player.attack.continuations,
+    atkErr: pct ? share(player.attack.errors, player.attack.attempts) : player.attack.errors,
+    atkAtt: pct ? "" : player.attack.attempts,
+    atkKill: share(player.attack.kills, player.attack.attempts),
+    atkEff: rateValue(player.attack.efficiency),
+    atkEfi: rateValue(atkEfi),
+    srvAce: pct ? share(player.serve.aces, player.serve.attempts) : player.serve.aces,
+    srvIn: pct ? share(player.serve.inPlay, player.serve.attempts) : player.serve.inPlay,
+    srvErr: pct ? share(player.serve.errors, player.serve.attempts) : player.serve.errors,
+    srvAtt: pct ? "" : player.serve.attempts,
+    srvAcePct: share(player.serve.aces, player.serve.attempts),
+    srvPct: rateValue(player.serve.successRate),
+    srvErrPct: share(player.serve.errors, player.serve.attempts),
+    blkPt: pct ? share(player.block.points, player.block.attempts) : player.block.points,
+    blkCont: pct ? share(player.block.continuations, player.block.attempts) : player.block.continuations,
+    blkTouch: pct ? share(player.block.touches, player.block.attempts) : player.block.touches,
+    blkErr: pct ? share(player.block.errors, player.block.attempts) : player.block.errors,
+    blkAtt: pct ? "" : player.block.attempts,
+    blkEff: rateValue(player.block.efficiency),
+    recG: pct ? share(player.reception.good, player.reception.total) : player.reception.good,
+    recM: pct ? share(player.reception.medium, player.reception.total) : player.reception.medium,
+    recB: pct ? share(player.reception.bad, player.reception.total) : player.reception.bad,
+    recE: pct ? share(player.reception.errors, player.reception.total) : player.reception.errors,
+    recT: pct ? "" : player.reception.total,
+    recAvg: pct ? "" : player.receptionAverage ?? "",
+    recPerf: share(player.reception.good, player.reception.total),
+    recGoodPct: rateValue(player.reception.positiveRate),
+    recBadPct: rateValue(player.reception.negativeRate),
+    defG: pct ? share(player.defense.good, player.defense.total) : player.defense.good,
+    defM: pct ? share(player.defense.medium, player.defense.total) : player.defense.medium,
+    defB: pct ? share(player.defense.bad, player.defense.total) : player.defense.bad,
+    defE: pct ? share(player.defense.errors, player.defense.total) : player.defense.errors,
+    defT: pct ? "" : player.defense.total,
+    defAvg: pct ? "" : player.defenseAverage ?? "",
+    defPerf: share(player.defense.good, player.defense.total),
+    defGoodPct: rateValue(player.defense.positiveRate),
+    defBadPct: rateValue(player.defense.negativeRate),
+    errSrv: pct ? share(player.serve.errors, player.errors) : player.serve.errors,
+    errAtk: pct ? share(player.attack.errors, player.errors) : player.attack.errors,
+    errRec: pct ? share(player.reception.errors, player.errors) : player.reception.errors,
+    errDef: pct ? share(player.defense.errors, player.errors) : player.defense.errors,
+    errBlk: pct ? share(player.block.errors, player.errors) : player.block.errors,
+    errOther: pct ? share(otherErrors, player.errors) : otherErrors,
+    blkOut: pct ? "" : player.blockouts,
+  };
+  const values: ExcelJS.CellValue[] = [];
+  for (const [key, col] of Object.entries(COL) as [keyof typeof COL, number][]) {
+    values[col - 1] = byCol[key] ?? "";
+  }
 
   const pctCols = new Set<number>([
+    COL.atkKill,
     COL.atkEff,
+    COL.atkEfi,
+    COL.srvAcePct,
     COL.srvPct,
+    COL.srvErrPct,
     COL.blkEff,
+    COL.recPerf,
     COL.recGoodPct,
     COL.recBadPct,
+    COL.defPerf,
     COL.defGoodPct,
     COL.defBadPct,
   ]);
-  if (index === "pct") {
+  if (pct) {
     [
-      COL.atkPts,
-      COL.atkCont,
-      COL.atkErr,
-      COL.srvAce,
-      COL.srvIn,
-      COL.srvErr,
-      COL.blkPt,
-      COL.blkCont,
-      COL.blkTouch,
-      COL.blkErr,
-      COL.recG,
-      COL.recM,
-      COL.recB,
-      COL.recE,
-      COL.defG,
-      COL.defM,
-      COL.defB,
-      COL.defE,
+      COL.atkPts, COL.atkCont, COL.atkErr,
+      COL.srvAce, COL.srvIn, COL.srvErr,
+      COL.blkPt, COL.blkCont, COL.blkTouch, COL.blkErr,
+      COL.recG, COL.recM, COL.recB, COL.recE,
+      COL.defG, COL.defM, COL.defB, COL.defE,
+      COL.errSrv, COL.errAtk, COL.errRec, COL.errDef, COL.errBlk, COL.errOther,
     ].forEach((col) => pctCols.add(col));
   }
   const avgCols = new Set<number>([COL.recAvg, COL.defAvg]);
@@ -544,6 +602,10 @@ function writePlayerRow(
     if (!isTotal && typeof value === "number") {
       if (col === COL.bal) fill = contributionFill(player.contribution);
       if (col === COL.atkEff) fill = rateFill(player.attack.efficiency);
+      if (col === COL.atkEfi) fill = efiFill(atkEfi);
+      if (col === COL.recPerf) fill = efiFill(player.reception.goodRate);
+      if (col === COL.defPerf) fill = efiFill(player.defense.goodRate);
+      if (col >= COL.errSrv && col <= COL.errOther && typeof value === "number" && value > 0) fill = ROSE_SOFT;
       if (col === COL.srvPct) fill = rateFill(player.serve.successRate);
       if (col === COL.blkEff) fill = rateFill(player.block.efficiency);
       if (col === COL.recGoodPct) fill = rateFill(player.reception.positiveRate);
@@ -584,17 +646,10 @@ function applyPlayerWidths(sheet: Worksheet) {
     6: 6,
     7: 6,
   };
-  for (let col = 8; col <= LAST_COL; col += 1) widths[col] = 7;
-  widths[COL.atkEff] = 8;
-  widths[COL.srvPct] = 8;
-  widths[COL.blkEff] = 8;
-  widths[COL.recAvg] = 8;
-  widths[COL.recGoodPct] = 10;
-  widths[COL.recBadPct] = 10;
-  widths[COL.defAvg] = 8;
-  widths[COL.defGoodPct] = 10;
-  widths[COL.defBadPct] = 10;
-  widths[COL.blkOut] = 8;
+  for (let col = 8; col <= LAST_COL; col += 1) {
+    const label = SUBHEADERS[col - 1] ?? "";
+    widths[col] = Math.max(6.5, Math.min(11, label.length + 2));
+  }
   for (const [col, width] of Object.entries(widths)) {
     sheet.getColumn(Number(col)).width = width;
   }
@@ -685,6 +740,127 @@ function clubMetricRows(report: MatchExcelReport) {
   ] as [string, number | string | null, "pct" | "bad" | "avg" | "text" | undefined][];
 }
 
+function otherErrorsOf(skills: TeamSkillTotals) {
+  return Math.max(
+    0,
+    skills.ownErrors -
+      skills.serve.errors -
+      skills.attack.errors -
+      skills.reception.errors -
+      skills.defense.errors -
+      skills.block.errors
+  );
+}
+
+function ratio(part: number, total: number) {
+  return total ? part / total : null;
+}
+
+type CompareRow = {
+  label: string;
+  pick: (skills: TeamSkillTotals) => number | null;
+  kind?: "pct" | "bad" | "avg" | "efi";
+  section?: string;
+};
+
+const COMPARE_ROWS: CompareRow[] = [
+  { section: "Puntos", label: "Puntos totales", pick: (s) => s.setPoints },
+  { label: "Puntos de ataque", pick: (s) => s.origins.attack },
+  { label: "Puntos de bloqueo", pick: (s) => s.origins.block },
+  { label: "Aces", pick: (s) => s.origins.ace },
+  { label: "Puntos por error del rival", pick: (s) => s.origins.opponentError },
+  { label: "Otros puntos", pick: (s) => s.origins.other },
+  { section: "Errores propios", label: "Errores propios (total)", pick: (s) => s.ownErrors },
+  { label: "Errores de saque", pick: (s) => s.serve.errors },
+  { label: "Errores de ataque", pick: (s) => s.attack.errors },
+  { label: "Errores de recepción", pick: (s) => s.reception.errors },
+  { label: "Errores de defensa", pick: (s) => s.defense.errors },
+  { label: "Errores de bloqueo", pick: (s) => s.block.errors },
+  { label: "Otros errores", pick: (s) => otherErrorsOf(s) },
+  { label: "Block-outs sufridos", pick: (s) => s.blockouts },
+  { section: "Ataque", label: "Intentos de ataque", pick: (s) => s.attack.attempts },
+  { label: "% Punto en ataque", pick: (s) => ratio(s.attack.kills, s.attack.attempts), kind: "pct" },
+  { label: "% Ataque sin error", pick: (s) => s.attack.efficiency, kind: "pct" },
+  { label: "Eficiencia de ataque (P−E)/I", pick: (s) => ratio(s.attack.kills - s.attack.errors, s.attack.attempts), kind: "efi" },
+  { section: "Saque", label: "Saques", pick: (s) => s.serve.attempts },
+  { label: "% Ace", pick: (s) => ratio(s.serve.aces, s.serve.attempts), kind: "efi" },
+  { label: "% Saque en juego", pick: (s) => s.serve.successRate, kind: "pct" },
+  { label: "% Error de saque", pick: (s) => ratio(s.serve.errors, s.serve.attempts), kind: "bad" },
+  { section: "Bloqueo", label: "Acciones de bloqueo", pick: (s) => s.block.attempts },
+  { label: "% Bloqueo útil", pick: (s) => s.block.efficiency, kind: "pct" },
+  { section: "Recepción", label: "Recepciones", pick: (s) => s.reception.total },
+  { label: "% Recepción perfecta", pick: (s) => s.reception.goodRate, kind: "efi" },
+  { label: "% Recepción positiva", pick: (s) => s.reception.positiveRate, kind: "pct" },
+  { label: "% Recepción negativa", pick: (s) => s.reception.negativeRate, kind: "bad" },
+  { label: "Media recepción (0-3)", pick: (s) => s.receptionAverage, kind: "avg" },
+  { section: "Defensa", label: "Defensas", pick: (s) => s.defense.total },
+  { label: "% Defensa positiva", pick: (s) => s.defense.positiveRate, kind: "pct" },
+  { label: "Media defensa (0-3)", pick: (s) => s.defenseAverage, kind: "avg" },
+  { section: "Fases de juego", label: "% Puntos recibiendo (side-out)", pick: (s) => s.possession.sideOut.rate, kind: "pct" },
+  { label: "% Puntos con el saque (break)", pick: (s) => s.possession.breakPoint.rate, kind: "pct" },
+];
+
+function compareCell(sheet: Worksheet, row: number, col: number, value: number | null, kind: CompareRow["kind"], strong = false) {
+  const isRate = kind === "pct" || kind === "bad" || kind === "efi";
+  paint(sheet, row, col, value === null ? "" : value, {
+    fill:
+      kind === "pct"
+        ? rateFill(value)
+        : kind === "bad"
+          ? rateFill(value === null ? null : 1 - value)
+          : kind === "efi"
+            ? efiFill(value)
+            : kind === "avg"
+              ? avgFill(value)
+              : WHITE,
+    bold: strong,
+    numFmt: isRate ? "0%" : kind === "avg" ? "0.00" : "0",
+  });
+}
+
+function writeComparison(sheet: Worksheet, report: MatchExcelReport, startRow: number) {
+  const club = clubSkills(report);
+  const opp = report.clubIsHome ? report.away : report.home;
+  let row = startRow;
+  paint(sheet, row, 1, `Comparativa · ${report.clubLabel} vs ${report.opponentLabel}`, {
+    fill: NAVY,
+    color: WHITE,
+    bold: true,
+    align: "left",
+  });
+  paint(sheet, row, 2, report.clubLabel, { fill: NAVY, color: ORANGE, bold: true });
+  paint(sheet, row, 3, report.opponentLabel, { fill: NAVY, color: WHITE, bold: true });
+  paint(sheet, row, 4, "Dif.", { fill: NAVY, color: WHITE, bold: true });
+  row += 1;
+  for (const item of COMPARE_ROWS) {
+    if (item.section) {
+      merge(sheet, row, 1, row, 4);
+      paint(sheet, row, 1, item.section.toUpperCase(), {
+        fill: SLATE_700,
+        color: WHITE,
+        bold: true,
+        size: 9,
+        align: "left",
+      });
+      row += 1;
+    }
+    const a = item.pick(club);
+    const b = item.pick(opp);
+    paint(sheet, row, 1, item.label, { fill: SLATE_100, align: "left", bold: true, size: 10 });
+    compareCell(sheet, row, 2, a, item.kind, true);
+    compareCell(sheet, row, 3, b, item.kind);
+    const diff = a === null || b === null ? null : a - b;
+    const isRate = item.kind === "pct" || item.kind === "bad" || item.kind === "efi";
+    paint(sheet, row, 4, diff === null ? "" : diff, {
+      numFmt: isRate ? "+0%;-0%;0%" : item.kind === "avg" ? "+0.00;-0.00;0.00" : "+0;-0;0",
+      size: 9,
+      color: SLATE_500,
+    });
+    row += 1;
+  }
+  return row;
+}
+
 function writeResumen(workbook: Workbook, report: MatchExcelReport, charts: ChartPng[]) {
   const sheet = workbook.addWorksheet("Resumen", {
     properties: { tabColor: { argb: ORANGE } },
@@ -770,6 +946,9 @@ function writeResumen(workbook: Workbook, report: MatchExcelReport, charts: Char
   }
 
   row += 1;
+  row = writeComparison(sheet, report, row);
+
+  row += 1;
   paint(sheet, row, 1, `Destacados · ${report.clubLabel}`, {
     fill: NAVY,
     color: WHITE,
@@ -849,57 +1028,129 @@ function writeTeamPlayersSheet(
 
 function writeSetsSheet(workbook: Workbook, report: MatchExcelReport) {
   const sheet = workbook.addWorksheet("Sets", { properties: { tabColor: { argb: CYAN } } });
-  setupSheet(sheet, 2, 1);
-  sheet.getColumn(1).width = 28;
-  for (let col = 2; col <= 8; col += 1) sheet.getColumn(col).width = 14;
+  setupSheet(sheet, 1, 1);
+  sheet.getColumn(1).width = 30;
+  for (let col = 2; col <= report.sets.length + 3; col += 1) sheet.getColumn(col).width = 15;
 
-  const headers = ["Dato", ...report.sets.map((set) => `Set ${set.setNumber}`), "Partido"];
+  const clubScore = (set: { home: number; away: number }) =>
+    report.clubIsHome ? `${set.home}-${set.away}` : `${set.away}-${set.home}`;
+  const headers = [
+    `Dato · ${report.clubLabel}`,
+    ...report.sets.map((set) => `Set ${set.setNumber} (${clubScore(set)})`),
+    `Partido ${report.clubLabel}`,
+    `Partido ${report.opponentLabel}`,
+  ];
   headers.forEach((label, index) => {
-    paint(sheet, 1, index + 1, label, { fill: NAVY, color: WHITE, bold: true, size: 10 });
+    paint(sheet, 1, index + 1, label, {
+      fill: NAVY,
+      color: WHITE,
+      bold: true,
+      size: 10,
+      align: index === 0 ? "left" : "center",
+    });
   });
+  sheet.getRow(1).height = 22;
 
   const rows: {
     label: string;
     pick: (skills: TeamSkillTotals) => number | null;
     pct?: boolean;
     invert?: boolean;
+    avg?: boolean;
   }[] = [
     { label: "Puntos", pick: (s) => s.setPoints },
-    { label: "Eff. ataque", pick: (s) => s.attack.efficiency, pct: true },
-    { label: "Ataques", pick: (s) => s.attack.attempts },
-    { label: "Acierto saque", pick: (s) => s.serve.successRate, pct: true },
-    { label: "Saques", pick: (s) => s.serve.attempts },
-    { label: "Eff. bloqueo", pick: (s) => s.block.efficiency, pct: true },
-    { label: "Bloqueos", pick: (s) => s.block.attempts },
-    { label: "Block-outs", pick: (s) => s.blockouts },
-    { label: "% buenas recepción", pick: (s) => s.reception.positiveRate, pct: true },
-    { label: "% malas recepción", pick: (s) => s.reception.negativeRate, pct: true, invert: true },
-    { label: "% buenas defensa", pick: (s) => s.defense.positiveRate, pct: true },
-    { label: "% malas defensa", pick: (s) => s.defense.negativeRate, pct: true, invert: true },
-    { label: "Puntos recibiendo", pick: (s) => s.possession.sideOut.rate, pct: true },
-    { label: "Puntos con el saque", pick: (s) => s.possession.breakPoint.rate, pct: true },
+    { label: "Puntos de ataque", pick: (s) => s.origins.attack },
+    { label: "Puntos de bloqueo", pick: (s) => s.origins.block },
+    { label: "Aces", pick: (s) => s.origins.ace },
+    { label: "Puntos por error rival", pick: (s) => s.origins.opponentError },
     { label: "Errores propios", pick: (s) => s.ownErrors },
+    { label: "  · de saque", pick: (s) => s.serve.errors },
+    { label: "  · de ataque", pick: (s) => s.attack.errors },
+    { label: "  · de recepción", pick: (s) => s.reception.errors },
+    { label: "  · de defensa", pick: (s) => s.defense.errors },
+    { label: "  · de bloqueo", pick: (s) => s.block.errors },
+    { label: "  · otros", pick: (s) => otherErrorsOf(s) },
+    { label: "Block-outs sufridos", pick: (s) => s.blockouts },
+    { label: "Ataques (intentos)", pick: (s) => s.attack.attempts },
+    { label: "% Punto en ataque", pick: (s) => ratio(s.attack.kills, s.attack.attempts), pct: true },
+    { label: "% Ataque sin error", pick: (s) => s.attack.efficiency, pct: true },
+    { label: "Eficiencia ataque (P−E)/I", pick: (s) => ratio(s.attack.kills - s.attack.errors, s.attack.attempts), pct: true },
+    { label: "Saques", pick: (s) => s.serve.attempts },
+    { label: "% Saque en juego", pick: (s) => s.serve.successRate, pct: true },
+    { label: "% Error de saque", pick: (s) => ratio(s.serve.errors, s.serve.attempts), pct: true, invert: true },
+    { label: "Bloqueos (acciones)", pick: (s) => s.block.attempts },
+    { label: "% Bloqueo útil", pick: (s) => s.block.efficiency, pct: true },
+    { label: "Recepciones", pick: (s) => s.reception.total },
+    { label: "% Recepción perfecta", pick: (s) => s.reception.goodRate, pct: true },
+    { label: "% Recepción positiva", pick: (s) => s.reception.positiveRate, pct: true },
+    { label: "% Recepción negativa", pick: (s) => s.reception.negativeRate, pct: true, invert: true },
+    { label: "Media recepción (0-3)", pick: (s) => s.receptionAverage, avg: true },
+    { label: "% Defensa positiva", pick: (s) => s.defense.positiveRate, pct: true },
+    { label: "% Defensa negativa", pick: (s) => s.defense.negativeRate, pct: true, invert: true },
+    { label: "% Puntos recibiendo", pick: (s) => s.possession.sideOut.rate, pct: true },
+    { label: "% Puntos con el saque", pick: (s) => s.possession.breakPoint.rate, pct: true },
   ];
 
+  const fmt = (item: (typeof rows)[number]) =>
+    item.pct ? "0%" : item.avg ? "0.00" : "0";
   rows.forEach((item, index) => {
     const row = index + 2;
-    paint(sheet, row, 1, item.label, { fill: SLATE_100, align: "left", bold: true, size: 10 });
+    const zebra = index % 2 === 1 ? SLATE_50 : WHITE;
+    paint(sheet, row, 1, item.label, { fill: SLATE_100, align: "left", bold: !item.label.startsWith(" "), size: 10 });
     report.sets.forEach((set, setIndex) => {
       const skills = report.clubIsHome ? set.homeSkills : set.awaySkills;
       const value = item.pick(skills);
-      paint(sheet, row, setIndex + 2, item.pct ? rateValue(value) : value ?? "", {
-        numFmt: item.pct ? "0%" : undefined,
-        fill: item.pct ? rateFill(item.invert && value !== null ? 1 - value : value) : WHITE,
+      paint(sheet, row, setIndex + 2, value ?? "", {
+        numFmt: fmt(item),
+        fill: item.pct ? rateFill(item.invert && value !== null ? 1 - value : value) : item.avg ? avgFill(value) : zebra,
       });
     });
     const value = item.pick(clubSkills(report));
-    paint(sheet, row, report.sets.length + 2, item.pct ? rateValue(value) : value ?? "", {
-      numFmt: item.pct ? "0%" : undefined,
+    paint(sheet, row, report.sets.length + 2, value ?? "", {
+      numFmt: fmt(item),
       fill: NAVY,
       color: WHITE,
       bold: true,
     });
+    const oppValue = item.pick(report.clubIsHome ? report.away : report.home);
+    paint(sheet, row, report.sets.length + 3, oppValue ?? "", {
+      numFmt: fmt(item),
+      fill: SLATE_100,
+      color: NAVY,
+    });
   });
+}
+
+function writeSetPlayersSheet(workbook: Workbook, report: MatchExcelReport) {
+  const sheet = workbook.addWorksheet("Sets · Jugadores", {
+    properties: { tabColor: { argb: SKY } },
+  });
+  setupSheet(sheet, 0, 3);
+  let row = 1;
+  for (const set of report.sets) {
+    const score = report.clubIsHome ? `${set.home}-${set.away}` : `${set.away}-${set.home}`;
+    const won = set.winner === null ? null : (set.winner === "home") === report.clubIsHome;
+    merge(sheet, row, 1, row, LAST_COL);
+    paint(sheet, row, 1, `SET ${set.setNumber}  ·  ${report.clubLabel} ${score} ${report.opponentLabel}${won === null ? "" : won ? "  ·  GANADO" : "  ·  PERDIDO"}`, {
+      fill: won === null ? NAVY : won ? EMERALD : ROSE,
+      color: WHITE,
+      bold: true,
+      size: 11,
+      align: "left",
+    });
+    sheet.getRow(row).height = 22;
+    row += 1;
+    if (set.clubPlayers.length === 0) {
+      merge(sheet, row, 1, row, LAST_COL);
+      paint(sheet, row, 1, "Sin acciones individuales apuntadas en este set.", { italic: true, align: "left" });
+      row += 2;
+      continue;
+    }
+    row = writePlayerTable(sheet, row, set.clubPlayers) + 2;
+  }
+  if (report.sets.length === 0) {
+    paint(sheet, 1, 1, "Todavía no hay sets jugados.", { italic: true, align: "left" });
+  }
 }
 
 function writeRotationsSheet(workbook: Workbook, report: MatchExcelReport) {
@@ -983,14 +1234,14 @@ function writeActionsSheet(workbook: Workbook, report: MatchExcelReport) {
 }
 
 function writeGlossarySheet(workbook: Workbook, report: MatchExcelReport) {
-  const sheet = workbook.addWorksheet("Glosario", {
+  const sheet = workbook.addWorksheet("Leyenda", {
     properties: { tabColor: { argb: SLATE_500 } },
   });
   setupSheet(sheet, 1, 1);
   sheet.getColumn(1).width = 28;
   sheet.getColumn(2).width = 90;
-  paint(sheet, 1, 1, "Término", { fill: NAVY, color: WHITE, bold: true, align: "left" });
-  paint(sheet, 1, 2, "Qué significa en FuenlaStats", {
+  paint(sheet, 1, 1, "Abreviatura / dato", { fill: NAVY, color: WHITE, bold: true, align: "left" });
+  paint(sheet, 1, 2, "Qué significa y cómo se calcula", {
     fill: NAVY,
     color: WHITE,
     bold: true,
@@ -1000,7 +1251,7 @@ function writeGlossarySheet(workbook: Workbook, report: MatchExcelReport) {
     const row = index + 2;
     paint(sheet, row, 1, item.term, { fill: SLATE_100, bold: true, align: "left" });
     paint(sheet, row, 2, item.meaning, { align: "left" });
-    sheet.getRow(row).height = 28;
+    sheet.getRow(row).height = item.meaning.length > 110 ? 44 : 28;
   });
 }
 
@@ -1512,6 +1763,7 @@ export async function buildMatchExcelWorkbook(report: MatchExcelReport) {
   writeTeamPlayersSheet(workbook, report, report.clubIsHome ? "home" : "away");
   writeChartsSheet(workbook, report, charts);
   writeSetsSheet(workbook, report);
+  writeSetPlayersSheet(workbook, report);
   writeRotationsSheet(workbook, report);
   writeActionsSheet(workbook, report);
   writeGlossarySheet(workbook, report);

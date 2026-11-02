@@ -108,6 +108,8 @@ export type MatchExcelSetRow = {
   winner: "home" | "away" | null;
   homeSkills: TeamSkillTotals;
   awaySkills: TeamSkillTotals;
+  /** Jugadoras del club con alguna acción en este set. */
+  clubPlayers: MatchExcelPlayerRow[];
 };
 
 export type MatchExcelActionRow = {
@@ -743,6 +745,22 @@ export function buildMatchExcelReport(
         match.away_team_id,
         set.away
       ),
+      clubPlayers: sortPlayerRows(
+        clubPlayers
+          .map((player) => {
+            const setPlayerEvents = (eventsByPlayer.get(player.playerId) ?? []).filter(
+              (event) => event.set_number === setNumber
+            );
+            if (setPlayerEvents.length === 0) return null;
+            return buildPlayerRow(
+              player.playerId,
+              setPlayerEvents,
+              rosterById.get(player.playerId) ?? null,
+              player.teamId
+            );
+          })
+          .filter((row): row is MatchExcelPlayerRow => row !== null)
+      ),
     };
   });
 
@@ -840,68 +858,33 @@ export function buildMatchExcelReport(
 }
 
 const GLOSSARY: MatchExcelGlossaryRow[] = [
-  {
-    term: "Puntos",
-    meaning:
-      "Acciones que suman para el equipo: ataque, bloqueo, ace, otro punto o error del rival. El block-out suma para el rival.",
-  },
-  {
-    term: "Errores",
-    meaning:
-      "Errores propios que regalan el punto al rival (ataque, saque, bloqueo, recepción, defensa u error general).",
-  },
-  {
-    term: "Balance",
-    meaning: "Puntos menos errores. En verde el jugador aporta; en rojo resta más de lo que suma.",
-  },
-  {
-    term: "Eff. ataque",
-    meaning: "(Puntos de ataque + continuaciones) / intentos. Mide cuántos ataques no son error.",
-  },
-  {
-    term: "Continuación de ataque",
-    meaning: "El remate no es punto ni error: el rival defiende y la jugada sigue.",
-  },
-  {
-    term: "Acierto saque",
-    meaning: "(Aces + saques dentro) / intentos. El error de saque resta el punto.",
-  },
-  {
-    term: "Ace",
-    meaning: "Saque directo a punto.",
-  },
-  {
-    term: "Eff. bloqueo",
-    meaning:
-      "(Puntos de bloqueo + continuaciones) / intentos. El toque, el error y el block-out del rival no cuentan como acierto nuestro.",
-  },
-  {
-    term: "Block-out",
-    meaning:
-      "El rival nos bloquea el ataque y se lleva el punto. Se apunta a quién de las nuestras se lo han hecho. No suma como punto ni como error de esa jugadora, ni como bloqueo nuestro.",
-  },
-  {
-    term: "Recepción / defensa",
-    meaning:
-      "% buenas es (buenas + medias) / total. % malas es (malas + errores) / total.",
-  },
-  {
-    term: "Media 0–3",
-    meaning: "Calidad media: buena=3, media=2, mala=1, error=0. Por encima de 2,0 es recepción/defensa sólida.",
-  },
-  {
-    term: "Puntos recibiendo",
-    meaning: "Porcentaje de puntos ganados cuando el equipo está en recepción (side-out).",
-  },
-  {
-    term: "Puntos con el saque",
-    meaning: "Porcentaje de puntos ganados cuando el equipo saca (break point).",
-  },
-  {
-    term: "Rotación R1–R6",
-    meaning:
-      "Zona de la colocadora. Si empieza en el 2, el set es R2 y al ganar el saque pasa a R1 y luego a R6. PF-PC es puntos a favor y en contra en esa rotación.",
-  },
+  { term: "Cómo leer el Excel", meaning: "Resumen: datos del partido, marcador por set y comparativa con el rival. Jugadoras: una fila por jugadora con todas las acciones. Sets: totales del equipo set a set. Sets · Jugadoras: la tabla de jugadoras de cada set. Rotaciones y Acciones: detalle. Los huecos vacíos significan que no hubo ninguna acción de ese tipo (no es un 0 %)." },
+  { term: "# / Sets", meaning: "Dorsal y número de sets en los que la jugadora tiene alguna acción apuntada." },
+  { term: "Pts", meaning: "Puntos que consigue la jugadora: ataque, bloqueo, ace u otro punto propio. El block-out suma para el rival." },
+  { term: "Err", meaning: "Errores propios que regalan el punto al rival (saque, ataque, recepción, defensa, bloqueo u error general)." },
+  { term: "Bal", meaning: "Balance = Pts − Err. En verde suma más de lo que resta; en rojo, al revés." },
+  { term: "Int", meaning: "Intentos: total de acciones de ese fundamento apuntadas." },
+  { term: "Cont", meaning: "Continuación: la acción no es punto ni error y la jugada sigue (ataque defendido, bloqueo que deja la bola en juego)." },
+  { term: "Ataque · % Pto", meaning: "Puntos de ataque / intentos de ataque." },
+  { term: "Ataque · % Sin err", meaning: "(Puntos + continuaciones) / intentos. Cuántos ataques no acaban en error." },
+  { term: "Ataque · Eficiencia", meaning: "(Puntos − errores) / intentos. Puede ser negativa si hay más errores que puntos. Es la medida más usada por los entrenadores." },
+  { term: "Saque · Ace / Dentro / Err", meaning: "Ace = saque directo a punto. Dentro = saque que entra y la jugada sigue. Err = saque fallado." },
+  { term: "Saque · % Ace, % En juego, % Err", meaning: "Aces / intentos; (aces + dentro) / intentos; errores / intentos." },
+  { term: "Bloqueo · Punto / Cont / Toque / Err", meaning: "Punto = bloqueo directo a punto. Cont = bloqueo que deja la bola jugable en nuestro campo. Toque = toque que no frena el ataque. Err = falta o red en el bloqueo." },
+  { term: "Bloqueo · % Útil", meaning: "(Puntos de bloqueo + continuaciones) / intentos de bloqueo." },
+  { term: "Recepción / Defensa · B / M / Ma / Err", meaning: "Calidad apuntada: buena (B), media (M), mala (Ma) o error directo (Err)." },
+  { term: "Recepción / Defensa · Media 0–3", meaning: "(3×buenas + 2×medias + 1×malas + 0×errores) / total. Por encima de 2,0 es sólida." },
+  { term: "% Perfecta", meaning: "Buenas / total." },
+  { term: "% Positiva", meaning: "(Buenas + medias) / total." },
+  { term: "% Negativa", meaning: "(Malas + errores) / total. Cuanto más baja, mejor." },
+  { term: "Errores por tipo", meaning: "Reparto de los errores propios: saque, ataque, recepción, defensa, bloqueo y otros (error general apuntado sin fundamento)." },
+  { term: "Block-out (B-out)", meaning: "El rival ataca contra nuestro bloqueo y la bola sale: punto para el rival. Se apunta a quién se lo han hecho. No cuenta como punto ni como error de esa jugadora." },
+  { term: "Fila TOTAL / % por tipo", meaning: "TOTAL suma a todas las jugadoras. % por tipo divide cada columna entre los intentos de su fundamento." },
+  { term: "Puntos recibiendo (side-out)", meaning: "Puntos ganados cuando el rival saca / rallies en recepción." },
+  { term: "Puntos con el saque (break point)", meaning: "Puntos ganados cuando sacamos nosotros / rallies con nuestro saque." },
+  { term: "Puntos por error rival", meaning: "Puntos que nos regala el rival con sus errores." },
+  { term: "Rotación R1–R6", meaning: "Zona de la colocadora. Si empieza en el 2, el set es R2 y al ganar el saque pasa a R1 y luego a R6. PF-PC es puntos a favor y en contra en esa rotación; Dif = PF − PC." },
+  { term: "Colores", meaning: "Verde ≥ 80 %, verde claro ≥ 65 %, amarillo ≥ 50 %, rojo < 50 % (en las columnas negativas se invierte). Medias 0–3: verde ≥ 2,2, amarillo ≥ 1,2." },
 ];
 
 export function emptyPlayerTotals(): MatchExcelPlayerRow {
