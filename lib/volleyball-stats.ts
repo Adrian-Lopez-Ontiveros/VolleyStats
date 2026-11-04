@@ -349,23 +349,78 @@ function finalizePossession(stats: PossessionStats) {
   return stats;
 }
 
+export type SetStart = {
+  servingTeamId?: string | null;
+  /** Zona de la colocadora (R1..R6) al empezar el set. */
+  homeRotation?: number | null;
+  awayRotation?: number | null;
+};
+
+function eventTime(event: SkillEvent) {
+  return new Date(event.created_at ?? 0).getTime();
+}
+
+/**
+ * Reconstruye quién saca y en qué rotación está cada equipo reproduciendo
+ * todas las acciones del set (no solo las de punto). Así una acción sin punto
+ * (saque dentro, recepción...) conserva el saque y las rotaciones guardadas, y
+ * la rotación solo avanza cuando el equipo que recibe gana el punto (side-out).
+ */
+export function inferRallyState(
+  events: SkillEvent[],
+  homeTeamId: string,
+  awayTeamId: string,
+  currentSet: number,
+  setterStarts?: SetterStarts,
+  start?: SetStart | null
+) {
+  const inSet = events
+    .map((event, index) => ({ event, index }))
+    .filter(({ event }) => event.set_number === currentSet)
+    .sort((a, b) => eventTime(a.event) - eventTime(b.event) || a.index - b.index)
+    .map(({ event }) => event);
+
+  let server: string =
+    start?.servingTeamId === homeTeamId || start?.servingTeamId === awayTeamId
+      ? start.servingTeamId
+      : currentSet % 2 === 1
+        ? homeTeamId
+        : awayTeamId;
+  let home = isRotation(start?.homeRotation)
+    ? start.homeRotation
+    : anchorZone(setterStarts?.homeSetterStart);
+  let away = isRotation(start?.awayRotation)
+    ? start.awayRotation
+    : anchorZone(setterStarts?.awaySetterStart);
+
+  for (const event of inSet) {
+    if (event.serving_team_id) server = event.serving_team_id;
+    if (isRotation(event.home_rotation)) {
+      home = zoneFromStoredRotation(event.home_rotation, setterStarts?.homeSetterStart);
+    }
+    if (isRotation(event.away_rotation)) {
+      away = zoneFromStoredRotation(event.away_rotation, setterStarts?.awaySetterStart);
+    }
+    const scorer = event.scoring_team_id;
+    if (!scorer) continue;
+    if (scorer !== server) {
+      if (scorer === homeTeamId) home = nextRotation(home);
+      if (scorer === awayTeamId) away = nextRotation(away);
+    }
+    server = scorer;
+  }
+
+  return { servingTeamId: server, home, away, hasEvents: inSet.length > 0 };
+}
+
 export function inferNextServer(
   events: SkillEvent[],
   homeTeamId: string,
   awayTeamId: string,
-  currentSet: number
+  currentSet: number,
+  start?: SetStart | null
 ) {
-  const scoring = [...events]
-    .filter((event) => event.scoring_team_id)
-    .sort(
-      (a, b) =>
-        new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
-    );
-
-  const lastInSet = [...scoring].reverse().find((event) => event.set_number === currentSet);
-  if (lastInSet?.scoring_team_id) return lastInSet.scoring_team_id;
-
-  return currentSet % 2 === 1 ? homeTeamId : awayTeamId;
+  return inferRallyState(events, homeTeamId, awayTeamId, currentSet, undefined, start).servingTeamId;
 }
 
 function withInferredServe(
@@ -519,36 +574,11 @@ export function inferNextRotations(
   homeTeamId: string,
   awayTeamId: string,
   currentSet: number,
-  setterStarts?: SetterStarts
+  setterStarts?: SetterStarts,
+  start?: SetStart | null
 ) {
-  const scoring = [...events]
-    .filter((event) => event.scoring_team_id)
-    .sort(
-      (a, b) =>
-        new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
-    );
-
-  const lastInSet = [...scoring].reverse().find((event) => event.set_number === currentSet);
-  if (!lastInSet) {
-    return {
-      home: anchorZone(setterStarts?.homeSetterStart),
-      away: anchorZone(setterStarts?.awaySetterStart),
-    };
-  }
-
-  let home = zoneFromStoredRotation(lastInSet.home_rotation, setterStarts?.homeSetterStart);
-  let away = zoneFromStoredRotation(lastInSet.away_rotation, setterStarts?.awaySetterStart);
-
-  if (
-    lastInSet.scoring_team_id &&
-    lastInSet.serving_team_id &&
-    lastInSet.scoring_team_id !== lastInSet.serving_team_id
-  ) {
-    if (lastInSet.scoring_team_id === homeTeamId) home = nextRotation(home);
-    if (lastInSet.scoring_team_id === awayTeamId) away = nextRotation(away);
-  }
-
-  return { home, away };
+  const state = inferRallyState(events, homeTeamId, awayTeamId, currentSet, setterStarts, start);
+  return { home: state.home, away: state.away };
 }
 
 export type RotationRow = {
