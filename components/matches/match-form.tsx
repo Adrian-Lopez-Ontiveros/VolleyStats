@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createMatch, updateMatch } from "@/lib/actions/matches";
 import { TEAM_CATEGORIES, parseCategory, type TeamCategory } from "@/lib/categories";
 import { LineupPicker } from "@/components/matches/lineup-picker";
+import { SetOneStartFields } from "@/components/matches/set-one-start-fields";
 import { SetScoreFields } from "@/components/matches/set-score-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,6 +232,15 @@ export function MatchForm({
           maxSets={maxSetsOf(setsToWin)}
         />
       )}
+      {match && !hasLiveEvents && homeTeamId && awayTeamId && homeTeamId !== CUSTOM_TEAM && awayTeamId !== CUSTOM_TEAM ? (
+        <SetOneStartFields
+          matchId={match.id}
+          homeTeamId={homeTeamId}
+          awayTeamId={awayTeamId}
+          homeLabel={homeLabel}
+          awayLabel={awayLabel}
+        />
+      ) : null}
       {clubInMatch && clubTeam ? (
         <LineupPicker
           key={clubTeam.id}

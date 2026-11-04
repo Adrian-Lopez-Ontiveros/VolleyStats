@@ -26,6 +26,8 @@ import {
   ROTATION_PLAY_ORDER,
   storedRotationFromZone,
 } from "@/lib/volleyball-stats";
+import { loadSetStart, saveSetStart } from "@/lib/set-start";
+import type { SetStart } from "@/lib/volleyball-stats";
 import { computeMatchState, resolveScoringTeam, setsToWinOf } from "@/lib/volleyball";
 import { cn, formatJersey, initials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -253,6 +255,21 @@ export function LiveTracker({
   const [lineupTeams, setLineupTeams] = useState<string[]>([]);
   const [lineupMode, setLineupMode] = useState<"edit" | "blank">("edit");
   const promptedSetRef = useRef(displayMatch.current_set);
+  const [setStartState, setSetStartState] = useState<{ set: number; value: SetStart | null }>({
+    set: 0,
+    value: null,
+  });
+  useEffect(() => {
+    setSetStartState({
+      set: displayMatch.current_set,
+      value: loadSetStart(match.id, displayMatch.current_set),
+    });
+  }, [match.id, displayMatch.current_set]);
+  const setStart = setStartState.set === displayMatch.current_set ? setStartState.value : null;
+  const setHasEvents = useMemo(
+    () => mergedEvents.some((event) => event.set_number === displayMatch.current_set),
+    [mergedEvents, displayMatch.current_set]
+  );
   const finished = displayMatch.status === "finished";
   const inferredServer = useMemo(
     () =>
@@ -260,9 +277,10 @@ export function LiveTracker({
         mergedEvents,
         displayMatch.home_team_id,
         displayMatch.away_team_id,
-        displayMatch.current_set
+        displayMatch.current_set,
+        setStart
       ),
-    [mergedEvents, displayMatch.home_team_id, displayMatch.away_team_id, displayMatch.current_set]
+    [mergedEvents, displayMatch.home_team_id, displayMatch.away_team_id, displayMatch.current_set, setStart]
   );
   const homeSetterStart = useMemo(
     () => setterStartZone(liveLineup, homePlayers, match.home_team_id),
@@ -279,7 +297,8 @@ export function LiveTracker({
         displayMatch.home_team_id,
         displayMatch.away_team_id,
         displayMatch.current_set,
-        { homeSetterStart, awaySetterStart }
+        { homeSetterStart, awaySetterStart },
+        setStart
       ),
     [
       mergedEvents,
@@ -288,7 +307,42 @@ export function LiveTracker({
       displayMatch.current_set,
       homeSetterStart,
       awaySetterStart,
+      setStart,
     ]
+  );
+  // Antes de la primera acción del set, lo que elige el entrenador es el inicio del set
+  // y se guarda; después, es una corrección que queda grabada en la siguiente acción.
+  const chooseSetStart = useCallback(
+    (value: SetStart) => {
+      const setNumber = displayMatch.current_set;
+      saveSetStart(match.id, setNumber, value);
+      setSetStartState((prev) => ({
+        set: setNumber,
+        value: { ...(prev.set === setNumber ? prev.value : null), ...value },
+      }));
+    },
+    [match.id, displayMatch.current_set]
+  );
+  const chooseServer = useCallback(
+    (teamId: string) => {
+      if (setHasEvents) setServingOverride(teamId);
+      else chooseSetStart({ servingTeamId: teamId });
+    },
+    [setHasEvents, chooseSetStart]
+  );
+  const chooseHomeRotation = useCallback(
+    (rotation: number) => {
+      if (setHasEvents) setHomeRotationOverride(rotation);
+      else chooseSetStart({ homeRotation: rotation });
+    },
+    [setHasEvents, chooseSetStart]
+  );
+  const chooseAwayRotation = useCallback(
+    (rotation: number) => {
+      if (setHasEvents) setAwayRotationOverride(rotation);
+      else chooseSetStart({ awayRotation: rotation });
+    },
+    [setHasEvents, chooseSetStart]
   );
   const servingTeamId = servingOverride ?? inferredServer;
   const homeServing = servingTeamId === match.home_team_id;
@@ -832,10 +886,12 @@ export function LiveTracker({
 
       {!finished ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border bg-card px-3 py-2">
-          <span className="text-xs font-medium text-muted-foreground">Saca</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {setHasEvents ? "Saca" : `Set ${displayMatch.current_set} · saca primero`}
+          </span>
           <button
             type="button"
-            onClick={() => setServingOverride(match.home_team_id)}
+            onClick={() => chooseServer(match.home_team_id)}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-semibold",
               servingTeamId === match.home_team_id
@@ -847,7 +903,7 @@ export function LiveTracker({
           </button>
           <button
             type="button"
-            onClick={() => setServingOverride(match.away_team_id)}
+            onClick={() => chooseServer(match.away_team_id)}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-semibold",
               servingTeamId === match.away_team_id
@@ -865,12 +921,12 @@ export function LiveTracker({
           <RotationPicker
             label={match.home_team.short_name || "Local"}
             value={homeRotation}
-            onChange={setHomeRotationOverride}
+            onChange={chooseHomeRotation}
           />
           <RotationPicker
             label={match.away_team.short_name || "Visitante"}
             value={awayRotation}
-            onChange={setAwayRotationOverride}
+            onChange={chooseAwayRotation}
           />
         </div>
       ) : null}
