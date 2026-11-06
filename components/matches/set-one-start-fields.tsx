@@ -15,21 +15,27 @@ export function SetOneStartFields({
   awayTeamId,
   homeLabel,
   awayLabel,
+  value: controlledValue,
+  onChange,
 }: {
   matchId: string;
   homeTeamId: string;
   awayTeamId: string;
   homeLabel: string;
   awayLabel: string;
+  value?: SetStart | null;
+  onChange?: (value: SetStart) => void;
 }) {
-  const [value, setValue] = useState<SetStart>({});
+  const [localValue, setLocalValue] = useState<SetStart>({});
   useEffect(() => {
-    setValue(loadSetStart(matchId, 1) ?? {});
+    setLocalValue(loadSetStart(matchId, 1) ?? {});
   }, [matchId]);
+  const value = controlledValue === undefined ? localValue : (controlledValue ?? {});
 
   function update(next: SetStart) {
     saveSetStart(matchId, 1, next);
-    setValue((prev) => ({ ...prev, ...next }));
+    setLocalValue((prev) => ({ ...prev, ...next }));
+    onChange?.(next);
   }
 
   const server = value.servingTeamId ?? homeTeamId;

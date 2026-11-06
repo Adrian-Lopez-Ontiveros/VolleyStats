@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { addSubstitution, recordPoint, resetSetSubstitutions, setMatchLibero, undoPoint } from "@/lib/actions/matches";
 import { LiveSetLineupPanel } from "@/components/matches/live-set-lineup-panel";
 import { LiveStatPad } from "@/components/matches/live-stat-pad";
+import { SetOneStartFields } from "@/components/matches/set-one-start-fields";
 import { POINT_TYPE_META, POSITION_LABELS } from "@/lib/constants";
 import { currentOnCourtIds, playersOnBench, playersOnCourt } from "@/lib/lineup";
 import {
@@ -26,6 +27,7 @@ import {
   ROTATION_PLAY_ORDER,
   storedRotationFromZone,
 } from "@/lib/volleyball-stats";
+import { needsInitialLineupSetup } from "@/lib/live-setup";
 import { loadSetStart, saveSetStart } from "@/lib/set-start";
 import type { SetStart } from "@/lib/volleyball-stats";
 import { computeMatchState, resolveScoringTeam, setsToWinOf } from "@/lib/volleyball";
@@ -633,6 +635,21 @@ export function LiveTracker({
     promptedSetRef.current = displayMatch.current_set;
   }, [displayMatch.current_set, finished, lineupTeamQueue]);
 
+  const needsInitialLineup = match.is_private === true && needsInitialLineupSetup(
+    displayMatch,
+    liveLineup,
+    homePlayers.length,
+    awayPlayers.length,
+    finished,
+    setHasEvents
+  );
+  useEffect(() => {
+    if (needsInitialLineup) {
+      setLineupMode("edit");
+      setLineupTeams(lineupTeamQueue());
+    }
+  }, [needsInitialLineup, lineupTeamQueue, liveLineup]);
+
   const openTeam = useCallback(
     (teamId: string, teamName: string, player?: Player) => {
       if (finished) return;
@@ -884,7 +901,17 @@ export function LiveTracker({
         </p>
       ) : null}
 
-      {!finished ? (
+      {!finished && needsInitialLineup ? (
+        <SetOneStartFields
+          matchId={match.id}
+          homeTeamId={match.home_team_id}
+          awayTeamId={match.away_team_id}
+          homeLabel={match.home_team.short_name || "Local"}
+          awayLabel={match.away_team.short_name || "Visitante"}
+          value={setStart}
+          onChange={chooseSetStart}
+        />
+      ) : !finished ? (
         <div className="flex items-center justify-center gap-2 rounded-2xl border bg-card px-3 py-2">
           <span className="text-xs font-medium text-muted-foreground">
             {setHasEvents ? "Saca" : `Set ${displayMatch.current_set} · saca primero`}
@@ -916,7 +943,7 @@ export function LiveTracker({
         </div>
       ) : null}
 
-      {!finished ? (
+      {!finished && !needsInitialLineup ? (
         <div className="space-y-2 rounded-2xl border bg-card px-3 py-3">
           <RotationPicker
             label={match.home_team.short_name || "Local"}
