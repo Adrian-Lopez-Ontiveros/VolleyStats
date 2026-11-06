@@ -35,6 +35,7 @@ export async function sendDueMatchReminders() {
     .from("matches")
     .select(reminderSelect)
     .eq("status", "scheduled")
+    .eq("is_private", false)
     .is("reminder_sent_at", null);
   const loaded =
     first.error && /court/i.test(first.error.message)

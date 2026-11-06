@@ -182,8 +182,6 @@ export async function loginAction(
   if (error) return { error: "Email o contraseña incorrectos" };
 
   await supabase.rpc("link_profile_to_matching_player");
-  // El correo verificado de Auth es la única identidad aceptada para invitaciones privadas.
-  await supabase.rpc("accept_team_invitations");
 
   const store = await cookies();
   store.delete(SPECTATOR_COOKIE);
