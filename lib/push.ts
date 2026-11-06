@@ -100,15 +100,17 @@ type MatchNotifyRow = {
 async function usersOfTeams(supabase: SupabaseClient, teamIds: string[]) {
   if (teamIds.length === 0) return [];
   const list = teamIds.join(",");
-  const [profiles, players] = await Promise.all([
+  const [profiles, players, coaches] = await Promise.all([
     supabase.from("profiles").select("id").or(`team_id.in.(${list}),coached_team_id.in.(${list})`),
     supabase.from("players").select("user_id").in("team_id", teamIds).not("user_id", "is", null),
+    supabase.from("team_coaches").select("user_id").in("team_id", teamIds),
   ]);
   const ids = new Set<string>();
   for (const row of (profiles.data ?? []) as { id: string }[]) ids.add(row.id);
   for (const row of (players.data ?? []) as { user_id: string | null }[]) {
     if (row.user_id) ids.add(row.user_id);
   }
+  for (const row of (coaches.data ?? []) as { user_id: string }[]) ids.add(row.user_id);
   return [...ids];
 }
 

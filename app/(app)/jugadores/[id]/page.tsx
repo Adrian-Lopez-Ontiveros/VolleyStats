@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { DeletePlayerButton } from "@/components/players/delete-player-button";
+import { DetachPlayerButton } from "@/components/players/detach-player-button";
 import { PlayerCardSection } from "@/components/players/player-card-section";
 import { PageHeader } from "@/components/page-header";
 import { StatAchievements } from "@/components/profile/stat-achievements";
@@ -172,7 +173,8 @@ export default async function PlayerDetailPage({
       )}
 
       {canManage ? (
-        <div className="mt-8">
+        <div className="mt-8 space-y-2">
+          {typed.team_id ? <DetachPlayerButton playerId={id} /> : null}
           <DeletePlayerButton playerId={id} />
         </div>
       ) : null}

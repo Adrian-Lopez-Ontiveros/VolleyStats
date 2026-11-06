@@ -20,6 +20,13 @@ type RosterRow = {
   team_id: string | null;
 };
 
+type StaffRow = {
+  id: string;
+  full_name: string;
+  user_id: string | null;
+  coached_team_id: string | null;
+};
+
 async function loadRosterForSignup(
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<{ players: RosterRow[]; error?: string }> {
@@ -40,6 +47,26 @@ async function loadRosterForSignup(
   }
 
   return { players: (table.data ?? []) as RosterRow[] };
+}
+
+async function loadStaffForSignup(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<{ staff: StaffRow[]; error?: string }> {
+  const rpc = await supabase.rpc("list_staff_for_signup");
+  if (!rpc.error) {
+    return { staff: (rpc.data ?? []) as StaffRow[] };
+  }
+  if (/list_staff_for_signup|staff_roster/i.test(rpc.error.message)) {
+    return { staff: [] };
+  }
+  const table = await supabase
+    .from("staff_roster")
+    .select("id, full_name, user_id, coached_team_id");
+  if (table.error) {
+    if (/staff_roster/i.test(table.error.message)) return { staff: [] };
+    return { staff: [], error: table.error.message };
+  }
+  return { staff: (table.data ?? []) as StaffRow[] };
 }
 
 const registerSchema = z.object({
@@ -89,12 +116,16 @@ export async function registerAction(
 
   let playerId: string | null = null;
   let teamId: string | null = null;
+  let staffId: string | null = null;
+  let coachedTeamId: string | null = null;
 
   if (hasAdmin) {
-    const { players, error: rosterError } = await loadRosterForSignup(supabase);
-    if (rosterError) {
-      return { error: rosterError };
-    }
+    const [{ players, error: rosterError }, { staff, error: staffError }] = await Promise.all([
+      loadRosterForSignup(supabase),
+      loadStaffForSignup(supabase),
+    ]);
+    if (rosterError) return { error: rosterError };
+    if (staffError) return { error: staffError };
 
     const searched = normalizePersonName(fullName);
     const matches = players.filter((player) =>
@@ -114,21 +145,37 @@ export async function registerAction(
       return {
         error: "Ese jugador ya tiene una cuenta vinculada. Inicia sesión o recupera tu contraseña.",
       };
-    } else if (players.length === 0) {
-      return {
-        error:
-          `No se encontró ningún jugador en la plantilla al buscar «${fullName}» (0 resultados). Si un admin ya los creó, ejecuta la migración 004 para dar lectura a espectadores/registro.`,
-      };
     } else {
-      const hint = closestPersonName(
-        fullName,
-        players.map((player) => player.full_name)
-      );
-      return {
-        error: hint
-          ? `Ningún jugador coincide con «${fullName}» (${searched}). El más parecido en la plantilla es «${hint}».`
-          : `Ningún jugador coincide con «${fullName}» (${searched}). Hay ${players.length} jugador${players.length === 1 ? "" : "es"} en la plantilla. Pide a un admin que te dé de alta con ese nombre y apellido.`,
-      };
+      const staffMatches = staff.filter((row) => personNamesMatch(row.full_name, fullName));
+      const staffOpen = staffMatches.filter((row) => !row.user_id);
+      if (staffOpen.length === 1) {
+        staffId = staffOpen[0].id;
+        coachedTeamId = staffOpen[0].coached_team_id;
+      } else if (staffOpen.length > 1) {
+        return {
+          error:
+            "Hay más de un entrenador pendiente con ese nombre. Contacta con un administrador.",
+        };
+      } else if (staffMatches.length > 0) {
+        return {
+          error: "Ese entrenador ya tiene una cuenta vinculada. Inicia sesión o recupera tu contraseña.",
+        };
+      } else if (players.length === 0 && staff.length === 0) {
+        return {
+          error:
+            `No se encontró ningún jugador ni entrenador al buscar «${fullName}» (0 resultados). Si un admin ya los creó, ejecuta la migración 004 / 053.`,
+        };
+      } else {
+        const hint = closestPersonName(
+          fullName,
+          [...players.map((player) => player.full_name), ...staff.map((row) => row.full_name)]
+        );
+        return {
+          error: hint
+            ? `Ningún jugador ni entrenador coincide con «${fullName}» (${searched}). El más parecido es «${hint}».`
+            : `Ningún jugador ni entrenador coincide con «${fullName}» (${searched}). Pide a un admin que te dé de alta en la plantilla o en el staff de entrenadores.`,
+        };
+      }
     }
   }
 
@@ -145,6 +192,8 @@ export async function registerAction(
         full_name: fullName,
         player_id: playerId,
         team_id: teamId,
+        staff_id: staffId,
+        coached_team_id: coachedTeamId,
       },
     },
   });
