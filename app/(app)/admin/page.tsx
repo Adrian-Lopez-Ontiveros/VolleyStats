@@ -23,7 +23,7 @@ export default async function AdminPage() {
       .select("id, email, full_name, role, team_id, coached_team_id, created_at")
       .order("created_at", { ascending: false }),
     supabase.from("teams").select(TEAM_SELECT as "*").eq("is_club_team", true).order("name"),
-    supabase.from("players").select("user_id, team:teams(name)"),
+    supabase.from("players").select("user_id, team:teams(name)").eq("is_private", false),
   ]);
 
   const clubTeams = (teams ?? []) as Team[];

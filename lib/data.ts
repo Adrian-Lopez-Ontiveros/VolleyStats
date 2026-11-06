@@ -5,24 +5,24 @@ import { createClient } from "@/lib/supabase/server";
 
 export const getTeams = cache(async () => {
   const supabase = await createClient();
-  return supabase.from("teams").select(TEAM_SELECT as "*").order("name");
+  return supabase.from("teams").select(TEAM_SELECT as "*").eq("is_private", false).order("name");
 });
 
 export const getClubTeams = cache(async () => {
   const supabase = await createClient();
-  return supabase.from("teams").select(TEAM_SELECT as "*").eq("is_club_team", true).order("name");
+  return supabase.from("teams").select(TEAM_SELECT as "*").eq("is_private", false).eq("is_club_team", true).order("name");
 });
 
 export const getMatchesList = cache(async () => {
   const supabase = await createClient();
   return selectWithMatchFallback(MATCH_LIST_VARIANTS, (columns) =>
-    supabase.from("matches").select(columns as "*").order("scheduled_at", { ascending: true })
+    supabase.from("matches").select(columns as "*").eq("is_private", false).order("scheduled_at", { ascending: true })
   );
 });
 
 export const getFinishedMatches = cache(async () => {
   const supabase = await createClient();
-  return supabase.from("matches").select(MATCH_STANDING_SELECT as "*").eq("status", "finished");
+  return supabase.from("matches").select(MATCH_STANDING_SELECT as "*").eq("is_private", false).eq("status", "finished");
 });
 
 export const getPlayers = cache(async () => {
@@ -30,6 +30,7 @@ export const getPlayers = cache(async () => {
   return supabase
     .from("players")
     .select(PLAYER_ROSTER_SELECT as "*")
+    .eq("is_private", false)
     .order("jersey_number", { ascending: true, nullsFirst: false });
 });
 
@@ -38,5 +39,6 @@ export const getPublicPlayers = cache(async () => {
   return supabase
     .from("players")
     .select(PLAYER_PUBLIC_SELECT as "*")
+    .eq("is_private", false)
     .order("jersey_number", { ascending: true, nullsFirst: false });
 });

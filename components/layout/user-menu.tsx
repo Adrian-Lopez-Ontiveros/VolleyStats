@@ -6,6 +6,7 @@ import {
   ClipboardList,
   LogOut,
   Menu,
+  LockKeyhole,
   Newspaper,
   Settings,
   Shield,
@@ -72,6 +73,14 @@ export function UserMenu({ user }: { user: SessionUser }) {
             Ajustes
           </Link>
         </DropdownMenuItem>
+        {hasCoachAccess(user.profile.role) || user.profile.private_team_access ? (
+          <DropdownMenuItem asChild>
+            <Link href="/mis-equipos">
+              <LockKeyhole className="h-4 w-4" />
+              Mis equipos
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         {SHOW_TACTICS_NAV && hasCoachAccess(user.profile.role) ? (
           <DropdownMenuItem asChild>
             <Link href="/entrenador">

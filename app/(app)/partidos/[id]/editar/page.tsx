@@ -26,10 +26,12 @@ export default async function EditMatchPage({
         )
         .eq("id", id)
         .maybeSingle(),
-      supabase.from("teams").select(TEAM_SELECT as "*").order("name"),
+      supabase.from("teams").select(TEAM_SELECT as "*").eq("is_private", false).order("name"),
       supabase
         .from("players")
         .select(PLAYER_LINEUP_SELECT as "*")
+        .eq("is_private", false)
+        .eq("is_private", false)
         .order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", id),
       supabase

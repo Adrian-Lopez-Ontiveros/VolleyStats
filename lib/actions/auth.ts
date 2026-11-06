@@ -30,7 +30,7 @@ async function loadRosterForSignup(
 
   const table = await supabase
     .from("players")
-    .select("id, full_name, user_id, team_id");
+    .select("id, full_name, user_id, team_id").eq("is_private", false);
 
   if (table.error) {
     return {
@@ -182,6 +182,8 @@ export async function loginAction(
   if (error) return { error: "Email o contraseña incorrectos" };
 
   await supabase.rpc("link_profile_to_matching_player");
+  // El correo verificado de Auth es la única identidad aceptada para invitaciones privadas.
+  await supabase.rpc("accept_team_invitations");
 
   const store = await cookies();
   store.delete(SPECTATOR_COOKIE);

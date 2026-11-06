@@ -22,7 +22,7 @@ export default async function EditPlayerPage({
       .select("id, user_id, team_id, full_name, jersey_number, position")
       .eq("id", id)
       .maybeSingle(),
-    supabase.from("teams").select("id, name, short_name, category, is_club_team").order("name"),
+    supabase.from("teams").select("id, name, short_name, category, is_club_team").eq("is_private", false).order("name"),
   ]);
   if (!player) notFound();
 

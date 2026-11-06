@@ -23,7 +23,7 @@ export default async function EditTrainingPage({
       .select("id, name, scheduled_at, team_id, notes, created_by, created_at, updated_at")
       .eq("id", id)
       .maybeSingle(),
-    supabase.from("teams").select(TEAM_SELECT as "*").order("name"),
+    supabase.from("teams").select(TEAM_SELECT as "*").eq("is_private", false).order("name"),
   ]);
 
   if (!training) notFound();
