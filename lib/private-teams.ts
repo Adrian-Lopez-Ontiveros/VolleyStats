@@ -87,3 +87,7 @@ export type PrivateRosterInput = {
   jersey_number: number | null;
   position: PlayerPosition | null;
 };
+
+export function isPrivateRosterTeam(team: Pick<Team, "is_one_off">): boolean {
+  return team.is_one_off !== true;
+}
