@@ -67,7 +67,6 @@ export default async function TeamDetailPage({
         .select((canManage ? PLAYER_ROSTER_SELECT : PLAYER_PUBLIC_SELECT) as "*")
         .eq("team_id", id)
         .eq("is_private", false)
-        .eq("is_private", false)
         .order("jersey_number", { ascending: true, nullsFirst: false }),
       selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
         supabase

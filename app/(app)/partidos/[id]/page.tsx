@@ -56,7 +56,7 @@ export default async function MatchDetailPage({
 
   const [{ data: match, error: matchError }, { data: events }] = await Promise.all([
     selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
-      supabase.from("matches").select(columns as "*").eq("id", id).maybeSingle()
+      supabase.from("matches").select(columns as "*").eq("is_private", false).eq("id", id).maybeSingle()
     ),
     supabase
       .from("match_events")

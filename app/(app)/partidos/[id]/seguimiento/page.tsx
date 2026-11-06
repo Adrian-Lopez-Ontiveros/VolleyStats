@@ -30,7 +30,7 @@ export default async function LiveMatchPage({
   const supabase = await createClient();
 
   const { data: match } = await selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
-    supabase.from("matches").select(columns as "*").eq("id", id).maybeSingle()
+    supabase.from("matches").select(columns as "*").eq("is_private", false).eq("id", id).maybeSingle()
   );
 
   if (!match) notFound();
@@ -79,7 +79,6 @@ export default async function LiveMatchPage({
     supabase
       .from("players")
       .select(PLAYER_LINEUP_SELECT as "*")
-        .eq("is_private", false)
       .in("team_id", [typedMatch.home_team_id, typedMatch.away_team_id])
       .eq("is_private", false)
       .order("jersey_number", { ascending: true, nullsFirst: false }),
