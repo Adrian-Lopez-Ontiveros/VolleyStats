@@ -88,11 +88,7 @@ async function loadSessionUser(): Promise<SessionUser | null> {
     loadLinkedPlayer(supabase, user.id),
   ]);
 
-  let privateTeamAccess = hasCoachAccess((profile as ProfileWithRelations | null)?.role);
-  if (!privateTeamAccess) {
-    const { count } = await supabase.from("team_members").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("accepted", true).limit(1);
-    privateTeamAccess = (count ?? 0) > 0;
-  }
+  const privateTeamAccess = hasCoachAccess((profile as ProfileWithRelations | null)?.role);
   let resolved = profile;
   if (!resolved && profileError && /coached_team_id/i.test(profileError.message)) {
     const fallback = await supabase

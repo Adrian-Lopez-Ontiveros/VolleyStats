@@ -73,7 +73,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
             Ajustes
           </Link>
         </DropdownMenuItem>
-        {hasCoachAccess(user.profile.role) || user.profile.private_team_access ? (
+        {hasCoachAccess(user.profile.role) ? (
           <DropdownMenuItem asChild>
             <Link href="/mis-equipos">
               <LockKeyhole className="h-4 w-4" />

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { logMatchActivity } from "@/lib/actions/activity";
@@ -12,6 +13,19 @@ import { currentOnCourtIds } from "@/lib/lineup";
 import { createClient } from "@/lib/supabase/server";
 import { computeMatchState, resolveScoringTeam, setsToWinOf, statFromPointType } from "@/lib/volleyball";
 import type { LiberoKind, MatchLineupEntry, MatchSubstitution, PointType } from "@/lib/types";
+
+/** Los contadores derivados y avisos públicos nunca se ejecutan para datos privados. */
+async function isPrivateMatch(supabase: SupabaseClient, matchId: string) {
+  const { data } = await supabase.from("matches").select("is_private").eq("id", matchId).maybeSingle();
+  return data?.is_private === true;
+}
+
+function revalidatePrivateMatch(matchId: string, teamId?: string | null) {
+  revalidatePath("/mis-equipos");
+  if (teamId) revalidatePath(`/mis-equipos/${teamId}`);
+  revalidatePath(`/mis-equipos/partidos/${matchId}`);
+  revalidatePath(`/mis-equipos/partidos/${matchId}/seguimiento`);
+}
 
 const LINEUP_COURT_SELECT =
   "id, match_id, team_id, player_id, is_starter, is_libero, is_reception_libero, is_defense_libero, is_active_libero, court_position" as const;
@@ -129,7 +143,7 @@ async function persistComputedMatch(
       .select("scoring_team_id, created_at")
       .eq("match_id", matchId)
       .order("created_at", { ascending: true }),
-    supabase.from("matches").select("sets_to_win, is_federation, status").eq("id", matchId).maybeSingle(),
+    supabase.from("matches").select("sets_to_win, is_federation, is_private, status").eq("id", matchId).maybeSingle(),
   ]);
 
   if (error) throw new Error(error.message);
@@ -169,13 +183,14 @@ async function persistComputedMatch(
     .eq("id", matchId);
 
   if (updateError) throw new Error(updateError.message);
-  if (nextStatus === "finished" || nextStatus === "cancelled") {
+  if ((nextStatus === "finished" || nextStatus === "cancelled") && !(await isPrivateMatch(supabase, matchId))) {
     await resolvePredictionsForMatch(matchId);
   }
   return nextStatus;
 }
 
-async function refreshPlayerStats(playerId: string | null) {
+async function refreshPlayerStats(playerId: string | null, isPrivate = false) {
+  if (isPrivate) return;
   if (!playerId) return;
   const supabase = await createClient();
   const { error } = await supabase.rpc("recompute_player_stats", {
@@ -251,7 +266,7 @@ export async function setMatchStatus(
   const supabase = await createClient();
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("id, home_team_id")
+    .select("id, home_team_id, is_private")
     .eq("id", matchId)
     .maybeSingle();
 
@@ -281,10 +296,12 @@ export async function setMatchStatus(
           ? "Canceló el partido"
           : "Volvió a programado"
   );
-  if (status === "finished") {
+  const privateMatch = match.is_private === true;
+  if (privateMatch) revalidatePrivateMatch(matchId, match.home_team_id);
+  if (status === "finished" && !privateMatch) {
     await notifyMatchFinished(matchId);
   }
-  if (status === "finished" || status === "cancelled") {
+  if ((status === "finished" || status === "cancelled") && !privateMatch) {
     await resolvePredictionsForMatch(matchId);
   }
 
@@ -328,7 +345,7 @@ export async function recordPoint(input: {
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("id, status, home_team_id, away_team_id, current_set, is_federation")
+    .select("id, status, home_team_id, away_team_id, current_set, is_federation, is_private")
     .eq("id", input.matchId)
     .single();
 
@@ -463,8 +480,10 @@ export async function recordPoint(input: {
       keepOfficial ? "finished" : "live"
     );
     if (!input.liveFast || nextStatus === "finished") {
-      await refreshPlayerStats(input.playerId ?? null);
-      revalidateMatchStats({
+      await refreshPlayerStats(input.playerId ?? null, match.is_private === true);
+      if (match.is_private) {
+        revalidatePrivateMatch(match.id, match.home_team_id);
+      } else revalidateMatchStats({
         matchId: match.id,
         playerId: input.playerId,
         homeTeamId: match.home_team_id,
@@ -472,7 +491,7 @@ export async function recordPoint(input: {
         finished: nextStatus === "finished" && !keepOfficial,
       });
     }
-    if (!keepOfficial && nextStatus === "finished") {
+    if (!keepOfficial && nextStatus === "finished" && !match.is_private) {
       await notifyMatchFinished(match.id);
     }
   } catch (err) {
@@ -500,7 +519,7 @@ export async function undoPoint(matchId: string, eventId: string) {
 
   const { data: match } = await supabase
     .from("matches")
-    .select("home_team_id, away_team_id")
+    .select("home_team_id, away_team_id, is_private")
     .eq("id", matchId)
     .single();
 
@@ -516,7 +535,8 @@ export async function undoPoint(matchId: string, eventId: string) {
 
   try {
     const nextStatus = await persistComputedMatch(matchId, match.home_team_id, "live");
-    revalidateMatchStats({
+    if (match.is_private) revalidatePrivateMatch(matchId, match.home_team_id);
+    else revalidateMatchStats({
       matchId,
       playerId: lastEvent.player_id,
       homeTeamId: match.home_team_id,
@@ -549,7 +569,7 @@ export async function undoLastPoint(matchId: string) {
 
   const { data: match } = await supabase
     .from("matches")
-    .select("home_team_id, away_team_id")
+    .select("home_team_id, away_team_id, is_private")
     .eq("id", matchId)
     .single();
 
@@ -565,9 +585,10 @@ export async function undoLastPoint(matchId: string) {
   try {
     const [nextStatus] = await Promise.all([
       persistComputedMatch(matchId, match.home_team_id, "live"),
-      refreshPlayerStats(lastEvent.player_id),
+      refreshPlayerStats(lastEvent.player_id, match.is_private === true),
     ]);
-    revalidateMatchStats({
+    if (match.is_private) revalidatePrivateMatch(matchId, match.home_team_id);
+    else revalidateMatchStats({
       matchId,
       playerId: lastEvent.player_id,
       homeTeamId: match.home_team_id,
