@@ -13,6 +13,7 @@ import { requirePrivateMember, loadPrivateWorkspace, privateMatchWithTeams } fro
 import { MATCH_EVENT_SELECT, MATCH_LINEUP_SELECT } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { setterStartZone } from "@/lib/court";
+import { PrivateDeleteButton } from "@/components/private-teams/private-delete-controls";
 import { overlayFinishedMatchScore } from "@/lib/volleyball";
 import type { Match, MatchEventWithPlayer, MatchLineupEntry } from "@/lib/types";
 
@@ -27,6 +28,7 @@ export default async function PrivateMatchPage({ params }: { params: Promise<{ m
   const match = data as Match;
   const workspace = await loadPrivateWorkspace(match.home_team_id);
   if (!workspace.matches.some((item) => item.id === matchId)) notFound();
+  const { data: canEditMatch } = await supabase.rpc("private_can_write_match", { p_match_id: matchId });
   const [{ data: events }, { data: lineupRows }] = await Promise.all([
     supabase.from("match_events").select(MATCH_EVENT_SELECT as "*").eq("match_id", matchId).order("created_at", { ascending: false }),
     supabase.from("match_lineups").select(MATCH_LINEUP_SELECT as "*").eq("match_id", matchId),
@@ -42,6 +44,7 @@ export default async function PrivateMatchPage({ params }: { params: Promise<{ m
     <Link href={`/mis-equipos/${match.home_team_id}`} className="text-sm font-medium text-accent hover:underline">← Volver a Mis equipos</Link>
     <PageHeader title={`${typedMatch.home_team.name} vs ${typedMatch.away_team.name}`} description={`Partido privado · ${format(new Date(match.scheduled_at), "d MMMM yyyy, HH:mm", { locale: es })}`} action={<ExportMatchExcelButton match={typedMatch} events={typedEvents} roster={workspace.players} setterStarts={setterStarts} />} />
     <Scoreboard match={typedMatch} />
+    {canEditMatch === true ? <div className="flex justify-end"><PrivateDeleteButton kind="match" id={matchId} teamId={match.home_team_id} /></div> : null}
     {match.status !== "finished" && match.status !== "cancelled" ? <Button asChild variant="accent" className="w-full"><Link href={`/mis-equipos/partidos/${match.id}/seguimiento`}>{match.status === "live" ? "Continuar seguimiento en vivo" : "Empezar seguimiento en vivo"}</Link></Button> : null}
     {typedEvents.length > 0 ? <section><h2 className="mb-3 text-lg font-semibold">Resumen estadístico</h2><MatchStatsPanel match={typedMatch} events={typedEvents} setterStarts={setterStarts} /><div className="mt-4"><PointHistory events={typedEvents} substitutions={[]} homeTeamId={match.home_team_id} homeTeam={typedMatch.home_team} awayTeam={typedMatch.away_team} /></div></section> : <p className="text-sm text-muted-foreground">Abre el seguimiento para elegir la alineación, el saque y la rotación inicial y empezar a apuntar.</p>}
   </div>;

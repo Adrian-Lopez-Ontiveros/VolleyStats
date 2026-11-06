@@ -113,3 +113,45 @@ export async function createPrivateMatch(_: PrivateActionState, formData: FormDa
   revalidatePath(`/mis-equipos/${homeTeamId}`);
   return { success: "Partido privado creado.", matchId };
 }
+
+function privateId(value: string) {
+  return z.string().uuid().safeParse(value).success;
+}
+
+async function privateDeleteResult(operation: () => Promise<{ error: { message: string } | null; data?: unknown }>): Promise<PrivateActionState> {
+  const user = await staff();
+  if (!user) return { error: "No tienes permiso para esta operación privada." };
+  const { error } = await operation();
+  if (error) return visiblePrivateActionError(error.message, user.profile.role === "admin");
+  return { success: "" };
+}
+
+export async function deletePrivateTeam(teamId: string): Promise<PrivateActionState> {
+  if (!privateId(teamId)) return { error: "No se ha podido identificar el equipo." };
+  const result = await privateDeleteResult(async () => {
+    const supabase = await createClient();
+    return supabase.rpc("delete_private_team", { p_team_id: teamId });
+  });
+  if (!result.error && !result.errorDetail) revalidatePath("/mis-equipos");
+  return result;
+}
+
+export async function deletePrivateMatch(matchId: string): Promise<PrivateActionState> {
+  if (!privateId(matchId)) return { error: "No se ha podido identificar el partido." };
+  const result = await privateDeleteResult(async () => {
+    const supabase = await createClient();
+    return supabase.rpc("delete_private_match", { p_match_id: matchId });
+  });
+  if (!result.error && !result.errorDetail) revalidatePath("/mis-equipos");
+  return result;
+}
+
+export async function removePrivatePlayer(teamId: string, playerId: string): Promise<PrivateActionState> {
+  if (![teamId, playerId].every(privateId)) return { error: "No se ha podido identificar al jugador." };
+  const result = await privateDeleteResult(async () => {
+    const supabase = await createClient();
+    return supabase.rpc("remove_private_player", { p_team_id: teamId, p_player_id: playerId });
+  });
+  if (!result.error && !result.errorDetail) revalidatePath(`/mis-equipos/${teamId}`);
+  return result;
+}

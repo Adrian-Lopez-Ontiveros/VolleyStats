@@ -13,6 +13,7 @@ export type PrivateWorkspace = {
   players: Player[];
   matches: Match[];
   events: { match_id: string; player_id: string | null; point_type: import("@/lib/types").PointType }[];
+  canEdit: boolean;
 };
 
 /** Solo entrenadores y administradores. La propiedad la vuelve a exigir RLS. */
@@ -97,14 +98,20 @@ export async function loadPrivateWorkspace(teamId: string): Promise<PrivateWorks
   for (const matchTeam of (matchTeams ?? []) as Team[]) {
     if (!teams.some((team) => team.id === matchTeam.id)) teams.push(matchTeam as PrivateTeam);
   }
-  const { data: events, error: eventsError } = await supabase
-    .from("match_events").select("match_id, player_id, point_type")
-    .in("match_id", visibleMatches.length ? visibleMatches.map((match) => match.id) : ["00000000-0000-0000-0000-000000000000"]);
-  if (eventsError) throw new Error("No se pudieron cargar las estadísticas privadas.");
+  const [{ data: events, error: eventsError }, { data: canEdit, error: writeError }] = await Promise.all([
+    supabase.from("match_events").select("match_id, player_id, point_type")
+      .in("match_id", visibleMatches.length ? visibleMatches.map((match) => match.id) : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.rpc("private_can_write_team", { p_team_id: teamId }),
+  ]);
+  if (eventsError || writeError) throw new Error("No se pudieron cargar las estadísticas privadas.");
+  const historicalPlayerIds = [...new Set((events ?? []).map((event) => event.player_id).filter(Boolean) as string[])];
+  const { data: historicalPlayers, error: historicalError } = await supabase.from("players").select("*").eq("is_private", true)
+    .is("team_id", null).in("id", historicalPlayerIds.length ? historicalPlayerIds : ["00000000-0000-0000-0000-000000000000"]);
+  if (historicalError) throw new Error("No se pudieron cargar los historiales privados.");
   return {
-    league, teams,
+    league, teams, canEdit: canEdit === true,
     events: (events ?? []) as PrivateWorkspace["events"],
-    players: (players ?? []) as Player[],
+    players: [...(players ?? []), ...(historicalPlayers ?? [])] as Player[],
     matches: visibleMatches as Match[],
   };
 }
