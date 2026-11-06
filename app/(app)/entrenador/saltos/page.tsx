@@ -16,6 +16,7 @@ export default async function JumpsPage() {
     supabase
       .from("players")
       .select(PLAYER_LINEUP_SELECT as "*")
+        .eq("is_private", false)
       .order("full_name"),
     supabase
       .from("trainings")

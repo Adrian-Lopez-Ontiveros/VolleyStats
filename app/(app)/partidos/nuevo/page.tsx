@@ -12,10 +12,12 @@ export default async function NewMatchPage() {
   await requireCoach();
   const supabase = await createClient();
   const [{ data: teams }, { data: players }] = await Promise.all([
-    supabase.from("teams").select(TEAM_SELECT as "*").order("name"),
+    supabase.from("teams").select(TEAM_SELECT as "*").eq("is_private", false).order("name"),
     supabase
       .from("players")
       .select(PLAYER_LINEUP_SELECT as "*")
+        .eq("is_private", false)
+      .eq("is_private", false)
       .order("jersey_number", { ascending: true, nullsFirst: false }),
   ]);
 

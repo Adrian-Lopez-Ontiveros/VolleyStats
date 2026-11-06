@@ -128,6 +128,7 @@ export default async function MatchDetailPage({
       ? supabase
           .from("players")
           .select(PLAYER_LINEUP_SELECT as "*")
+        .eq("is_private", false)
           .eq("team_id", clubTeamId)
           .order("jersey_number", { ascending: true, nullsFirst: false })
       : Promise.resolve({ data: [] as Player[] }),

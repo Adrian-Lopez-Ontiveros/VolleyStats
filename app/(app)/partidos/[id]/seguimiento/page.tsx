@@ -79,7 +79,9 @@ export default async function LiveMatchPage({
     supabase
       .from("players")
       .select(PLAYER_LINEUP_SELECT as "*")
+        .eq("is_private", false)
       .in("team_id", [typedMatch.home_team_id, typedMatch.away_team_id])
+      .eq("is_private", false)
       .order("jersey_number", { ascending: true, nullsFirst: false }),
   ]);
 

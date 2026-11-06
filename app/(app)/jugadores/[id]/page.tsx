@@ -60,7 +60,7 @@ export default async function PlayerDetailPage({
     : `${PLAYER_LINEUP_SELECT}, team:teams(${TEAM_SUMMARY_SELECT})`;
 
   const [{ data: player }, eventsResult, { data: card }, cardStyle] = await Promise.all([
-    supabase.from("players").select(`${playerSelect}` as "*").eq("id", id).maybeSingle(),
+    supabase.from("players").select(`${playerSelect}` as "*").eq("is_private", false).eq("id", id).maybeSingle(),
     canViewStats
       ? supabase
           .from("match_events")

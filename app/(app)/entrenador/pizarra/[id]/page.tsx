@@ -27,10 +27,12 @@ export default async function BoardPlayPage({
         .from("tactical_plays")
         .select(TACTICAL_PLAY_SELECT as "*")
         .order("updated_at", { ascending: false }),
-      supabase.from("teams").select(TEAM_SELECT as "*").order("name"),
+      supabase.from("teams").select(TEAM_SELECT as "*").eq("is_private", false).order("name"),
       supabase
         .from("players")
         .select(PLAYER_LINEUP_SELECT as "*")
+        .eq("is_private", false)
+        .eq("is_private", false)
         .order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase
         .from("trainings")

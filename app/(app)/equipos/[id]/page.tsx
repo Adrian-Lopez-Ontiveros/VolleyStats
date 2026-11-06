@@ -61,16 +61,19 @@ export default async function TeamDetailPage({
 
   const [{ data: team, error: teamError }, { data: players, error: playersError }, { data: matches }] =
     await Promise.all([
-      supabase.from("teams").select(TEAM_SELECT as "*").eq("id", id).maybeSingle(),
+      supabase.from("teams").select(TEAM_SELECT as "*").eq("is_private", false).eq("id", id).maybeSingle(),
       supabase
         .from("players")
         .select((canManage ? PLAYER_ROSTER_SELECT : PLAYER_PUBLIC_SELECT) as "*")
         .eq("team_id", id)
+        .eq("is_private", false)
+        .eq("is_private", false)
         .order("jersey_number", { ascending: true, nullsFirst: false }),
       selectWithMatchFallback(MATCH_DETAIL_VARIANTS, (columns) =>
         supabase
           .from("matches")
           .select(columns as "*")
+          .eq("is_private", false)
           .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
           .order("scheduled_at", { ascending: true })
       ),

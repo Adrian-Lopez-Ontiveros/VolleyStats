@@ -64,6 +64,9 @@ export type Team = {
   federation_team_id?: string | null;
   created_at: string;
   updated_at: string;
+  is_private?: boolean;
+  owner_id?: string | null;
+  private_league_id?: string | null;
 };
 
 export type PlayerStats = {
@@ -130,6 +133,8 @@ export type Profile = {
   role: UserRole;
   team_id: string | null;
   coached_team_id?: string | null;
+  /** Calculado en servidor: puede abrir equipos privados compartidos. */
+  private_team_access?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -237,6 +242,9 @@ export type Match = {
   sets_to_win?: number | null;
   created_at: string;
   updated_at: string;
+  owner_id?: string | null;
+  is_private?: boolean;
+  private_league_id?: string | null;
 };
 
 export type MatchWithTeams = Match & {
@@ -366,4 +374,22 @@ export type JumpAnalysis = {
 export type JumpAnalysisWithRelations = JumpAnalysis & {
   player: Pick<Player, "id" | "full_name" | "jersey_number" | "team_id"> | null;
   training: Pick<Training, "id" | "name" | "scheduled_at"> | null;
+};
+
+export type PrivateLeague = {
+  id: string;
+  name: string;
+  owner_id: string;
+  created_at: string;
+};
+
+export type TeamMemberRole = "editor" | "viewer";
+export type TeamMember = {
+  id: string;
+  team_id: string;
+  user_id: string | null;
+  role: TeamMemberRole;
+  invited_email: string | null;
+  accepted: boolean;
+  created_at: string;
 };
