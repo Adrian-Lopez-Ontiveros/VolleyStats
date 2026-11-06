@@ -4,6 +4,7 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { matchStatusMeta } from "@/lib/constants";
+import { compareClubFirstThenTime } from "@/lib/federation/rounds";
 import {
   formatMatchWhenShort,
   hasFmvWeekendSchedule,
@@ -99,7 +100,10 @@ function groupByDay(matches: MatchWithTeams[]) {
     list.push(match);
     map.set(key, list);
   }
-  return [...map.entries()];
+  return [...map.entries()].map(([day, dayMatches]) => [
+    day,
+    [...dayMatches].sort(compareClubFirstThenTime),
+  ] as [string, MatchWithTeams[]]);
 }
 
 function CalendarMatch({ match, linked }: { match: MatchWithTeams; linked: boolean }) {
