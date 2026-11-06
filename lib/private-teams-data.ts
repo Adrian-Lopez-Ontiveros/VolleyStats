@@ -29,6 +29,35 @@ export async function loadPrivateTeams(): Promise<PrivateTeam[]> {
   return (data ?? []) as Team[];
 }
 
+export type PrivateTeamsOverview = {
+  teams: PrivateTeam[];
+  playerCounts: Record<string, number>;
+  matches: Match[];
+  matchTeams: PrivateTeam[];
+};
+
+/** Resumen ligero del espacio privado: dos consultas adicionales, sin RLS nuevo. */
+export async function loadPrivateTeamsOverview(): Promise<PrivateTeamsOverview> {
+  const teams = await loadPrivateTeams();
+  if (teams.length === 0) return { teams, playerCounts: {}, matches: [], matchTeams: [] };
+  const supabase = await createClient();
+  const leagueIds = [...new Set(teams.flatMap((team) => team.private_league_id ?? []))];
+  const [{ data: players, error: playersError }, { data: matches, error: matchesError }] = await Promise.all([
+    supabase.from("players").select("team_id").eq("is_private", true).in("team_id", teams.map((team) => team.id)),
+    supabase.from("matches").select("id, home_team_id, away_team_id, scheduled_at, status").eq("is_private", true).neq("status", "cancelled")
+      .in("private_league_id", leagueIds).order("scheduled_at", { ascending: false }),
+  ]);
+  if (playersError || matchesError) throw new Error("No se pudo cargar el resumen de tus equipos privados.");
+  const playerCounts = Object.fromEntries(teams.map((team) => [team.id, 0]));
+  for (const player of players ?? []) {
+    if (player.team_id && player.team_id in playerCounts) playerCounts[player.team_id] += 1;
+  }
+  const matchTeamIds = [...new Set((matches ?? []).flatMap((match) => [match.home_team_id, match.away_team_id]))];
+  const { data: matchTeams, error: teamsError } = await supabase.from("teams").select("id, name, logo_url, short_name").eq("is_private", true).in("id", matchTeamIds);
+  if (teamsError) throw new Error("No se pudo cargar el rival de tus partidos privados.");
+  return { teams, playerCounts, matches: (matches ?? []) as Match[], matchTeams: (matchTeams ?? []) as PrivateTeam[] };
+}
+
 /** Carga el equipo, su plantilla y los participantes de sus partidos privados. */
 export async function loadPrivateWorkspace(teamId: string): Promise<PrivateWorkspace> {
   await requirePrivateMember();
