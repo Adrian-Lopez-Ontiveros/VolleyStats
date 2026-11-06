@@ -1,4 +1,5 @@
 import type { TeamCategory } from "@/lib/categories";
+import { involvesClubTeam } from "@/lib/federation/leagues";
 import { madridCalendarKey } from "@/lib/federation/schedule";
 import { computeStandings, type StandingRow } from "@/lib/stats";
 import type { MatchWithTeams } from "@/lib/types";
@@ -124,10 +125,22 @@ export function jornadaViewMatches<T extends RoundMatch & { id: string }>(
     }
     list.push(match);
   }
-  list.sort(
-    (a, b) => scheduledTime(a.scheduled_at) - scheduledTime(b.scheduled_at)
-  );
+  list.sort(compareClubFirstThenTime);
   return { matches: list, notes };
+}
+
+/** En una jornada: primero el partido del club (Fuenlabrada), luego por horario. */
+export function compareClubFirstThenTime<
+  T extends {
+    scheduled_at?: string | null;
+    home_team?: { is_club_team?: boolean } | null;
+    away_team?: { is_club_team?: boolean } | null;
+  },
+>(a: T, b: T) {
+  const clubA = involvesClubTeam(a) ? 0 : 1;
+  const clubB = involvesClubTeam(b) ? 0 : 1;
+  if (clubA !== clubB) return clubA - clubB;
+  return scheduledTime(a.scheduled_at) - scheduledTime(b.scheduled_at);
 }
 
 export function isCategoryMatch(
