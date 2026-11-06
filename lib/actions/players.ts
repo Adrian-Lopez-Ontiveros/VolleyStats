@@ -223,3 +223,33 @@ export async function deletePlayer(playerId: string) {
   }
   redirect("/equipos");
 }
+
+/** Quita al jugador de la plantilla sin borrar la fila ni las estadísticas. */
+export async function detachClubPlayer(playerId: string) {
+  await requireCoach();
+  const supabase = await createClient();
+  const { data: current } = await supabase
+    .from("players")
+    .select("team_id")
+    .eq("id", playerId)
+    .eq("is_private", false)
+    .maybeSingle();
+
+  const { error } = await supabase.rpc("detach_club_player", { p_player_id: playerId });
+  if (error) {
+    if (/detach_club_player/i.test(error.message) || /function .* does not exist/i.test(error.message)) {
+      return {
+        error: "Falta ejecutar la migración supabase/migrations/053_coach_only_staff.sql",
+      };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/jugadores");
+  revalidatePath("/equipos");
+  if (current?.team_id) {
+    revalidatePath(`/equipos/${current.team_id}`);
+    redirect(`/equipos/${current.team_id}`);
+  }
+  redirect("/equipos");
+}
