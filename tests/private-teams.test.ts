@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { privatePlayerStats } from "@/lib/private-teams";
+import { isPrivateRosterTeam, privatePlayerStats } from "@/lib/private-teams";
 
 test("las estadísticas privadas separan puntos y errores por tipo", () => {
   const stats = privatePlayerStats([
@@ -26,4 +26,10 @@ test("las estadísticas privadas vacías son cero", () => {
   const stats = privatePlayerStats([]);
   assert.equal(stats.points, 0);
   assert.equal(stats.errors, 0);
+});
+
+test("los rivales puntuales no aparecen como equipos con plantilla", () => {
+  assert.equal(isPrivateRosterTeam({ is_one_off: true }), false);
+  assert.equal(isPrivateRosterTeam({ is_one_off: false }), true);
+  assert.equal(isPrivateRosterTeam({}), true);
 });

@@ -5,7 +5,6 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { hasCoachAccess } from "@/lib/constants";
 import { privateScheduledAt } from "@/lib/private-teams";
-import { loadPrivateWorkspace } from "@/lib/private-teams-data";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeStoredPersonName } from "@/lib/utils";
 import type { PlayerPosition } from "@/lib/types";
@@ -98,22 +97,15 @@ export async function updatePrivatePlayer(_: PrivateActionState, formData: FormD
 export async function createPrivateMatch(_: PrivateActionState, formData: FormData): Promise<PrivateActionState> {
   const leagueId = text(formData, "leagueId");
   const homeTeamId = text(formData, "homeTeamId");
-  const awayTeamId = text(formData, "awayTeamId");
-  if (![leagueId, homeTeamId, awayTeamId].every((value) => z.string().uuid().safeParse(value).success)) return { error: "Elige una liga y dos equipos." };
-  if (homeTeamId === awayTeamId) return { error: "Tu equipo y el rival deben ser distintos." };
+  const opponentName = text(formData, "opponentName");
+  if (![leagueId, homeTeamId].every((value) => z.string().uuid().safeParse(value).success)) return { error: "No se pudo identificar tu equipo." };
+  if (opponentName.length < 2 || opponentName.length > 100) return { error: "Escribe el nombre del rival (entre 2 y 100 caracteres)." };
   const scheduledAt = privateScheduledAt(formData.get("scheduledAt"));
   if (!scheduledAt) return { error: "Escribe una fecha y hora válidas." };
-  const workspace = await loadPrivateWorkspace(homeTeamId);
-  if (workspace.league.id !== leagueId) return { error: "El equipo no pertenece a este espacio privado." };
-  const home = workspace.teams.find((team) => team.id === homeTeamId);
-  const away = workspace.teams.find((team) => team.id === awayTeamId);
-  const canEdit = await Promise.all([homeTeamId, awayTeamId].map(async (id) => Boolean(await loadEditableTeam(id))));
-  if (!home || !away || !canEdit.every(Boolean)) return { error: "Necesitas permiso de edición en los dos equipos del partido." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_private_match", { p_league_id: leagueId, p_home_team_id: homeTeamId, p_away_team_id: awayTeamId, p_scheduled_at: scheduledAt });
+  const { data: matchId, error } = await supabase.rpc("create_private_match_with_opponent", { p_league_id: leagueId, p_home_team_id: homeTeamId, p_opponent_name: opponentName, p_scheduled_at: scheduledAt });
   if (error) return fail(error.message);
-  const { data: match } = await supabase.from("matches").select("id").eq("private_league_id", leagueId).eq("home_team_id", homeTeamId).eq("away_team_id", awayTeamId).eq("scheduled_at", scheduledAt).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (!match) return { error: "El partido se creó, pero no se pudo abrir. Vuelve a Mis equipos para encontrarlo." };
+  if (typeof matchId !== "string") return { error: "El partido se creó, pero no se pudo abrir. Vuelve a Mis equipos para encontrarlo." };
   revalidatePath(`/mis-equipos/${homeTeamId}`);
-  return { success: "Partido privado creado.", matchId: match.id };
+  return { success: "Partido privado creado.", matchId };
 }

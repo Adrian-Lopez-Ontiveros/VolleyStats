@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isPrivateRosterTeam } from "@/lib/private-teams";
 import { requireCoach } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { unwrapOne } from "@/lib/utils";
@@ -23,12 +24,12 @@ export async function requirePrivateMember() {
 export async function loadPrivateTeams(): Promise<PrivateTeam[]> {
   await requirePrivateMember();
   const supabase = await createClient();
-  const { data, error } = await supabase.from("teams").select("*").eq("is_private", true).order("created_at");
+  const { data, error } = await supabase.from("teams").select("*").eq("is_private", true).eq("is_one_off", false).order("created_at");
   if (error) throw new Error("No se pudieron cargar tus equipos privados.");
   return (data ?? []) as Team[];
 }
 
-/** Carga un equipo y los rivales de su mismo contenedor privado para crear partidos. */
+/** Carga el equipo, su plantilla y los participantes de sus partidos privados. */
 export async function loadPrivateWorkspace(teamId: string): Promise<PrivateWorkspace> {
   await requirePrivateMember();
   const supabase = await createClient();
@@ -46,7 +47,9 @@ export async function loadPrivateWorkspace(teamId: string): Promise<PrivateWorks
   if (leagueError || teamsError) throw new Error("No se pudieron cargar los equipos privados.");
   if (!leagueData) notFound();
   const league = leagueData as PrivateLeague;
-  const teams = (leagueTeams ?? []).map((row) => unwrapOne(row.team)).filter(Boolean) as Team[];
+  const teams = ((leagueTeams ?? []).map((row) => unwrapOne(row.team)).filter(Boolean) as Team[])
+    .filter(isPrivateRosterTeam);
+  if (selected.is_one_off) notFound();
   const { data: players, error: playersError } = await supabase
     .from("players").select("*").eq("is_private", true)
     .in("team_id", teams.length ? teams.map((team) => team.id) : ["00000000-0000-0000-0000-000000000000"])
@@ -57,6 +60,14 @@ export async function loadPrivateWorkspace(teamId: string): Promise<PrivateWorks
     .neq("status", "cancelled").order("scheduled_at", { ascending: false });
   if (matchesError) throw new Error("No se pudieron cargar los partidos privados.");
   const visibleMatches = (matches ?? []).filter((match) => match.home_team_id === teamId || match.away_team_id === teamId);
+  const matchTeamIds = [...new Set(visibleMatches.flatMap((match) => [match.home_team_id, match.away_team_id]))];
+  const { data: matchTeams, error: matchTeamsError } = await supabase
+    .from("teams").select("*").eq("is_private", true)
+    .in("id", matchTeamIds.length ? matchTeamIds : ["00000000-0000-0000-0000-000000000000"]);
+  if (matchTeamsError) throw new Error("No se pudo cargar el rival privado.");
+  for (const matchTeam of (matchTeams ?? []) as Team[]) {
+    if (!teams.some((team) => team.id === matchTeam.id)) teams.push(matchTeam as PrivateTeam);
+  }
   const { data: events, error: eventsError } = await supabase
     .from("match_events").select("match_id, player_id, point_type")
     .in("match_id", visibleMatches.length ? visibleMatches.map((match) => match.id) : ["00000000-0000-0000-0000-000000000000"]);

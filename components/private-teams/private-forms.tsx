@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AjudgeAlert } from "@/components/private-teams/form-alert";
 import { createPrivateMatch, createPrivateTeam, type PrivateActionState } from "@/lib/actions/private-teams";
-import type { PrivateTeam } from "@/lib/private-teams-data";
 
 function ResetAfterSuccess({ state }: { state: PrivateActionState }) {
   return state.success ? <p className="text-xs text-muted-foreground">Ya puedes añadir jugadores a su plantilla.</p> : null;
@@ -25,7 +24,7 @@ export function CreateTeamForm() {
   </form>;
 }
 
-export function CreateMatchForm({ teamId, leagueId, teams }: { teamId: string; leagueId: string; teams: PrivateTeam[] }) {
+export function CreateMatchForm({ teamId, leagueId }: { teamId: string; leagueId: string }) {
   const [state, action, pending] = useActionState(createPrivateMatch, {});
   const router = useRouter();
   useEffect(() => { if (state.matchId) router.push(`/mis-equipos/partidos/${state.matchId}`); }, [state.matchId, router]);
@@ -34,10 +33,10 @@ export function CreateMatchForm({ teamId, leagueId, teams }: { teamId: string; l
     <input type="hidden" name="homeTeamId" value={teamId} />
     <AjudgeAlert state={state} />
     <div className="grid gap-3 sm:grid-cols-2">
-      <div className="space-y-2"><Label htmlFor="away-team">Rival</Label><select id="away-team" name="awayTeamId" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" required defaultValue=""><option value="" disabled>Elige rival</option>{teams.filter((team) => team.id !== teamId).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></div>
+      <div className="space-y-2"><Label htmlFor="opponent-name">Nombre del rival</Label><Input id="opponent-name" name="opponentName" required minLength={2} maxLength={100} placeholder="Escribe el nombre del rival" autoComplete="off" /></div>
       <div className="space-y-2"><Label htmlFor="match-date">Fecha y hora</Label><Input id="match-date" name="scheduledAt" type="datetime-local" required /></div>
     </div>
-    <p className="text-xs text-muted-foreground">Tu equipo juega de local. Al crearlo se abre la pantalla del partido.</p>
-    <Button type="submit" variant="accent" disabled={pending || teams.length < 2}><Plus className="h-4 w-4" />{pending ? "Creando…" : "Crear partido privado"}</Button>
+    <p className="text-xs text-muted-foreground">Tu equipo juega de local. Escribe el rival sin necesidad de crear otro equipo. Al crearlo se abre la pantalla del partido.</p>
+    <Button type="submit" variant="accent" disabled={pending}><Plus className="h-4 w-4" />{pending ? "Creando…" : "Crear partido privado"}</Button>
   </form>;
 }
