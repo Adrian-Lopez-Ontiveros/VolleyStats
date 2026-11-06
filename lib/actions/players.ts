@@ -8,6 +8,7 @@ import { requireCoach, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PlayerPosition } from "@/lib/types";
 import { normalizeStoredPersonName } from "@/lib/utils";
+import { playerUpdateSucceeded } from "@/lib/player-write";
 
 const playerSchema = z.object({
   fullName: z.string().min(2, "El nombre es obligatorio"),
@@ -97,17 +98,23 @@ export async function updatePlayer(playerId: string, formData: FormData) {
     .eq("id", playerId)
     .single();
 
-  const { error } = await supabase
+  const position = (parsed.data.position || null) as PlayerPosition | null;
+  const { data: updated, error } = await supabase
     .from("players")
     .update({
       full_name: fullName,
       team_id: parsed.data.teamId || null,
       jersey_number: jersey,
-      position: (parsed.data.position || null) as PlayerPosition | null,
+      position,
     })
-    .eq("id", playerId);
+    .eq("id", playerId)
+    .select("id, position")
+    .maybeSingle();
 
   if (error) return { error: error.message };
+  if (!playerUpdateSucceeded(updated, playerId, position)) {
+    return { error: "No se pudo guardar la posición. Comprueba tus permisos y vuelve a intentarlo." };
+  }
 
   const linkedUser = current?.user_id as string | null;
   if (linkedUser) {

@@ -9,6 +9,7 @@ import { loadPrivateWorkspace } from "@/lib/private-teams-data";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeStoredPersonName } from "@/lib/utils";
 import type { PlayerPosition } from "@/lib/types";
+import { playerUpdateSucceeded } from "@/lib/player-write";
 
 export type PrivateActionState = { error?: string; success?: string; matchId?: string };
 function text(formData: FormData, name: string) { return String(formData.get(name) ?? "").trim(); }
@@ -77,8 +78,19 @@ export async function updatePrivatePlayer(_: PrivateActionState, formData: FormD
   if (fullName.length < 2 || fullName.length > 100) return { error: "Escribe un nombre válido." };
   if (jersey !== null && (!Number.isInteger(jersey) || jersey < 0 || jersey > 99)) return { error: "El dorsal debe estar entre 0 y 99." };
   if (rawPosition && !positions.has(rawPosition)) return { error: "La posición no es válida." };
-  const { error } = await supabase.from("players").update({ full_name: fullName, jersey_number: jersey, position: (rawPosition || null) as PlayerPosition | null, team_id: current.team_id }).eq("id", playerId).eq("is_private", true);
+  const position = (rawPosition || null) as PlayerPosition | null;
+  const { data: updated, error } = await supabase
+    .from("players")
+    .update({ full_name: fullName, jersey_number: jersey, position })
+    .eq("id", playerId)
+    .eq("team_id", current.team_id)
+    .eq("is_private", true)
+    .select("id, position")
+    .maybeSingle();
   if (error) return fail(error.message);
+  if (!playerUpdateSucceeded(updated, playerId, position)) {
+    return { error: "No se pudo guardar la posición. Comprueba que tienes permiso de edición en este equipo y vuelve a intentarlo." };
+  }
   revalidatePath(`/mis-equipos/${access.team.id}`);
   return { success: "Datos de la plantilla actualizados." };
 }
