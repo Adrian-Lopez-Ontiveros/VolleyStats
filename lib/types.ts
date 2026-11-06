@@ -87,6 +87,7 @@ export type Player = {
   jersey_number: number | null;
   position: PlayerPosition | null;
   avatar_url: string | null;
+  is_private: boolean;
   created_at: string;
   updated_at: string;
 } & PlayerStats;
