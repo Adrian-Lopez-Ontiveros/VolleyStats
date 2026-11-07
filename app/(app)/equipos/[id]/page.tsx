@@ -9,6 +9,8 @@ import { TeamLogo } from "@/components/teams/team-logo";
 import { PlayerRankingTable } from "@/components/stats/player-ranking-table";
 import { StatSummary, WinRateCard } from "@/components/stats/stat-summary";
 import { PlayerRosterCard } from "@/components/teams/player-roster-card";
+import { TeamStaffSection } from "@/components/teams/team-staff-section";
+import { loadTeamStaff } from "@/lib/team-staff";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,6 +85,7 @@ export default async function TeamDetailPage({
   }
   if (!team) notFound();
   const typedTeam = team as Team;
+  const staff = user ? await loadTeamStaff(supabase, id) : [];
 
   const typedPlayers = (players ?? []) as Player[];
   const typedMatches = (matches ?? []) as MatchWithTeams[];
@@ -362,9 +365,11 @@ export default async function TeamDetailPage({
           </section>
         ) : null}
 
+        <TeamStaffSection staff={staff} signedIn={Boolean(user)} />
+
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Plantilla</h2>
+            <h2 className="text-lg font-semibold">Jugadores</h2>
             {canManage ? (
               <Button asChild size="sm" variant="outline">
                 <Link href={`/jugadores/nuevo?team=${id}`}>
