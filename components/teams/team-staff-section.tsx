@@ -1,24 +1,14 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TeamStaffMember } from "@/lib/team-staff";
 import { initials } from "@/lib/utils";
 
-export function TeamStaffSection({
-  staff,
-  signedIn,
-}: {
-  staff: TeamStaffMember[];
-  signedIn: boolean;
-}) {
+export function TeamStaffSection({ staff }: { staff: TeamStaffMember[] }) {
   return (
     <section>
       <h2 className="mb-3 text-lg font-semibold">Cuerpo técnico</h2>
-      {!signedIn ? (
-        <p className="text-sm text-muted-foreground">
-          Inicia sesión para ver los entrenadores del equipo.
-        </p>
-      ) : staff.length === 0 ? (
+      {staff.length === 0 ? (
         <p className="text-sm text-muted-foreground">Este equipo todavía no tiene entrenadores asignados.</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -26,7 +16,6 @@ export function TeamStaffSection({
             <Card key={member.key}>
               <CardContent className="flex items-center gap-3 p-4">
                 <Avatar className="h-11 w-11">
-                  <AvatarImage src={member.avatarUrl ?? undefined} alt={member.fullName} />
                   <AvatarFallback>{initials(member.fullName)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">

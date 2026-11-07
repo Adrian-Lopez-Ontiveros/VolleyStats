@@ -85,7 +85,7 @@ export default async function TeamDetailPage({
   }
   if (!team) notFound();
   const typedTeam = team as Team;
-  const staff = user ? await loadTeamStaff(supabase, id) : [];
+  const staff = await loadTeamStaff(supabase, id);
 
   const typedPlayers = (players ?? []) as Player[];
   const typedMatches = (matches ?? []) as MatchWithTeams[];
@@ -365,7 +365,7 @@ export default async function TeamDetailPage({
           </section>
         ) : null}
 
-        <TeamStaffSection staff={staff} signedIn={Boolean(user)} />
+        <TeamStaffSection staff={staff} />
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
