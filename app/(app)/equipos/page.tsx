@@ -4,6 +4,7 @@ import { isTeamCategory, parseCategory } from "@/lib/categories";
 import { getClubTeams, getPlayers, getPublicPlayers } from "@/lib/data";
 import { rewardFramesByPlayer } from "@/lib/reward-frames";
 import { createClient } from "@/lib/supabase/server";
+import { loadTeamStaff, type TeamStaffMember } from "@/lib/team-staff";
 import type { Player, Team } from "@/lib/types";
 
 export default async function TeamsPage({
@@ -28,6 +29,10 @@ export default async function TeamsPage({
   );
 
   const supabase = await createClient();
+  const staffEntries = await Promise.all(
+    clubTeams.map(async (team) => [team.id, await loadTeamStaff(supabase, team.id)] as const)
+  );
+  const staffByTeam: Record<string, TeamStaffMember[]> = Object.fromEntries(staffEntries);
   const frames = await rewardFramesByPlayer(
     (ids) => supabase.from("players").select("id, user_id").in("id", ids),
     (userIds) => supabase.from("user_progress").select("user_id, equipped_frame").in("user_id", userIds),
@@ -42,6 +47,7 @@ export default async function TeamsPage({
       currentPlayerId={user?.profile.player?.id ?? null}
       initialCategory={categoria}
       frames={frames}
+      staffByTeam={staffByTeam}
       loadError={teamsError?.message ?? playersError?.message}
     />
   );
