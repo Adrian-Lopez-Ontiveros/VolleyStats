@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { QueryError } from "@/components/query-error";
 import { PlayerRosterCard } from "@/components/teams/player-roster-card";
+import { TeamStaffSection } from "@/components/teams/team-staff-section";
+import type { TeamStaffMember } from "@/lib/team-staff";
 import { TeamLogo } from "@/components/teams/team-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ export function TeamsBrowser({
   initialCategory,
   loadError,
   frames = {},
+  staffByTeam = {},
 }: {
   teams: Team[];
   players: Player[];
@@ -32,6 +35,7 @@ export function TeamsBrowser({
   initialCategory: TeamCategory;
   loadError?: string;
   frames?: Record<string, string>;
+  staffByTeam?: Record<string, TeamStaffMember[]>;
 }) {
   const [categoria, setCategoria] = useCategoryFilter(initialCategory);
   const activeCategory = parseCategory(typeof categoria === "string" ? categoria : initialCategory);
@@ -106,16 +110,18 @@ export function TeamsBrowser({
                     <Badge variant="secondary">{typedTeam.short_name}</Badge>
                   ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {typedPlayers.length} jugadores
+                    {typedPlayers.length} jugadores · {(staffByTeam[typedTeam.id] ?? []).length} entrenadores
                   </p>
                 </div>
               </CardContent>
             </Card>
           </Link>
 
+          <TeamStaffSection staff={staffByTeam[typedTeam.id] ?? []} />
+
           <section>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Plantilla</h2>
+              <h2 className="text-lg font-semibold">Jugadores</h2>
               {canManage ? (
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/jugadores/nuevo?team=${typedTeam.id}`}>
